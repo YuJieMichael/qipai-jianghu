@@ -1031,6 +1031,30 @@ function btEnd(){
 }
 function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.autoT);const o=$('#ov');if(o)o.remove();BT=null;render();storyPending()}
 
+/* ============ 一键操作 ============ */
+// 不弹战斗层，直接结算，用于扫荡和各种"一键"
+function quickBattle(enemy,ctx){const A=mkPlayer();A.side='a';enemy.side='b';if(ctx.prep)ctx.prep(A,enemy);const res=simulate(A,enemy,ctx.sim||{});const rw=applyResult(res.win,ctx,enemy,A);return {win:res.win,rw}}
+const gemCount=()=>Object.values(S.gems).reduce((s,n)=>s+n,0);
+function snap(){return {silver:S.silver,xw:S.xw,jade:S.jade,gx:S.gx,rep:S.arena.rep,fruit:S.fruit,lv:S.lv,bag:S.bag.length,souls:S.souls.length,gems:gemCount(),tok:S.qiyu.tok}}
+function diffTxt(a){
+  const b=snap(),o=[];
+  if(b.lv!==a.lv)o.push(`等级 ${a.lv}→${b.lv}`);
+  for(const [k,n] of [['silver','银两'],['xw','修为'],['jade','魂玉'],['gx','贡献'],['rep','声望'],['fruit','灵果'],['tok','奇遇令']]){const d=b[k]-a[k];if(d)o.push(`${n} ${d>0?'+':''}${fmt(d)}`)}
+  if(b.bag>a.bag)o.push(`装备 +${b.bag-a.bag} 件`);if(b.souls>a.souls)o.push(`武魂 +${b.souls-a.souls}`);if(b.gems>a.gems)o.push(`宝石 +${b.gems-a.gems}`);
+  return o.join('，');
+}
+const soulRank=so=>SOULDEF[so.id].r*100+so.lv;
+const gemPow=key=>{const k=key.slice(0,-1),l=+key.slice(-1);return GEMS[k].v[l-1]*PW[k]};
+function doSign(){if(S.sign.last===today())return '';const r=SIGN[S.sign.total%7]();S.sign.total++;S.sign.last=today();return `签到第 ${S.sign.total} 天：${r}`}
+function doOnline(){if(!onlineReady())return '';S.online.got++;const r=Math.random();
+  if(r<.4){const g=S.lv*40;S.silver+=g;return `银两 +${fmt(g)}`}if(r<.65){S.jade+=15;return '魂玉 +15'}if(r<.85){S.fruit+=1;return '灵果 +1'}if(r<.95)return addGem(pick(GEMK),1);
+  S.qiyu.tok=Math.min(9,S.qiyu.tok+1);return '奇遇令 +1'}
+function doSmClaims(){let n=0;for(const x of S.sm.tasks)if(!x.got&&x.cur>=x.need){x.got=true;S.gx+=50;S.silver+=S.lv*40;n++}
+  let t='';if(!S.sm.bonus&&S.sm.tasks.length&&S.sm.tasks.every(x=>x.got)){S.sm.bonus=true;S.gx+=100;t=addGem(pick(GEMK),1)}return {n,t}}
+function mkWB(){const W=S.wb,b=WBS[W.idx];const B=mkNPC(b.n,b.s,S.lv+2,1.1,'世界首领');B.maxhp=W.max;B.hp=W.hp;B.boss=true;B.atk*=.85;return B}
+const towerPrep=run=>A=>{const b=run.b;A.atk*=1+b.atk;A.def*=1+b.def;A.spd*=1+b.spd;A.crit+=b.crit;A.dodge+=b.dodge;A.lsteal=b.steal;
+  A.maxhp=Math.round(A.maxhp*(1+b.hp));A.hp=Math.max(1,Math.round(A.maxhp*run.hp))};
+
 /* ============ 剧情浮层 ============ */
 function showStory(lines,choice,after){SV={lines,choice,after,i:0,res:null};drawStory()}
 function drawStory(){
@@ -1125,10 +1149,8 @@ const towerCP=()=>S.tower.best>=10?Math.floor(S.tower.best/10)*10+1:1;
 function towerEnemy(f){const boss=f%10===0;const name=boss?TOWER_BOSS[(f/10-1)%TOWER_BOSS.length]:TOWER_MOB[f%TOWER_MOB.length];return mkMonster(name,f+4,boss,!boss&&f%5===0)}
 function towerFight(){
   const run=S.tower.run;if(!run||run.picks||BT)return;
-  const f=run.floor,m=towerEnemy(f),b=run.b;
-  startBattle(m,{type:'tower',title:`通天塔 · 第 ${f} 层`,prep:A=>{
-    A.atk*=1+b.atk;A.def*=1+b.def;A.spd*=1+b.spd;A.crit+=b.crit;A.dodge+=b.dodge;A.lsteal=b.steal;
-    A.maxhp=Math.round(A.maxhp*(1+b.hp));A.hp=Math.max(1,Math.round(A.maxhp*run.hp));}});
+  const f=run.floor,m=towerEnemy(f);
+  startBattle(m,{type:'tower',title:`通天塔 · 第 ${f} 层`,prep:towerPrep(run)});
 }
 
 /* ============ 押镖 ============ */
@@ -1188,7 +1210,7 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.in
 /* ============ 渲染 ============ */
 const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shimen','师门'],['huodong','活动'],['fuli','福利'],['xiulian','修炼'],['jingmai','经脉'],['wuhun','武魂'],['lingshou','灵兽'],['qiyu','奇遇'],['lunjian','论剑'],['zhuangbei','装备']];
 const brand=()=>`<header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
-  ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
+  ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="btn sm" data-a="dailyAll">一键日常</button><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
 
 function render(){
   const app=$('#app');
@@ -1284,7 +1306,7 @@ jianghu(st){
       const ep=powerOf(mkMonster(name,lv,boss,false));
       return `<li class="${cls}"><span class="node">${boss?'首':i<pr?'✓':i+1}</span>
         <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">击败前一个对手后开启</span>'}</div>
-        <button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></li>`}).join('')}</ol>
+        <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}<button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></span></li>`}).join('')}</ol>
     <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label></div>
    </section></div>`;
 },
@@ -1306,7 +1328,7 @@ tower(st){
      <div class="kv"><span>当前气血</span><span class="num">${Math.round(run.hp*100)}%</span></div><div class="bar hp"><i style="width:${run.hp*100}%"></i></div>
      <div class="kv"><span>本趟增益</span><span class="buffs">${run.got.length?run.got.map(n=>`<span>${n}</span>`).join(''):'<span class="muted" style="background:none;border:0">暂无</span>'}</span></div></div></div>
     ${run.picks?`<p>闯过 3 层，选一项增益：</p><div class="picks">${run.picks.map(i=>`<button class="pick" data-a="towerPick" data-v="${i}">${TOWER_BUFFS[i].n}</button>`).join('')}</div>`
-      :`<div class="row"><button class="btn pri" data-a="towerFight">挑战第 ${f} 层</button><button class="btn" data-a="towerQuit">离开通天塔</button></div>`}
+      :`<div class="row"><button class="btn pri" data-a="towerFight">挑战第 ${f} 层</button><button class="btn" data-a="towerQuick">快速连闯（到三选一或失败为止）</button><button class="btn" data-a="towerQuit">离开通天塔</button></div>`}
     <div class="toggles"><label><input type="checkbox" id="opt-tauto" data-a="tAutoT" ${S.tAuto?'checked':''}> 自动连闯（遇到三选一时停下）</label><label><input type="checkbox" id="opt-fast2" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label></div></section>`;
 },
 shimen(){
@@ -1315,7 +1337,7 @@ shimen(){
   return `<section class="box"><h3>${s.n}师门任务 <small>每天刷新 4 个，全部完成另有奖励</small></h3>
     ${S.sm.tasks.map((x,i)=>{const T=TASKS[x.t],ok=x.cur>=x.need;return `<div class="task"><div><b>${T.n}</b><small>${T.d.replace('{n}',x.need)}</small></div><div class="bar jade"><i style="width:${x.cur/x.need*100}%"></i></div>
       <button class="btn sm ${ok&&!x.got?'pri':''}" data-a="smClaim" data-v="${i}" ${ok&&!x.got?'':'disabled'}>${x.got?'已领取':ok?'领取':`${x.cur}/${x.need}`}</button></div>`}).join('')}
-    <div class="row"><span class="note">每个任务：贡献 +50，银两 +${fmt(S.lv*40)}。四个全部完成：贡献 +100，再送一颗宝石。</span><span style="flex:1"></span><button class="btn pri" data-a="smBonus" ${done>=4&&!S.sm.bonus?'':'disabled'}>${S.sm.bonus?'今日已领':'领取全勤奖'}</button></div></section>
+    <div class="row"><span class="note">每个任务：贡献 +50，银两 +${fmt(S.lv*40)}。四个全部完成：贡献 +100，再送一颗宝石。</span><span style="flex:1"></span><button class="btn" data-a="smAll">一键领取</button><button class="btn pri" data-a="smBonus" ${done>=4&&!S.sm.bonus?'':'disabled'}>${S.sm.bonus?'今日已领':'领取全勤奖'}</button></div></section>
    <section class="box"><h3>秘传绝学 <small>${SECRET_LV} 级后可向师父求学</small></h3>
     <div class="skill secret"><div class="sk-h"><b class="q4">${s.secret.n}${S.secret?` · ${CN[S.secret]}重`:''}</b><span>内力 ${s.secret.mp} · 冷却 ${s.secret.cd} 回合</span></div><p>${s.secret.d}${S.secret?`。当前威力 ${Math.round(100*(1+.12*(S.secret-1)))}%`:''}</p></div>
     ${S.secret>=5?'<p class="q4">已修至五重，炉火纯青。</p>':`<div class="row"><button class="btn pri" data-a="secret" ${secretOpen()&&S.gx>=scCost?'':'disabled'}>${!secretOpen()?`${SECRET_LV} 级后可学`:S.secret?`修炼至第${CN[S.secret+1]}重（贡献 ${scCost}）`:`拜师求学（贡献 ${scCost}）`}</button><span class="note">每重威力 +12%</span></div>`}</section>
@@ -1328,19 +1350,21 @@ huodong(st){
     ${run?`<p>正在押送 <b class="q4">${ESC[run.g].n}</b>，劫镖几率 ${Math.round(ESC[run.g].risk*100)}%。</p>
       <div class="route">${['起点',...ESC_SEG].map((n,i)=>`<div class="${i<=run.seg?'on':''}">${n}</div>`).join('')}</div>
       <ul class="elog">${run.log.map(l=>`<li>${l}</li>`).join('')}</ul>
-      <div class="row"><button class="btn pri" data-a="escGo">继续赶路（前往${ESC_SEG[run.seg]}）</button></div>`
+      <div class="row"><button class="btn pri" data-a="escGo">继续赶路（前往${ESC_SEG[run.seg]}）</button><button class="btn" data-a="escAll">一键走完</button></div>`
      :`<p class="note">先交押金领一辆镖车，一路经过出城、山道、渡口三段，每段都可能遇到劫镖的。三段走完，押金退还，另付镖银。中途输了，押金归劫匪。</p>
       <div class="shop">${ESC.map((g,i)=>`<div class="ware"><b>${g.n}</b><span class="note">押金 ${fmt(g.dep*S.lv)}，镖银 ${fmt(g.rw*S.lv)}，劫镖几率 ${Math.round(g.risk*100)}%${i===2?'，必得 2 级宝石':''}</span><button class="btn sm ${i===1?'pri':''}" data-a="escStart" data-v="${i}" ${E.left<1||S.silver<g.dep*S.lv?'disabled':''}>领镖</button></div>`).join('')}</div>`}
     ${E.last?`<p class="note">上一趟：${E.last}</p>`:''}</section>
    <section class="box"><h3>世界首领 · ${wb.n} <small>每天一位，血量当天累积，每天 3 次挑战</small></h3>
     <div class="kv"><span>首领血量</span><span class="num">${fmt(W.hp)} / ${fmt(W.max)}</span></div><div class="bar hp"><i style="width:${W.hp/W.max*100}%"></i></div>
     <p class="note">每次挑战最多 10 回合，按造成的伤害发放银两和贡献。当天把首领打倒，额外得到圣品以上武魂、两颗 2 级宝石和灵果。</p>
-    <div class="row"><button class="btn pri" data-a="wbFight" ${W.tries<1||W.killed?'disabled':''}>${W.killed?'今日首领已被击杀':`挑战（剩余 ${W.tries} 次）`}</button><span class="note">今日累计伤害 ${fmt(W.dmg)}</span></div></section>`;
+    <div class="row"><button class="btn pri" data-a="wbFight" ${W.tries<1||W.killed?'disabled':''}>${W.killed?'今日首领已被击杀':`挑战（剩余 ${W.tries} 次）`}</button><button class="btn" data-a="wbAll" ${W.tries<1||W.killed?'disabled':''}>一键打完</button><span class="note">今日累计伤害 ${fmt(W.dmg)}</span></div></section>`;
 },
 fuli(){
   const sg=S.sign,signed=sg.last===today(),pos=signed?((sg.total-1)%7)+1:sg.total%7;
   const o=S.online;
-  return `<section class="box"><h3>每日签到 <small>累计 ${sg.total} 天，七天一轮</small></h3>
+  return `<section class="box"><h3>一键日常 <small>签到、在线宝箱、打坐收功、论剑俸禄、师门任务奖励，一次领完</small></h3>
+    <div class="row"><button class="btn pri big" data-a="dailyAll">一键领取全部</button></div></section>
+   <section class="box"><h3>每日签到 <small>累计 ${sg.total} 天，七天一轮</small></h3>
     <div class="sign">${SIGN_L.map((n,i)=>`<div class="sday ${i<pos?'on':''} ${!signed&&i===pos?'now':''}"><b>${CN[i+1]}</b>${n}</div>`).join('')}</div>
     <div class="row"><button class="btn pri" data-a="signIn" ${signed?'disabled':''}>${signed?'今日已签到':'签到'}</button></div></section>
    <section class="box"><h3>在线奖励 <small>网页开着就算在线，每 10 分钟一个宝箱，每天 6 个</small></h3>
@@ -1355,9 +1379,10 @@ xiulian(){
     <div class="meditate"><div class="taiji" aria-hidden="true"></div><div id="cult-live">${cultLive()}</div></div>
     <div class="row"><button class="btn pri" data-a="collect">收功</button><span class="note">每小时约得经验 ${fmt(r.exp*60)}，修为 ${fmt(r.xw*60)}</span></div></section>
    <section class="box"><h3>心法 <small>提升打坐收益</small></h3>
-    <div class="trow"><div><b>第 ${S.cult.xf} 层</b><small>打坐收益 +${(S.cult.xf-1)*15}%，当前等级可修至第 ${cap} 层</small></div><span class="num muted">银两 ${fmt(c)}</span><button class="btn" data-a="xinfa" ${S.cult.xf>=cap||S.silver<c?'disabled':''}>${S.cult.xf>=cap?'已达上限':'参悟'}</button></div></section>
+    <div class="trow"><div><b>第 ${S.cult.xf} 层</b><small>打坐收益 +${(S.cult.xf-1)*15}%，当前等级可修至第 ${cap} 层</small></div><span class="num muted">银两 ${fmt(c)}</span><span class="row" style="gap:6px"><button class="btn" data-a="xinfa" ${S.cult.xf>=cap||S.silver<c?'disabled':''}>${S.cult.xf>=cap?'已达上限':'参悟'}</button>${S.cult.xf<cap?`<button class="btn" data-a="xinfaAll" ${S.silver<c?'disabled':''}>连续参悟</button>`:''}</span></div></section>
    <section class="box"><h3>属性修炼 <small>每项上限为人物等级 ×2</small></h3>
-    ${TRAIN.map(t=>{const n=S.train[t.k],cost=trainCost(n),max=S.lv*2;return `<div class="trow"><div><b>${t.n}</b> <span class="muted num">${n}/${max}</span><small>每级${t.e}</small></div><span class="num muted">银两 ${fmt(cost)}</span><button class="btn" data-a="train" data-v="${t.k}" ${n>=max||S.silver<cost?'disabled':''}>${n>=max?'已满':'修炼'}</button></div>`}).join('')}
+    <div class="row"><button class="btn pri" data-a="trainAll">一键修炼</button><span class="note">每次挑最便宜的一项升级，直到银两用完或全部修满</span></div>
+    ${TRAIN.map(t=>{const n=S.train[t.k],cost=trainCost(n),max=S.lv*2;return `<div class="trow"><div><b>${t.n}</b> <span class="muted num">${n}/${max}</span><small>每级${t.e}</small></div><span class="num muted">银两 ${fmt(cost)}</span><span class="row" style="gap:6px"><button class="btn" data-a="train" data-v="${t.k}" ${n>=max||S.silver<cost?'disabled':''}>${n>=max?'已满':'修炼'}</button>${n<max?`<button class="btn" data-a="trainMax" data-v="${t.k}" ${S.silver<cost?'disabled':''}>修满</button>`:''}</span></div>`}).join('')}
    </section>`;
 },
 jingmai(){
@@ -1372,7 +1397,8 @@ jingmai(){
       <button class="btn pri" data-a="mer" data-v="${key}" ${!lvOk||S.xw<cost?'disabled':''}>${lvOk?'冲穴':`${req} 级可冲第${LAYER[layer]}重`}</button>`}
     </section>`;
   };
-  return `<div class="mers">${col('ren','任脉',REN,'每穴提升气血、内力与防御；每圆满一重，闪避 +1%。')}${col('du','督脉',DU,'每穴提升攻击与速度；每圆满一重，暴击 +1%。')}</div>
+  return `<section class="box"><div class="row"><button class="btn pri" data-a="merAll" ${canMer()?'':'disabled'}>一键冲穴</button><span class="note">两脉轮流冲，先冲便宜的，直到修为不够或到达当前等级的上限</span></div></section>
+   <div class="mers">${col('ren','任脉',REN,'每穴提升气血、内力与防御；每圆满一重，闪避 +1%。')}${col('du','督脉',DU,'每穴提升攻击与速度；每圆满一重，暴击 +1%。')}</div>
    <section class="box"><h3>任督贯通</h3><p>任督二脉同时圆满一重，即贯通一重，全属性 +3%。当前已贯通 <b class="q4">${mb.tong}</b> 重。</p>
     <p class="note">经脉加成合计：${stList(mb.flat)||'尚未打通任何穴位'}${mb.tong?`，全属性 +${mb.tong*3}%`:''}</p></section>`;
 },
@@ -1384,13 +1410,13 @@ wuhun(){
       if(!soulSlotOpen(i))return `<div class="sslot"><span class="muted">${SOUL_SLOT_LV[i]} 级开启</span></div>`;
       const so=u&&S.souls.find(x=>x.uid===u);
       return so?`<div class="sslot has"><b class="r${SOULDEF[so.id].r}">${SOULDEF[so.id].n}</b><span class="note">${so.lv} 级 · ${soulTxt(soulBonus(so))}</span><button class="btn sm" data-a="soulUn" data-v="${i}">卸下</button></div>`:'<div class="sslot"><span class="muted">空槽</span></div>';
-    }).join('')}</div></section>
+    }).join('')}</div><div class="row"><button class="btn pri" data-a="soulBest" ${S.souls.length?'':'disabled'}>一键装配最强</button><span class="note">按品阶和等级挑选</span></div></section>
    <section class="box"><h3>武魂 <small>升级消耗魂玉，炼化闲置武魂可得魂玉</small></h3>
    ${list.length?`<div class="cards">${list.map(so=>{const d=SOULDEF[so.id],on=eq.has(so.uid),up=Math.round(10*d.r*so.lv),dis=5*d.r*so.lv;
      return `<div class="cardx ${on?'on':''}"><div class="sh"><b class="r${d.r}">${d.n}</b><span class="note r${d.r}">${RAR[d.r]}品 ${'★'.repeat(d.r)}</span></div>
        <span class="note">${so.lv} / 10 级${on?' · 已装配':''}</span><span class="eff">${soulTxt(soulBonus(so))}</span><span class="fl">${d.d}</span>
        <div class="row">${on?'':`<button class="btn sm" data-a="soulEq" data-v="${so.uid}" ${free<0?'disabled':''}>装配</button>`}
-         <button class="btn sm" data-a="soulUp" data-v="${so.uid}" ${so.lv>=10||S.jade<up?'disabled':''}>${so.lv>=10?'已满级':`升级 · 魂玉 ${up}`}</button>
+         <button class="btn sm" data-a="soulUp" data-v="${so.uid}" ${so.lv>=10||S.jade<up?'disabled':''}>${so.lv>=10?'已满级':`升级 · 魂玉 ${up}`}</button>${so.lv<10&&S.jade>=up*2?`<button class="btn sm" data-a="soulMax" data-v="${so.uid}">升满</button>`:''}
          ${on?'':`<button class="btn sm red" data-a="soulDis" data-v="${so.uid}">炼化 +${dis}</button>`}</div></div>`}).join('')}</div>`
      :'<p class="empty">还没有武魂。首次击败各地首领必得一个，通天塔、奇遇和论剑商店也能获得。</p>'}</section>`;
 },
@@ -1402,7 +1428,7 @@ lingshou(){
      return `<div class="cardx ${act?'on':''} ${!own&&!petOpen(id)?'off':''}"><div class="sh"><b>${p.n}</b><span class="note">${own?`${own.lv} / ${PET_MAX} 级`:`${p.lv} 级可收养`}</span></div>
        <span class="eff">${p.d}</span><span class="fl">${own?`出战时${p.pn} +${+(p.pas[Object.keys(p.pas)[0]]*own.lv).toFixed(1)}${p.pn==='暴击'?'%':''}，技能威力 ${Math.round(100*(1+.06*(own.lv-1)))}%`:`每级${p.pn} +${p.pas[Object.keys(p.pas)[0]]}${p.pn==='暴击'?'%':''}`}</span>
        <div class="row">${own?`${act?'<button class="btn sm" data-a="petRest">休息</button>':`<button class="btn sm pri" data-a="petGo" data-v="${id}">出战</button>`}
-         <button class="btn sm" data-a="petFeed" data-v="${id}" ${own.lv>=PET_MAX||S.fruit<feed?'disabled':''}>${own.lv>=PET_MAX?'已满级':`喂养 · 灵果 ${feed}`}</button>`
+         <button class="btn sm" data-a="petFeed" data-v="${id}" ${own.lv>=PET_MAX||S.fruit<feed?'disabled':''}>${own.lv>=PET_MAX?'已满级':`喂养 · 灵果 ${feed}`}</button>${own.lv<PET_MAX&&S.fruit>=feed*2?`<button class="btn sm" data-a="petMax" data-v="${id}">喂满</button>`:''}`
         :`<button class="btn sm pri" data-a="petAdopt" data-v="${id}" ${!petOpen(id)||S.silver<p.cost?'disabled':''}>收养 · 银两 ${fmt(p.cost)}</button>`}</div></div>`}).join('')}</div></section>
    <section class="box"><h3>灵果 <small>现有 ${S.fruit} 枚</small></h3><p class="note">通天塔塔主、押镖、世界首领、签到和奇遇都能得到灵果，也可以在这里用银两买。</p>
     <div class="row"><button class="btn" data-a="buyFruit" data-v="1" ${S.silver<fruitCost?'disabled':''}>买 1 枚（银两 ${fruitCost}）</button><button class="btn" data-a="buyFruit" data-v="10" ${S.silver<fruitCost*10?'disabled':''}>买 10 枚（银两 ${fmt(fruitCost*10)}）</button></div></section>`;
@@ -1426,7 +1452,7 @@ lunjian(st){
      <div class="kv"><span>历史最高</span>第 ${a.best} 名</div>
      <div class="kv"><span>今日剩余挑战</span>${a.tries} / 10</div>
      <div class="kv"><span>每日俸禄</span>声望 ${rw.rep}，银两 ${fmt(rw.silver)}</div>
-     <button class="btn pri" data-a="arenaClaim" ${a.claimed?'disabled':''}>${a.claimed?'今日已领取':'领取俸禄'}</button></section>
+     <div class="row"><button class="btn pri" data-a="arenaClaim" ${a.claimed?'disabled':''}>${a.claimed?'今日已领取':'领取俸禄'}</button><button class="btn" data-a="arenaAll" ${a.tries<1||a.rank<=1?'disabled':''}>一键挑战（用完 ${a.tries} 次）</button></div></section>
     <section class="box"><h3>三甲</h3><ol class="ladder">${top.map(f=>f.me?`<li><span class="rk">${f.rank}</span><span><b>${esc(S.name)}</b><br><span class="meta">${SECTS[S.sect].n} · ${S.lv} 级 · 你</span></span><span></span><span></span></li>`
       :`<li><span class="rk">${f.rank}</span><span><b>${f.name}</b><br><span class="meta">${SECTS[f.sect].n} · ${f.lv} 级</span></span><span class="pw meta num">战力 ${fmt(foePower(f))}</span><span></span></li>`).join('')}</ol></section>
    </div>
@@ -1447,17 +1473,20 @@ zhuangbei(){
       <div class="sock">${gm.length?gm.map((g,i)=>g?`<button class="gem g-${g.slice(0,-1)}" data-a="gemOut" data-v="${sl},${i}" title="点击取下">${+g.slice(-1)}级${GEMS[g.slice(0,-1)].n} ✕</button>`:`<button class="es" data-a="gemSlot" data-v="${sl},${i}">＋ 镶嵌</button>`).join(''):'<span class="note">良品以上才有宝石孔</span>'}</div>
       ${gemPick&&gemPick.sl===sl?`<div class="gempick">${gemKeys.length?gemKeys.map(k=>`<button class="gem g-${k.slice(0,-1)}" data-a="gemPut" data-v="${k}">${+k.slice(-1)}级${GEMS[k.slice(0,-1)].n} ×${S.gems[k]}</button>`).join(''):'<span class="note">没有宝石</span>'}<button class="btn sm" data-a="gemCancel">取消</button></div>`:''}
       ${rf?`<div class="reforge"><span>洗练结果：${stList(S.reforge.st)}</span><span class="${powerOf(S.reforge.st)>=powerOf(it.st)?'cmp up':'cmp down'}">基础战力 ${fmt(powerOf(it.st))} → ${fmt(powerOf(S.reforge.st))}</span><div class="row"><button class="btn sm pri" data-a="rfKeep" data-v="new">换成新属性</button><button class="btn sm" data-a="rfKeep" data-v="old">保留原属性</button></div></div>`:''}
-      <div class="row">${en>=15?'<span class="q4">已强化至 +15</span>':`<button class="btn sm pri" data-a="enhance" data-v="${sl}" ${S.silver<cost?'disabled':''}>强化 +${en+1}（${Math.round(rate*100)}% · 银两 ${fmt(cost)}）</button>`}
+      <div class="row">${en>=15?'<span class="q4">已强化至 +15</span>':`<button class="btn sm pri" data-a="enhance" data-v="${sl}" ${S.silver<cost?'disabled':''}>强化 +${en+1}（${Math.round(rate*100)}% · 银两 ${fmt(cost)}）</button><button class="btn sm" data-a="enhanceTo" data-v="${sl}" ${S.silver<cost?'disabled':''}>一键强化至 +${en<10?10:15}</button>`}
         ${it.q>=2&&!it.toy?`<button class="btn sm" data-a="reforge" data-v="${sl}" ${S.silver<reforgeCost(it)||rf?'disabled':''}>洗练（银两 ${fmt(reforgeCost(it))}）</button>`:''}
         <button class="btn sm" data-a="unequip" data-v="${sl}">卸下</button></div>
       ${en>=6&&en<15?'<span class="note">+7 起强化失败会掉一级</span>':''}</div>`;
   };
-  return `<section class="box"><h3>身上装备 <small>强化每级主属性 +8%；宝石随装备走，换装不会丢</small></h3><div class="forges">${SLOTS.map(forge).join('')}</div></section>
+  return `<section class="box"><h3>身上装备 <small>强化每级主属性 +8%；宝石随装备走，换装不会丢</small></h3>
+    <div class="row"><button class="btn pri" data-a="equipBest">一键换上更好的装备</button><button class="btn" data-a="gemAuto" ${gemKeys.length?'':'disabled'}>一键镶嵌宝石</button><span class="note">镶嵌会优先用最值钱的宝石，并替换掉孔里更差的</span></div>
+    <div class="forges">${SLOTS.map(forge).join('')}</div></section>
    <section class="box"><h3>宝石 <small>三颗同级同种合成一颗高一级的，最高 5 级</small></h3>
+    ${gemKeys.length?`<div class="row"><button class="btn pri" data-a="gemMixAll" ${gemKeys.some(k=>S.gems[k]>=3&&+k.slice(-1)<5)?'':'disabled'}>一键合成</button><span class="note">从低到高逐级合成，直到不够三颗或银两用完</span></div>`:''}
     ${gemKeys.length?`<div class="row">${gemKeys.map(k=>{const l=+k.slice(-1);return `<span class="row" style="gap:4px">${gemTag(k)}<span class="note">×${S.gems[k]}</span>${l<5?`<button class="btn sm" data-a="gemMix" data-v="${k}" ${S.gems[k]<3||S.silver<100*l?'disabled':''}>合成（银两 ${100*l}）</button>`:''}</span>`}).join('')}</div>`
      :'<p class="empty">还没有宝石。首领、通天塔、押镖、世界首领、师门商店都能得到。</p>'}</section>
    <section class="box"><h3>行囊 <small class="num">${S.bag.length} / 40</small></h3>
-   <div class="row"><button class="btn" data-a="sellLow" ${low?'':'disabled'}>出售全部凡品、良品（${low} 件，不含强化或镶嵌过的）</button></div>
+   <div class="row"><button class="btn" data-a="equipBest">一键换上更好的装备</button><button class="btn" data-a="sellLow" ${low?'':'disabled'}>出售全部凡品、良品（${low} 件，不含强化或镶嵌过的）</button></div>
    ${list.length?`<div class="items">${list.map(it=>{const cur=S.equip[it.slot],d=itemPower(it)-itemPower(cur);
      return `<div class="item">${itemTag(it)}<span class="meta">${QN[it.q]} · ${SLOT_FULL[it.slot]} · ${it.ilv} 级${(it.gm||[]).some(Boolean)?' · 已镶嵌':''}</span><span class="st">${stList(itemStats(it))}</span>
        <span class="cmp ${d>0?'up':d<0?'down':''}">${cur?(d>0?`比当前装备强 ${fmt(d)} 战力`:d<0?`比当前装备弱 ${fmt(-d)} 战力`:'与当前装备相当'):`该部位未装备，+${fmt(d)} 战力`}</span>
@@ -1542,14 +1571,75 @@ const ACT={
     if(r<.2){const x=Math.round(S.lv*15);S.silver+=x;t=`拾到一个钱袋，银两 +${x}`}else t=pick(['一路无事。','在路边茶摊歇了歇脚。','遇到一队商旅，结伴而行。','山风很大，镖旗猎猎作响。']);
     run.log.push(`${ESC_SEG[run.seg]}：${t}`);run.seg++;
     if(run.seg>=3){const rw=escComplete();save();render();toast(rw.join('，'))}else{save();render()}},
-  wbFight(){ensureWB();const W=S.wb;if(W.tries<1||W.killed||BT)return;const b=WBS[W.idx];
-    const B=mkNPC(b.n,b.s,S.lv+2,1.1,'世界首领');B.maxhp=W.max;B.hp=W.hp;B.boss=true;B.atk*=.85;
-    startBattle(B,{type:'wb',title:`世界首领 · ${b.n}`,sim:{rounds:10,wb:true},start:W.hp})},
+  wbFight(){ensureWB();const W=S.wb;if(W.tries<1||W.killed||BT)return;
+    startBattle(mkWB(),{type:'wb',title:`世界首领 · ${WBS[W.idx].n}`,sim:{rounds:10,wb:true},start:W.hp})},
   /* 福利 */
-  signIn(){if(S.sign.last===today())return;const i=S.sign.total%7;const r=SIGN[i]();S.sign.total++;S.sign.last=today();save();render();toast(`签到第 ${S.sign.total} 天：${r}`)},
-  online(){if(!onlineReady())return;S.online.got++;const r=Math.random();let m;
-    if(r<.4){const g=S.lv*40;S.silver+=g;m=`银两 +${fmt(g)}`}else if(r<.65){S.jade+=15;m='魂玉 +15'}else if(r<.85){S.fruit+=1;m='灵果 +1'}else if(r<.95){m=addGem(pick(GEMK),1)}else{S.qiyu.tok=Math.min(9,S.qiyu.tok+1);m='奇遇令 +1'}
-    save();render();toast(`在线宝箱：${m}`)},
+  signIn(){const t=doSign();if(!t)return;save();render();toast(t)},
+  online(){const m=doOnline();if(!m)return;save();render();toast(`在线宝箱：${m}`)},
+  /* 一键 */
+  sweep(v){if(BT||SV)return;const [zi,i]=v.split(',').map(Number);if(i>=S.prog[zi])return;
+    const z=ZONES[zi],boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]],a=snap();let w=0,l=0;
+    for(let k=0;k<10;k++){const m=mkMonster(name,lv,boss,false);if(boss)m.skills[0].n=z.bs;if(quickBattle(m,{type:'stage',zi,i}).win)w++;else{l++;break}}
+    save();render();toast(`扫荡${name}：胜 ${w} 场${l?'，落败一场，已停止':''}。${diffTxt(a)}`)},
+  towerQuick(){const run=S.tower.run;if(!run||run.picks||BT)return;const f0=run.floor,a=snap();let n=0;
+    while(S.tower.run&&!S.tower.run.picks){const r=S.tower.run;if(quickBattle(towerEnemy(r.floor),{type:'tower',prep:towerPrep(r)}).win)n++}
+    save();render();toast((S.tower.run?`连闯 ${n} 层，到第 ${S.tower.run.floor} 层，请选择增益。`:`连闯 ${n} 层，止步第 ${f0+n} 层。`)+diffTxt(a))},
+  escAll(){const run=S.escort.run;if(!run||BT)return;const g=ESC[run.g],a=snap();
+    while(S.escort.run){const r=S.escort.run;
+      if(Math.random()<g.risk)quickBattle(mkNPC(pick(ROBBERS),pick(SECT_KEYS),S.lv,g.m+R(-.05,.08),'劫镖'),{type:'escort'});
+      else{r.log.push(`${ESC_SEG[r.seg]}：一路无事。`);r.seg++;if(r.seg>=3)escComplete()}}
+    save();render();toast(`${S.escort.last} ${diffTxt(a)}`)},
+  wbAll(){ensureWB();if(BT||S.wb.tries<1||S.wb.killed)return;const a=snap();let n=0;
+    while(S.wb.tries>0&&!S.wb.killed){quickBattle(mkWB(),{type:'wb',sim:{rounds:10,wb:true},start:S.wb.hp});n++}
+    save();render();toast(`挑战世界首领 ${n} 次${S.wb.killed?'，首领已被击杀':''}。${diffTxt(a)}`)},
+  arenaAll(){if(BT||S.arena.tries<1)return;const a=snap(),r0=S.arena.rank;let w=0,l=0;
+    while(S.arena.tries>0){
+      const step=Math.max(1,Math.round(S.arena.rank/25)),foes=[1,2,3,4,5].map(i=>S.arena.rank-i*step).filter(r=>r>=1).map(arenaFoe);if(!foes.length)break;
+      const p=calcStats().power,f=[...foes].reverse().find(f=>foePower(f)<=p*.95)||foes[0]; // 挑能稳赢的里面排名最高的
+      if(quickBattle(mkNPC(f.name,f.sect,f.lv,f.m),{type:'arena',foe:f}).win)w++;else l++}
+    save();render();toast(`论剑 ${w+l} 场：胜 ${w}，败 ${l}，排名 ${r0} → ${S.arena.rank}。${diffTxt(a)}`)},
+  merAll(){const a=snap();let ok=0,fail=0;
+    for(;;){const k=['ren','du'].filter(k=>{const t=S.mer[k];return t<40&&S.lv>=MER_REQ[Math.floor(t/8)]&&S.xw>=merCost(t)}).sort((x,y)=>merCost(S.mer[x])-merCost(S.mer[y]))[0];if(!k)break;
+      const t=S.mer[k],c=merCost(t);track('mer');if(Math.random()<MER_RATE[Math.floor(t/8)]){S.xw-=c;S.mer[k]++;ok++}else{S.xw-=Math.ceil(c/2);fail++}}
+    if(!ok&&!fail){toast('修为不够，或已冲到当前等级的上限');return}
+    save();render();toast(`冲穴 ${ok+fail} 次：成功 ${ok}，失败 ${fail}。${diffTxt(a)}`)},
+  trainAll(){let n=0;
+    for(;;){const k=TRAIN.map(t=>t.k).filter(k=>S.train[k]<S.lv*2&&S.silver>=trainCost(S.train[k])).sort((x,y)=>trainCost(S.train[x])-trainCost(S.train[y]))[0];if(!k)break;S.silver-=trainCost(S.train[k]);S.train[k]++;n++}
+    if(!n){toast('银两不够，或已全部修满');return}save();render();toast(`属性修炼共提升 ${n} 级`)},
+  trainMax(k){let n=0;while(S.train[k]<S.lv*2&&S.silver>=trainCost(S.train[k])){S.silver-=trainCost(S.train[k]);S.train[k]++;n++}if(n){save();render();toast(`修炼 ${n} 级`)}},
+  xinfaAll(){if(S.cult.xf>=xfCap()||S.silver<xfCost())return;
+    const p=cultPending();S.cult.last=Date.now();S.xw+=p.xw;const ms=gainExp(p.exp);let n=0;
+    while(S.cult.xf<xfCap()&&S.silver>=xfCost()){S.silver-=xfCost();S.cult.xf++;n++}
+    save();render();toast(`心法连升 ${n} 层，现为第 ${S.cult.xf} 层`);ms.forEach(toast)},
+  soulMax(u){const so=S.souls.find(x=>x.uid===u);if(!so)return;const r=SOULDEF[so.id].r;let n=0;
+    while(so.lv<10&&S.jade>=Math.round(10*r*so.lv)){S.jade-=Math.round(10*r*so.lv);so.lv++;n++}if(n){save();render();toast(`${SOULDEF[so.id].n}连升 ${n} 级`)}},
+  soulBest(){const list=[...S.souls].sort((a,b)=>soulRank(b)-soulRank(a));let j=0;S.soulSlots=S.soulSlots.map((u,i)=>soulSlotOpen(i)?(list[j++]?.uid||null):null);save();render();toast('已装配最强的武魂')},
+  petMax(id){const p=S.pets.find(x=>x.id===id);if(!p)return;let n=0;while(p.lv<PET_MAX&&S.fruit>=Math.ceil(p.lv/3)){S.fruit-=Math.ceil(p.lv/3);p.lv++;n++}if(n){save();render();toast(`${PETS[id].n}连升 ${n} 级`)}},
+  enhanceTo(sl){const it=S.equip[sl];if(!it)return;const target=(it.en||0)<10?10:15;let n=0;
+    while((it.en||0)<target&&S.silver>=enCost(it)){const en=it.en||0;S.silver-=enCost(it);track('enhance');n++;if(Math.random()<EN_RATE[en])it.en=en+1;else if(en>=7)it.en=en-1}
+    if(!n)return;S.stat.enMax=Math.max(S.stat.enMax,it.en||0);if(it.en>=10)newsPush(`恭喜玩家【${esc(S.name)}】将${esc(it.name)}强化至 +${it.en}！`);
+    save();render();toast(`强化 ${n} 次，${itemTag(it)}${(it.en||0)<target?'，银两用完了':''}`)},
+  gemMixAll(){let n=0;
+    for(let l=1;l<5;l++)for(const k of GEMK){const key=k+l;while(S.gems[key]>=3&&S.silver>=100*l){S.gems[key]-=3;S.silver-=100*l;S.gems[k+(l+1)]=(S.gems[k+(l+1)]||0)+1;n++}}
+    if(!n){toast('没有能合成的宝石');return}save();render();toast(`合成 ${n} 次`)},
+  gemAuto(){let n=0;
+    for(const sl of SLOTS){const it=S.equip[sl];if(!it)continue;const gm=sockets(it);
+      for(let i=0;i<gm.length;i++){const best=Object.keys(S.gems).filter(k=>S.gems[k]>0).sort((a,b)=>gemPow(b)-gemPow(a))[0];if(!best)break;
+        if(!gm[i]){gm[i]=best;S.gems[best]--;n++}else if(gemPow(best)>gemPow(gm[i])){S.gems[gm[i]]=(S.gems[gm[i]]||0)+1;gm[i]=best;S.gems[best]--;n++}}}
+    gemPick=null;if(!n){toast('没有更好的宝石可镶');return}save();render();toast(`镶嵌了 ${n} 颗宝石`)},
+  equipBest(){let n=0;
+    for(const sl of SLOTS){const best=S.bag.filter(i=>i.slot===sl).sort((a,b)=>itemPower(b)-itemPower(a))[0];
+      if(best&&itemPower(best)>itemPower(S.equip[sl])){S.bag=S.bag.filter(x=>x!==best);if(S.equip[sl])S.bag.push(S.equip[sl]);S.equip[sl]=best;n++}}
+    S.reforge=null;gemPick=null;if(!n){toast('身上已经是最好的了');return}save();render();toast(`换上了 ${n} 件更好的装备`)},
+  smAll(){const r=doSmClaims();if(!r.n&&!r.t){toast('没有可领取的任务');return}save();render();toast(`领取 ${r.n} 个任务奖励${r.t?`，全勤奖 ${r.t}`:''}`)},
+  dailyAll(){const a=snap(),o=[];
+    const s=doSign();if(s)o.push('签到');
+    let c=0;while(doOnline())c++;if(c)o.push(`在线宝箱 ${c} 个`);
+    const p=cultPending();if(p.exp>=1||p.xw>=1){S.cult.last=Date.now();S.xw+=p.xw;gainExp(p.exp);track('collect');o.push('打坐收功')}
+    if(!S.arena.claimed){const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;o.push('论剑俸禄')}
+    const m=doSmClaims();if(m.n)o.push(`师门任务 ${m.n} 个`);if(m.t)o.push('师门全勤奖');
+    if(!o.length){toast('今天能领的都领过了');return}
+    save();render();toast(`已领取：${o.join('、')}。${diffTxt(a)}`)},
   shouchong(){if(SV||BT)return;S.stat.sc++;const L=[['师父',SC_LINES[Math.min(S.stat.sc,SC_LINES.length)-1]]];
     if(S.stat.sc===1){const it={uid:uid(),slot:'wpn',q:4,ilv:1,name:'屠龙宝刀（玩具）',st:{atk:1},en:0,gm:[null,null,null],toy:true};
       if(S.bag.length<40){S.bag.push(it);L.push(['旁白','师父训完话，从床底下摸出一把木头刀扔给你。你获得了「屠龙宝刀（玩具）」，攻击 +1。'])}}
