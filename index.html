@@ -321,6 +321,39 @@ button.gem{cursor:pointer}
 .story .bt-btns{justify-content:space-between}
 .story .bt-btns .muted{font-size:12px}
 
+/* 分类导航 */
+.groups{display:flex;gap:6px;flex-wrap:wrap}
+.groups button{position:relative;font-family:var(--f-display);font-size:19px;letter-spacing:3px;padding:3px 18px;border:1px solid var(--line2);border-radius:18px;background:var(--panel);cursor:pointer;color:var(--muted)}
+.groups button:hover{color:var(--fg)}
+.groups button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:#2a2618}
+.groups .dot{top:4px;right:6px}
+
+/* 人情 */
+.karma{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+.kbar{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,#8e2a20,var(--line) 42%,var(--line) 58%,#2f6d58);border:1px solid var(--line)}
+.kbar i{position:absolute;top:-4px;width:4px;height:16px;background:var(--gold);border-radius:2px;transform:translateX(-50%)}
+
+/* 武林大会 */
+.bracket{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bracket li{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2);font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.bracket li b{font-size:15px;color:var(--fg)}
+.bracket li.won{border-color:var(--gold-d)} .bracket li.won b{color:var(--gold)}
+.bracket li.now{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.bracket li.lost{border-color:#6e2b23}
+
+/* 生活与赌坊 */
+.mats{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px;font-variant-numeric:tabular-nums}
+.mats>span>span{color:var(--muted);margin-right:6px}
+.slotpick{display:flex;gap:4px;flex-wrap:wrap}
+.slotpick button,.bets button{padding:2px 12px;font-size:12px;border:1px solid var(--line2);border-radius:12px;background:none;cursor:pointer}
+.slotpick button[aria-pressed="true"],.bets button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:#2a2618}
+.bets{display:flex;gap:4px;flex-wrap:wrap}
+.dice{font-size:46px;letter-spacing:6px;line-height:1;font-family:"Segoe UI Symbol","Apple Symbols","Noto Sans Symbols 2",sans-serif}
+.hq{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.hq .btn{white-space:normal;line-height:1.35;padding:6px 4px}
+
+@media (max-width:520px){.bracket{grid-template-columns:repeat(2,1fr)}.groups button{font-size:17px;padding:3px 12px}}
+
 /* 提示 */
 .toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)}
 .toast{background:#253436;border:1px solid var(--gold-d);color:var(--fg);padding:8px 16px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.4);animation:tin .25s ease-out}
@@ -615,6 +648,17 @@ const ACHS=[
  {id:'zhuansheng',n:'再世为人',d:'完成一次转生',t:()=>S.rb>=1,b:{atk:20,def:20,hp:200}},
  {id:'qiandao',n:'持之以恒',d:'累计签到 7 天',t:()=>S.sign.total>=7,b:{mp:30}},
  {id:'shouchong',n:'不氪也能赢',d:'点了 10 次首充按钮',t:()=>S.stat.sc>=10,b:{hp:6}},
+ {id:'xiaming',n:'侠名远扬',d:'善值达到 150',t:()=>S.karma>=150,b:{def:30,hp:300}},
+ {id:'eming',n:'恶名昭著',d:'恶值达到 150',t:()=>S.karma<=-150,b:{atk:35}},
+ {id:'jinlan',n:'金兰之交',d:'与一位江湖人物结义或结为知己',t:()=>Object.values(S.comps).some(f=>f>=100),b:{hp:200}},
+ {id:'taoli',n:'桃李天下',d:'让 3 名徒弟出师',t:()=>S.stat.chushi>=3,b:{mp:50,def:20}},
+ {id:'mingqi',n:'名器在手',d:'获得一件兵器谱名器',t:()=>S.legends.length>=1,b:{atk:15}},
+ {id:'pu',n:'兵器谱主',d:'集齐兵器谱十大名器',t:()=>S.legends.length>=10,b:{atk:80,def:40}},
+ {id:'mengzhu',n:'武林盟主',d:'在武林大会夺魁',t:()=>S.stat.champ>=1,b:{atk:60,hp:300}},
+ {id:'tanbao',n:'秘境探宝',d:'通关秘境 5 次',t:()=>S.stat.mj>=5,b:{dodge:2}},
+ {id:'dandao',n:'丹道宗师',d:'成功炼丹 50 次',t:()=>S.stat.dan>=50,b:{hp:250}},
+ {id:'zhujian',n:'铸剑名家',d:'锻造 30 件装备',t:()=>S.stat.forge>=30,b:{atk:20}},
+ {id:'dushen',n:'赌神',d:'在赌坊累计赢得 50 万两',t:()=>S.gamble.win>=500000,b:{crit:3}},
 ];
 
 /* ============ 福利 ============ */
@@ -639,6 +683,80 @@ const SC_LINES=[
  '为师累了。你自己体会吧。',
 ];
 
+/* ============ 人情 ============ */
+const COMPS={
+ xiao:{n:'萧寒',t:'酒肆剑客',rel:'结义',fav:'jiu',likeN:'美酒',d:'嗜酒如命的落拓剑客，剑快得看不清。助战时会斩出一道剑气。',pas:{atk:.03},
+  ev:{20:[['萧寒','又是你。这壶酒算我的。'],['萧寒','我在江湖上混了二十年，没几个人敢跟我同桌喝酒。']],
+      50:[['萧寒','我年轻时也有个师弟，后来死在血衣楼手里。'],['萧寒','你让我想起他。往后有什么事，喊一声。']],
+      100:[['旁白','月下，萧寒把剑插在地上，与你对着关帝像拜了三拜。'],['萧寒','从今往后，你我兄弟相称。'],['旁白','你与萧寒义结金兰。他可以随你助战。']]}},
+ su:{n:'苏晚晴',t:'医谷女侠',rel:'知己',fav:'xuelian',likeN:'雪莲',need:'good',d:'医谷传人，心软，见不得人受苦。助战时会为你施针疗伤。',pas:{hp:.05},
+  ev:{20:[['苏晚晴','你身上这道伤口，再晚两天就要化脓了。别动。'],['苏晚晴','下次受了伤，记得来医谷找我。']],
+      50:[['苏晚晴','师父说，医者只救该救之人。可我总觉得，人人都该救。'],['苏晚晴','你说，我是不是太傻了？']],
+      100:[['旁白','医谷的杏花开了。苏晚晴把一只亲手缝的药囊系在你腰间。'],['苏晚晴','往后走到哪里，都别忘了医谷。'],['旁白','苏晚晴成了你的红颜知己。她可以随你助战。']]}},
+ liu:{n:'柳三变',t:'落魄书生',rel:'结义',fav:'shu',likeN:'古籍',d:'考了九次科举，九次落榜。助战时会在一旁挥毫吟诗，为你壮胆。',pas:{mp:.1,crit:2},
+  ev:{20:[['柳三变','兄台，可否借在下十文钱？在下写一首诗相抵。'],['旁白','他的诗写得很好，字也好。可惜没人买。']],
+      50:[['柳三变','我考了九次科举，九次落榜。'],['柳三变','后来我想通了，天下最大的考场，是江湖。']],
+      100:[['旁白','柳三变当街泼墨，写下一幅《侠客行》送给你。'],['柳三变','你我一文一武，却是同道中人。今日结为兄弟！'],['旁白','你与柳三变结为异姓兄弟。他可以随你助战。']]}},
+ yan:{n:'燕七七',t:'女飞贼',rel:'知己',fav:'gem',likeN:'宝石',need:'evil',d:'来去无踪的女飞贼，只偷为富不仁的人。助战时会从暗处甩出飞刀。',pas:{spd:.05,dodge:2},
+  ev:{20:[['燕七七','哟，钱袋子挺鼓啊。'],['旁白','你一摸腰间，钱袋已经不见了。燕七七在屋顶上冲你晃了晃，又扔了回来。']],
+      50:[['燕七七','我只偷为富不仁的。你信吗？'],['燕七七','……算了，你信不信，我都无所谓。']],
+      100:[['旁白','三更天，燕七七翻窗进来，把一枚夜明珠放在你枕边。'],['燕七七','别问哪来的。往后谁敢动你，先问问我的飞刀。'],['旁白','燕七七成了你的红颜知己。她可以随你助战。']]}},
+};
+const APT=[{n:'平庸',m:.8},{n:'中等',m:1},{n:'上乘',m:1.25},{n:'奇才',m:1.6}];
+const TUDI_NAMES=['小虎','阿竹','石头','小莲','阿福','青儿','木头','小七','阿蛮','铁蛋','小满','豆子'];
+
+/* ============ 兵器谱 ============ */
+const LEGENDS=[
+ {id:'yuchang',n:'鱼肠剑',slot:'wpn',fx:'每第三次出招必定暴击',src:'秘境最深处的守护者身上，偶尔能找到它',lore:'专诸刺王僚，藏剑于鱼腹之中。剑身短小，杀意极重。'},
+ {id:'yitian',n:'倚天剑',slot:'wpn',fx:'攻击无视对手 30% 的防御',src:'击败天山雪域或华山之巅的首领时，有极小几率掉落',lore:'传说剑中藏着一部兵书。削铁如泥，寒光逼人。'},
+ {id:'tulong',n:'屠龙刀',slot:'wpn',fx:'对首领伤害 +30%',src:'击杀世界首领时，有几率夺得',lore:'宝刀一出，号令天下，莫敢不从。'},
+ {id:'bawang',n:'霸王枪',slot:'wpn',fx:'气血低于 30% 时伤害 +50%',src:'在武林大会夺魁',lore:'楚霸王遗物，枪重七十三斤七两，越是绝境越见威风。'},
+ {id:'biyu',n:'碧玉箫',slot:'wpn',fx:'命中后 20% 几率令对手晕眩',src:'在赌坊累计赢满 10 万两，老板会割爱相赠',lore:'箫声一起，听者无不心神摇曳。'},
+ {id:'xuantie',n:'玄铁重剑',slot:'wpn',fx:'伤害 +20%，速度 -15%',src:'首次闯过通天塔第 50 层',lore:'重剑无锋，大巧不工。'},
+ {id:'bingpo',n:'冰魄银针',slot:'wpn',fx:'命中后 30% 几率令对手身中寒毒',src:'奇遇「废弃药庐」中可能找到',lore:'针上淬着寒毒，见血即入骨髓。'},
+ {id:'junzi',n:'君子剑',slot:'wpn',fx:'每次出手回复 3% 气血',src:'善值达到 200，百姓联名相赠',lore:'剑身刻着“君子”二字，非正人不可佩。'},
+ {id:'xuedao',n:'血刀',slot:'wpn',fx:'所有攻击吸血 15%',src:'恶值超过 200 时击败追杀你的名门弟子，有几率夺得',lore:'刀身殷红，饮血越多，刀光越亮。'},
+ {id:'jinsi',n:'金丝软甲',slot:'arm',fx:'受到的伤害 -15%',src:'用陨铁锻造时，有几率打造出来',lore:'以金蚕丝织成，刀枪不入。'},
+];
+const NOLG=new Set();
+
+/* ============ 武林大会 ============ */
+const DH_ROUND=['十六强','八强','四强','决赛'];
+const DH_NPC=[['了尘大师','shaolin'],['清虚道长','wudang'],['静玄师太','emei'],['鲁长老','gaibang'],['殷左使','mingjiao'],['唐无影','tangmen'],['梅剑','tianshan'],
+  ['空见禅师','shaolin'],['凌虚子','wudang'],['妙音师太','emei'],['吴铁拐','gaibang'],['火龙使','mingjiao'],['唐小刀','tangmen'],['雪千寻','tianshan'],['燕北归','gaibang']];
+const DH_M=[.85,.9,.95,1];
+
+/* ============ 秘境 ============ */
+const MJ_DEPTH=8;
+const MJ_LV={fight:-4,elite:-2,boss:-3}; // 秘境怪物相对人物等级的差值（连战且不回血，所以比江湖同级怪弱）
+const MJ_MOB=['山魈','守墓傀儡','毒蝎','石像武士','游魂','铜甲尸'];
+const RT={fight:{n:'刀光',d:'门后有人埋伏'},elite:{n:'煞气',d:'强敌镇守此门'},chest:{n:'宝光',d:'似乎藏着宝物'},trap:{n:'诡异',d:'机关重重'},sage:{n:'琴声',d:'有隐士在抚琴'},spring:{n:'水声',d:'灵泉涌动'},boss:{n:'秘境守护者',d:'最后一战'}};
+const RT_W=[['fight',30],['elite',12],['chest',18],['trap',15],['sage',12],['spring',13]];
+
+/* ============ 生活 ============ */
+const MATS={renshen:'人参',lingzhi:'灵芝',xuelian:'雪莲',xuantie:'玄铁',hantie:'寒铁',yuntie:'陨铁'};
+const PILLS=[
+ {id:'xiaohuan',n:'小还丹',need:{renshen:2},d:'立即获得当前等级升级所需经验的 30%'},
+ {id:'dahuan',n:'大还丹',need:{renshen:3,lingzhi:2},d:'气血永久 +40（最多服 30 颗）'},
+ {id:'peiyuan',n:'培元丹',need:{lingzhi:2,xuelian:1},d:'修为 +（300 + 等级 × 20）'},
+ {id:'kuangbao',n:'狂暴丹',need:{renshen:1,xuelian:1},d:'接下来 10 场战斗攻击 +25%'},
+ {id:'huxin',n:'天王护心丹',need:{xuelian:2,lingzhi:1},d:'接下来 10 场战斗防御 +30%'},
+ {id:'yirong',n:'易容丹',need:{lingzhi:3},d:'改头换面，善恶值归零'},
+];
+const FORGE=[
+ {id:'jing',n:'精钢打造',need:{xuantie:3},silver:50,q:[[2,.6],[3,.3],[4,.1]],d:'精品 60%，珍品 30%，神品 10%'},
+ {id:'han',n:'寒铁打造',need:{hantie:3,xuantie:2},silver:100,q:[[3,.7],[4,.3]],d:'珍品 70%，神品 30%'},
+ {id:'yun',n:'陨铁打造',need:{yuntie:2,hantie:2},silver:200,q:[[4,1]],extra:true,d:'必出神品，多一条副属性；10% 几率打出名器「金丝软甲」'},
+];
+
+/* ============ 赌坊 ============ */
+const BET_L=['100','1,000','10,000','一成家当'];
+const CRICKETS=[{n:'黑将军',o:.5,p:.6,d:'久经沙场的老将，稳'},{n:'青头大将',o:1.1,p:.42,d:'年轻气盛，胜负难料'},{n:'红头金翅',o:3.1,p:.22,d:'百年难遇的奇虫，可惜脾气古怪'}];
+const CRI_WIN=['{n}一口咬住对方的大腿，死不松口！','{n}振翅长鸣，对手掉头就跑。','两只蛐蛐斗了三十回合，{n}笑到了最后。'];
+const CRI_LOSE=['{n}刚上场就跳出了罐子。','{n}被对手一头顶翻，四脚朝天。','{n}冲对手叫了两声，转身睡觉去了。'];
+const HQ_CALL=['宝拳','一点红','哥俩好','三星照','四喜财','五魁首','六六顺','七巧巧','八匹马','九长寿','全来到'];
+const hqOdds=s=>+(.9*36/(6-Math.abs(s-5))-1).toFixed(1);
+
 /* ============ 状态 ============ */
 let S=null;
 let CS='wudang'; // 创建时选中的门派
@@ -659,7 +777,10 @@ function newGame(name,sect){
     wb:null,
     qiyu:{tok:3,cur:null,last:-1,log:[]},arena:{rank:800,best:800,tries:10,claimed:false,rep:0},
     sign:{last:'',total:0},online:{day:today(),sec:0,got:0},
-    titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0},
+    titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0,chushi:0,champ:0,mj:0,dan:0,forge:0},
+    karma:0,kd:{good:3,evil:3},comps:{xiao:0,su:0,liu:0,yan:0},compEv:{},comp:null,chatDay:{},gifts:{jiu:0,shu:0},
+    tudi:[],xj:'',legends:[],dh:null,mj:{left:3,run:null},mat:{},gather:{herb:3,ore:3},pills:{kb:0,hx:0},pillUsed:0,
+    gamble:{win:0,n:0,drunk:0},manual:false,gTab:{},
     day:today(),tab:'jianghu',kills:0,uidc:1};
 }
 function fill(def,obj){for(const k in def){if(obj[k]===undefined)obj[k]=def[k];else if(def[k]&&typeof def[k]==='object'&&!Array.isArray(def[k])&&obj[k]&&typeof obj[k]==='object')fill(def[k],obj[k])}return obj}
@@ -701,6 +822,8 @@ function calcStats(){
   for(const sl of SLOTS){const it=S.equip[sl];if(it)addTo(st,itemStats(it))}
   addTo(st,S.bonus);addTo(st,petPassive());addTo(st,titleBonus());
   const pct={hp:mb.pct,mp:mb.pct,atk:mb.pct,def:mb.pct,spd:mb.pct};
+  const kt=karmaTier();if(kt.b)for(const k in kt.b){if(k in pct)pct[k]+=kt.b[k];else st[k]+=kt.b[k]}
+  for(const id in COMPS)if(S.comps[id]>=100)for(const k in COMPS[id].pas){if(k in pct)pct[k]+=COMPS[id].pas[k];else st[k]+=COMPS[id].pas[k]}
   S.soulSlots.forEach((u,i)=>{if(!u||!soulSlotOpen(i))return;const so=S.souls.find(x=>x.uid===u);if(!so)return;const b=soulBonus(so);for(const k in b){if(k in pct)pct[k]+=b[k];else st[k]+=b[k]}});
   for(const k in pct)st[k]*=1+pct[k];
   for(const k of ['hp','mp','atk','def'])st[k]=Math.round(st[k]);
@@ -807,9 +930,15 @@ function mkPlayer(){
   const skills=s.sk.filter(k=>k.lv<=S.lv);
   if(S.secret&&secretOpen())skills.push(secretSkill());
   const p=S.pet&&S.pets.find(x=>x.id===S.pet);
-  return {name:S.name,lv:S.lv,sectN:s.n,maxhp:st.hp,hp:st.hp,maxmp:st.mp,mp:st.mp,atk:st.atk,def:st.def,spd:st.spd,crit:st.crit,dodge:st.dodge,
-    skills,cds:{},buffs:[],dots:[],pet:p?{id:p.id,n:PETS[p.id].n,pw:1+.06*(p.lv-1)}:null};
+  const lg=new Set(SLOTS.map(x=>S.equip[x]&&S.equip[x].lg).filter(Boolean));
+  const A={name:S.name,lv:S.lv,sectN:s.n,maxhp:st.hp,hp:st.hp,maxmp:st.mp,mp:st.mp,atk:st.atk,def:st.def,spd:st.spd,crit:st.crit,dodge:st.dodge,
+    skills,cds:{},buffs:[],dots:[],pet:p?{id:p.id,n:PETS[p.id].n,pw:1+.06*(p.lv-1)}:null,lg,comp:S.comp&&S.comps[S.comp]>=100?S.comp:null};
+  if(lg.has('xuantie'))A.spd*=.85;
+  if(S.pills.kb>0)A.atk*=1.25;
+  if(S.pills.hx>0)A.def*=1.3;
+  return A;
 }
+function usePills(){if(S.pills.kb>0)S.pills.kb--;if(S.pills.hx>0)S.pills.hx--}
 
 /* ============ 战斗模拟 ============ */
 function eff(f,k){
@@ -824,27 +953,34 @@ function chooseSkill(a){
   return dmg[0]||null;
 }
 const tagsOf=f=>{const t=f.buffs.map(b=>b.src);f.dots.forEach(d=>t.push(d.l));if(f.stun)t.push('晕眩');return t};
-function simulate(A,B,opt={}){
-  const log=[],maxR=opt.rounds||40;
+// 战斗写成生成器：手动出招时在玩家出手前暂停，等待选择；自动战斗直接一路跑完
+function* battleGen(A,B,opt,log){
+  const maxR=opt.rounds||40;
   const nm=f=>`<span class="${f.side}">${esc(f.name)}</span>`;
   const push=(text,side,fx)=>log.push({text,side,fx:fx||[],a:[A.hp,A.mp],b:[B.hp,B.mp],ta:tagsOf(A),tb:tagsOf(B)});
   const tick=f=>{f.buffs.forEach(b=>b.left--);f.buffs=f.buffs.filter(b=>b.left>0)};
-  const act=(a,t)=>{
+  const act=function*(a,t){
     for(const d of a.dots){a.hp=Math.max(0,a.hp-d.v);d.t--;push(`${nm(a)} ${d.l}发作，损失 <b class="d">${d.v}</b> 气血`,a.side,[{on:a.side,v:'-'+d.v,k:'dmg'}])}
     a.dots=a.dots.filter(d=>d.t>0);
     if(a.hp<=0)return;
     for(const k in a.cds)if(a.cds[k]>0)a.cds[k]--;
     if(a.stun){a.stun=false;tick(a);push(`${nm(a)} 被震晕，无法出手`,a.side);return}
-    const sk=chooseSkill(a);
+    let sk;
+    if(a.manual){sk=yield a;if(sk==='auto'){a.manual=false;sk=chooseSkill(a)}else if(sk&&(sk.mp>a.mp||a.cds[sk.n]>0))sk=null}
+    else sk=chooseSkill(a);
     if(sk){a.mp-=sk.mp;a.cds[sk.n]=sk.cd}
+    const LA=a.lg||NOLG,LT=t.lg||NOLG;
     const s=sk||{n:'',mult:1};
     let txt=`${nm(a)} `+(sk?`施展「<em>${s.n}</em>」`:'出招攻击');const fx=[];
     if(s.mult){
       const hits=s.hits||1,K=50+5*a.lv;let total=0,landed=0,crits=0;
+      a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
+      let mul=1;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
+      const defF=LA.has('yitian')?.7:1;
       for(let i=0;i<hits;i++){
         if(Math.random()*100<Math.min(40,eff(t,'dodge')))continue;
-        let d=eff(a,'atk')*s.mult*K/(K+eff(t,'def'))*R(.92,1.08);
-        if(Math.random()*100<Math.min(60,a.crit+(s.crit||0))){d*=1.6;crits++}
+        let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08);
+        if((forceCrit&&!crits)||Math.random()*100<Math.min(60,a.crit+(s.crit||0))){d*=1.6;crits++}
         total+=Math.max(1,Math.round(d));landed++;
       }
       if(!landed){txt+=`，被 ${nm(t)} 闪身避过`;fx.push({on:t.side,v:'闪避',k:'miss'})}
@@ -852,13 +988,16 @@ function simulate(A,B,opt={}){
         t.hp=Math.max(0,t.hp-total);
         txt+=(hits>1?`，${landed}/${hits} 段命中`:'')+`，造成 <b class="d">${total}</b> 点伤害`+(crits?'<span class="cr">（暴击）</span>':'');
         fx.push({on:t.side,v:'-'+total,k:crits?'crit':'dmg'});
-        const stl=(s.steal||0)+(a.lsteal||0);
+        const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0);
         if(stl){const h=Math.round(total*stl);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，吸取 <b class="h">${h}</b> 气血`}
         if(s.dot&&t.hp>0){const v=Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def'))));t.dots=t.dots.filter(d=>d.l!==s.dot.l);t.dots.push({v,t:s.dot.t,l:s.dot.l});txt+=`，${nm(t)} 身中${s.dot.l}`}
         if(s.stun&&t.hp>0&&Math.random()<s.stun*(t.boss?.5:1)){t.stun=true;txt+=`，${nm(t)} 被震晕`}
+        if(LA.has('biyu')&&t.hp>0&&!t.stun&&Math.random()<.2*(t.boss?.5:1)){t.stun=true;txt+=`，箫声摇曳，${nm(t)} 心神失守`}
+        if(LA.has('bingpo')&&t.hp>0&&Math.random()<.3){const v=Math.max(1,Math.round(eff(a,'atk')*.4*K/(K+eff(t,'def'))));t.dots=t.dots.filter(d=>d.l!=='寒毒');t.dots.push({v,t:3,l:'寒毒'});txt+=`，银针透骨，${nm(t)} 身中寒毒`}
       }
     }
     if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
+    if(LA.has('junzi')&&a.hp>0)a.hp=Math.min(a.maxhp,a.hp+Math.round(a.maxhp*.03));
     if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.n);a.buffs.push({...s.buff,src:s.n,left:s.buff.t+1});txt+=`，${s.d.split('，').filter(x=>/提升|\+/.test(x)).join('，')||'气势大涨'}`}
     a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*.06));
     tick(a);push(txt,a.side,fx);
@@ -872,13 +1011,20 @@ function simulate(A,B,opt={}){
     else if(p.id==='gui'){f.buffs=f.buffs.filter(b=>b.src!=='龟甲');f.buffs.push({def:.4,src:'龟甲',left:2});push(`${who}以龟甲护主，防御提升40%`,f.side)}
     else if(p.id==='hu'){const d=dm(.3);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.35*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 神魂颠倒`}push(`${who}施展媚术，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
   };
+  const compAct=(f,t)=>{
+    const c=f.comp,K=50+5*f.lv,dm=k=>Math.max(1,Math.round(eff(f,'atk')*k*K/(K+eff(t,'def'))));
+    if(c==='xiao'){const d=dm(.9);t.hp=Math.max(0,t.hp-d);push(`萧寒拔剑而出，一道剑气斩向 ${nm(t)}，造成 <b class="d">${d}</b> 点伤害`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+    else if(c==='su'){const h=Math.round(f.maxhp*.08);f.hp=Math.min(f.maxhp,f.hp+h);push(`苏晚晴弹出三枚金针，为 ${nm(f)} 止血疗伤，回复 <b class="h">${h}</b> 气血`,f.side,[{on:f.side,v:'+'+h,k:'heal'}])}
+    else if(c==='liu'){f.buffs=f.buffs.filter(b=>b.src!=='挥毫助威');f.buffs.push({atk:.25,src:'挥毫助威',left:3});push(`柳三变在一旁挥毫吟诗，${nm(f)} 精神大振，攻击提升25%`,f.side)}
+    else if(c==='yan'){const d=dm(.6);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.25*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 被点中穴道`}push(`燕七七从暗处甩出飞刀，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+  };
   push(`${nm(A)} 与 ${nm(B)} 拉开架势……`,null);
   let round=0,winner=null;
   while(round<maxR&&!winner){
     round++;
     const order=[A,B].sort((x,y)=>(eff(y,'spd')-eff(x,'spd'))||(Math.random()-.5));
     for(const f of order){
-      const t=f===A?B:A;act(f,t);
+      const t=f===A?B:A;yield* act(f,t);
       if(t.hp<=0){winner=f;break}
       if(f.hp<=0){winner=t;break}
     }
@@ -887,6 +1033,7 @@ function simulate(A,B,opt={}){
       if(!f.pet||f.hp<=0||t.hp<=0||Math.random()>=.4)continue;
       petAct(f,t);if(t.hp<=0){winner=f;break}
     }
+    if(!winner&&A.comp&&A.hp>0&&B.hp>0&&Math.random()<.3){compAct(A,B);if(B.hp<=0)winner=A}
     if(log.length)log[log.length-1].round=round;
   }
   if(!winner){
@@ -896,6 +1043,7 @@ function simulate(A,B,opt={}){
   push(winner===A?`${nm(B)} 败下阵来。`:`${nm(A)} 力有不逮，败下阵来。`,null);
   return {log,win:winner===A,rounds:round};
 }
+function simulate(A,B,opt={}){const g=battleGen(A,B,opt,[]);let r=g.next();while(!r.done)r=g.next(chooseSkill(A));return r.value}
 
 /* ============ 战斗流程 ============ */
 function fInfo(f){return {name:f.name,lv:f.lv,tag:f.sectN||(f.boss?'首领':f.elite?'精英':'江湖'),maxhp:f.maxhp,maxmp:f.maxmp}}
@@ -905,14 +1053,20 @@ function fight(zi,i){
   const z=ZONES[zi],st=STORY[zi];
   if(i===0&&!S.story.seen[zi+'a']){S.story.seen[zi+'a']=1;save();showStory(st.pre,null,()=>fight(zi,i));return}
   if(i===5&&!S.story.seen[zi+'b']){S.story.seen[zi+'b']=1;save();showStory(st.boss,null,()=>fight(zi,i));return}
+  if(S.karma<=-150&&Math.random()<.1){startBattle(mkNPC('名门弟子',pick(['shaolin','wudang','emei']),S.lv,1,'追杀'),{type:'hunt',zi,i,title:'通缉 · 名门弟子追杀'});return}
   const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
   const m=mkMonster(name,lv,boss,false);if(boss)m.skills[0].n=z.bs;
-  startBattle(m,{type:'stage',zi,i,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
+  startBattle(m,{type:'stage',zi,i,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
 }
 function startBattle(enemy,ctx){
-  const A=mkPlayer();A.side='a';enemy.side='b';
+  const A=mkPlayer();A.side='a';enemy.side='b';usePills();
   if(ctx.prep)ctx.prep(A,enemy);
   const info=[fInfo(A),fInfo(enemy)];
+  if(S.manual&&ctx.manualOK!==false){
+    A.manual=true;const log=[];
+    BT={manual:true,gen:battleGen(A,enemy,ctx.sim||{},log),log,A,enemy,info,i:-1,timer:null,autoT:null,ctx,done:false};
+    showBattle();manualRun(BT.gen.next());return;
+  }
   const res=simulate(A,enemy,ctx.sim||{});
   const reward=applyResult(res.win,ctx,enemy,A);
   save();
@@ -932,7 +1086,8 @@ function applyResult(win,ctx,enemy,A){
       const first=ctx.i===S.prog[ctx.zi];
       if(boss){const j=10+lv;S.jade+=j;rw.push(`魂玉 +${j}`);
         if(first||Math.random()<.15){const so=randomSoul(first?2:1);rw.push(`获得武魂 ${soulTag(so)}`)}
-        if(Math.random()<.3)rw.push(addGem(pick(GEMK),1))}
+        if(Math.random()<.3)rw.push(addGem(pick(GEMK),1));
+        if(ctx.zi>=5&&Math.random()<.03){const t=grantLegend('yitian');if(t)rw.push(t)}}
       if(Math.random()<.04){S.qiyu.tok=Math.min(9,S.qiyu.tok+1);rw.push('奇遇令 +1')}
       if(first){S.prog[ctx.zi]++;rw.push('<span class="q4">首次通关</span>');
         if(boss&&ctx.zi<ZONES.length-1)rw.push(`<span class="q4">新区域开启：${ZONES[ctx.zi+1].n}</span>`);
@@ -958,6 +1113,7 @@ function applyResult(win,ctx,enemy,A){
         const g=30+f*15,x=5+f*2;S.silver+=g;S.xw+=x;rw.push(`银两 +${g}`,`修为 +${x}`);
         gainExp(12+enemy.lv*6).forEach(m=>rw.push(`<span class="q4">${m}</span>`));
         if(f%5===0){const j=10+f;S.jade+=j;rw.push(`魂玉 +${j}`)}
+        if(f===50){const t=grantLegend('xuantie');if(t)rw.push(t)}
         if(f%10===0){rw.push(addGem(pick(GEMK),Math.min(5,1+Math.floor(f/20))));S.fruit+=2;rw.push('灵果 +2');const so=randomSoul(f>=40?3:2);rw.push(`获得武魂 ${soulTag(so)}`);
           newsPush(`【${esc(S.name)}】击败${enemy.name}，登上通天塔第 ${f} 层！`)}
       }else rw.push(`闯过第 ${f} 层`);
@@ -975,7 +1131,25 @@ function applyResult(win,ctx,enemy,A){
     rw.push(`造成伤害 ${fmt(dmg)}（${(dmg/S.wb.max*100).toFixed(1)}%）`,`银两 +${fmt(g)}`,'贡献 +15');
     if(enemy.hp<=0){S.wb.killed=true;S.stat.wbKill++;S.gx+=100;S.fruit+=3;
       rw.push('<span class="q4">首领已被击杀</span>',`获得武魂 ${soulTag(randomSoul(3))}`,addGem(pick(GEMK),2,2),'灵果 +3','贡献 +100');
-      newsPush(`【${esc(S.name)}】击杀世界首领「${WBS[S.wb.idx].n}」，威震江湖！`)}
+      newsPush(`【${esc(S.name)}】击杀世界首领「${WBS[S.wb.idx].n}」，威震江湖！`);
+      if(Math.random()<.25){const t=grantLegend('tulong');if(t)rw.push(t)}}
+  }else if(ctx.type==='hunt'){
+    if(win){S.karma-=3;S.kills++;const g=S.lv*50;S.silver+=g;rw.push(`击退追杀者，恶名更盛。银两 +${fmt(g)}`);
+      if(S.karma<=-200&&Math.random()<.15){const t=grantLegend('xuedao');if(t)rw.push(t)}}
+    else{const fine=Math.min(S.silver,S.lv*80);S.silver-=fine;rw.push(`你被擒住，交了 ${fmt(fine)} 两赎金才脱身。`)}
+  }else if(ctx.type==='catch'){
+    if(win){const g=S.lv*40;S.silver+=g;S.karma-=8;rw.push(`你甩掉了捕快，满载而归。银两 +${fmt(g)}，恶 +8`)}
+    else{const fine=Math.min(S.silver,S.lv*60);S.silver-=fine;S.karma-=4;rw.push(`你被捕快拿下，罚银 ${fmt(fine)} 两。`)}
+  }else if(ctx.type==='dahui'){
+    const D=S.dh,r=D.r;
+    if(win){const g=S.lv*80*(r+1),p=25*(r+1);S.silver+=g;S.arena.rep+=p;D.r++;rw.push(r<3?`晋级${DH_ROUND[r+1]}`:'<span class="q4">武林大会夺魁！</span>',`银两 +${fmt(g)}`,`声望 +${p}`);
+      if(D.r>=4){S.stat.champ++;const t=grantLegend('bawang');if(t)rw.push(t);else rw.push(`获得武魂 ${soulTag(randomSoul(3))}`,addGem(pick(GEMK),3));
+        newsPush(`【${esc(S.name)}】在本届武林大会夺魁，号令群雄！`)}}
+    else{D.out=true;rw.push(`止步${DH_ROUND[r]}。下周再来。`)}
+  }else if(ctx.type==='mijing'){
+    const run=S.mj.run;
+    if(win){S.kills++;run.hp=Math.min(1,A.hp/A.maxhp+.12);rw.push(...mjWin(ctx.room,enemy))}
+    else{S.mj.run=null;rw.push(`你在秘境第 ${run.depth} 关力竭退出，已得的东西都带出来了。`)}
   }
   return rw;
 }
@@ -990,6 +1164,7 @@ function showBattle(){
     <div class="blog" id="blog"></div>
     <div id="bt-foot" class="bt-btns"><button class="btn" data-a="btSkip">跳过</button></div></div>`;
   document.body.appendChild(ov);
+  if(BT.manual){$('#bt-foot').innerHTML='';btApply({a:[BT.A.hp,BT.A.mp],b:[BT.enemy.hp,BT.enemy.mp],ta:[],tb:[],fx:[]},false);return}
   btApply(BT.res.log[0],true);
   if(S.fast){btSkip();return}
   const sp=(S.auto||S.tAuto)?170:330;
@@ -1009,8 +1184,24 @@ function btApply(e,withLog){
     for(const f of e.fx){const el=document.createElement('span');el.className='pop '+f.k;el.textContent=f.v;$('#f'+f.on).appendChild(el);setTimeout(()=>el.remove(),900)}
   }
 }
+// 手动出招：播放新产生的战报，然后等玩家选招或结算
+function manualRun(r){
+  const foot=$('#bt-foot');if(foot)foot.innerHTML='<span class="note">……</span>';
+  const next=()=>{if(r.done){BT.res=r.value;BT.reward=applyResult(r.value.win,BT.ctx,BT.enemy,BT.A);save();btEnd()}else showChoices()};
+  clearInterval(BT.timer);
+  if(S.fast){while(BT.i<BT.log.length-1){BT.i++;btApply(BT.log[BT.i],true)}next();return}
+  BT.timer=setInterval(()=>{if(BT.i>=BT.log.length-1){clearInterval(BT.timer);next();return}BT.i++;btApply(BT.log[BT.i],true)},260);
+}
+function showChoices(){
+  const A=BT.A;
+  $('#bt-foot').innerHTML=`<span class="note" style="flex:1 1 100%">轮到你出招 · 内力 ${A.mp} / ${A.maxmp}</span>`+
+    [null,...A.skills].map((k,i)=>{const ok=!k||(k.mp<=A.mp&&!(A.cds[k.n]>0));
+      return `<button class="btn ${k&&ok?'pri':''}" data-a="mPick" data-v="${i}" ${ok?'':'disabled'} title="${k?esc(k.d):'造成100%伤害'}">${k?k.n:'普通攻击'}${k?` <span style="font-weight:400;font-size:12px">${A.cds[k.n]>0?`冷却 ${A.cds[k.n]}`:`内力 ${k.mp}`}</span>`:''}</button>`}).join('')+
+    '<button class="btn" data-a="mPick" data-v="auto">自动打完</button>';
+  const b=$('#bt-foot .btn.pri')||$('#bt-foot .btn');if(b)b.focus({preventScroll:true});
+}
 function btSkip(){
-  if(!BT||BT.done)return;clearInterval(BT.timer);
+  if(!BT||BT.done||BT.manual)return;clearInterval(BT.timer);
   const lg=$('#blog');let html='';for(let i=BT.i+1;i<BT.res.log.length;i++)html+=`<p>${BT.res.log[i].text}</p>`;
   lg.insertAdjacentHTML('beforeend',html);lg.scrollTop=lg.scrollHeight;
   btApply(BT.res.log[BT.res.log.length-1],false);
@@ -1020,7 +1211,7 @@ function btSkip(){
 function btEnd(){
   clearInterval(BT.timer);BT.done=true;
   const win=BT.res.win,c=BT.ctx;
-  const autoStage=S.auto&&c.type==='stage'&&win&&S.story.pend==null;
+  const autoStage=S.auto&&(c.type==='stage'||c.type==='hunt')&&win&&S.story.pend==null;
   const autoTower=S.tAuto&&c.type==='tower'&&win&&S.tower.run&&!S.tower.run.picks;
   const big=c.type==='wb'?(win?'斩':'伤'):(win?'胜':'败');
   $('#bt-foot').outerHTML=`<div class="result ${win||c.type==='wb'?'win':'lose'}"><span class="res-big">${big}</span><ul class="rw">${BT.reward.map(r=>`<li>${r}</li>`).join('')}</ul></div>
@@ -1033,7 +1224,7 @@ function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.aut
 
 /* ============ 一键操作 ============ */
 // 不弹战斗层，直接结算，用于扫荡和各种"一键"
-function quickBattle(enemy,ctx){const A=mkPlayer();A.side='a';enemy.side='b';if(ctx.prep)ctx.prep(A,enemy);const res=simulate(A,enemy,ctx.sim||{});const rw=applyResult(res.win,ctx,enemy,A);return {win:res.win,rw}}
+function quickBattle(enemy,ctx){const A=mkPlayer();A.side='a';enemy.side='b';usePills();if(ctx.prep)ctx.prep(A,enemy);const res=simulate(A,enemy,ctx.sim||{});const rw=applyResult(res.win,ctx,enemy,A);return {win:res.win,rw}}
 const gemCount=()=>Object.values(S.gems).reduce((s,n)=>s+n,0);
 function snap(){return {silver:S.silver,xw:S.xw,jade:S.jade,gx:S.gx,rep:S.arena.rep,fruit:S.fruit,lv:S.lv,bag:S.bag.length,souls:S.souls.length,gems:gemCount(),tok:S.qiyu.tok}}
 function diffTxt(a){
@@ -1055,8 +1246,78 @@ function mkWB(){const W=S.wb,b=WBS[W.idx];const B=mkNPC(b.n,b.s,S.lv+2,1.1,'世�
 const towerPrep=run=>A=>{const b=run.b;A.atk*=1+b.atk;A.def*=1+b.def;A.spd*=1+b.spd;A.crit+=b.crit;A.dodge+=b.dodge;A.lsteal=b.steal;
   A.maxhp=Math.round(A.maxhp*(1+b.hp));A.hp=Math.max(1,Math.round(A.maxhp*run.hp))};
 
+/* ============ 善恶与人情 ============ */
+function karmaTier(){const k=S.karma;
+  if(k>=150)return {n:'侠名远扬',b:{def:.06,hp:.06},d:'百姓敬仰。防御 +6%，气血 +6%。'};
+  if(k>=50)return {n:'小有侠名',b:{def:.03},d:'有人认得你是个好人。防御 +3%。'};
+  if(k<=-150)return {n:'恶名昭著',b:{atk:.06,crit:2},d:'人人避之不及。攻击 +6%，暴击 +2%。名门正派正在通缉你，闯江湖时随时可能遭到追杀。'};
+  if(k<=-50)return {n:'小有恶名',b:{atk:.03},d:'有人在背后议论你。攻击 +3%。'};
+  return {n:'籍籍无名',b:null,d:'江湖上还没什么人知道你。'}}
+const favLabel=(f,c)=>f>=100?c.rel:f>=50?'知交':f>=20?'相识':'陌生';
+const pasTxt=p=>Object.entries(p).map(([k,v])=>`${STN[k]} +${isPct(k)?v:Math.round(v*100)}%`).join('，');
+function addFavor(id,v){
+  const c=COMPS[id];let cap=100;if(c.need==='good'&&S.karma<0)cap=50;if(c.need==='evil'&&S.karma>0)cap=50;
+  const old=S.comps[id];
+  if(old>=cap){toast(`${c.n}${c.need==='good'?'不愿与恶人深交':'看不惯你这副正人君子的样子'}，好感暂时无法提升`);return}
+  const nw=Math.min(cap,old+v);S.comps[id]=nw;
+  for(const th of [20,50,100])if(old<th&&nw>=th&&!S.compEv[id+th]){S.compEv[id+th]=1;showStory(c.ev[th],null,()=>render())}
+  if(nw>=100&&!S.comp)S.comp=id;
+}
+function updTudi(){const now=Date.now();
+  for(const t of S.tudi){const mins=Math.min(720,Math.max(0,(now-t.last)/6e4));t.exp+=(10+S.lv*1.5)*APT[t.apt].m*mins;t.last=now;
+    while(t.lv<60&&t.exp>=needExp(t.lv)){t.exp-=needExp(t.lv);t.lv++}if(t.lv>=60)t.exp=0}}
+
+/* ============ 名器 ============ */
+function legendStats(slot,lv){const st=mainStats(slot,4,lv);for(const k in st)if(!isPct(k))st[k]=Math.round(st[k]*1.15);if(slot==='wpn')st.crit=3;else st.hp=(st.hp||0)+lv*8;return st}
+function grantLegend(id){
+  if(S.legends.includes(id))return '';const L=LEGENDS.find(x=>x.id===id),lv=Math.max(S.lv,10);
+  S.legends.push(id);S.bag.push({uid:uid(),slot:L.slot,q:4,ilv:lv,name:L.n,st:legendStats(L.slot,lv),en:0,gm:[null,null,null],lg:id});
+  newsPush(`【${esc(S.name)}】得到兵器谱名器「${L.n}」！`);
+  return `<span class="q4">获得兵器谱名器「${L.n}」！</span>`;
+}
+// 名器属性跟着人物等级走，转生后保留最高时的等级
+function refreshLegends(){for(const it of [...SLOTS.map(s=>S.equip[s]),...S.bag])if(it&&it.lg&&it.ilv<S.lv){it.ilv=S.lv;it.st=legendStats(it.slot,S.lv)}}
+
+/* ============ 材料 ============ */
+const wpick=arr=>{let r=Math.random()*arr.reduce((s,x)=>s+x[1],0);for(const [k,w] of arr){r-=w;if(r<=0)return k}return arr[0][0]};
+const randHerb=()=>wpick([['renshen',45],['lingzhi',35],['xuelian',20]]);
+const randOre=()=>wpick([['xuantie',55],['hantie',33],['yuntie',12]]);
+function addMat(k,n=1){S.mat[k]=(S.mat[k]||0)+n;return `${MATS[k]} +${n}`}
+function doGather(t){S.gather[t]--;const n=1+(Math.random()<.4?1:0);return (t==='herb'?'上山采药：':'下矿挖矿：')+addMat(t==='herb'?randHerb():randOre(),n)}
+const hasMats=need=>Object.entries(need).every(([k,n])=>(S.mat[k]||0)>=n);
+const matTxt=need=>Object.entries(need).map(([k,n])=>`${MATS[k]}×${n}`).join(' ');
+
+/* ============ 武林大会与秘境 ============ */
+const weekId=()=>Math.floor((Date.now()/864e5+3)/7);
+function ensureDH(){const w=weekId();if(S.dh&&S.dh.wk===w)return;S.dh={wk:w,r:0,out:false,opp:shuffle(DH_NPC.map((_,i)=>i)).slice(0,4)}}
+function mjRoll(){const n=Math.random()<.3?2:3,set=new Set();while(set.size<n)set.add(wpick(RT_W));return [...set]}
+function mjNext(){const run=S.mj.run;run.depth++;if(run.depth>MJ_DEPTH){run.opts=['boss'];run.hp=Math.min(1,run.hp+.3)}else run.opts=mjRoll()} // 守护者门前回复三成气血
+function mjLog(t,o){const run=S.mj.run;run.log.unshift(`第 ${run.depth} 关「${RT[t].n}」：${o.join('，').replace(/<[^>]+>/g,'')}`);run.log=run.log.slice(0,6)}
+function mjWin(room,enemy){
+  const o=[];
+  if(room==='boss'){
+    o.push('<span class="q4">秘境通关</span>',`获得武魂 ${soulTag(randomSoul(Math.random()<.3?3:2))}`,addGem(pick(GEMK),2));
+    const j=30+S.lv;S.jade+=j;o.push(`魂玉 +${j}`);for(let i=0;i<3;i++)o.push(addMat(Math.random()<.5?randHerb():randOre(),1));
+    if(Math.random()<.25){const t=grantLegend('yuchang');if(t)o.push(t)}
+    S.stat.mj++;S.mj.run=null;return o;
+  }
+  if(room==='elite')o.push(addGem(pick(GEMK),Math.random()<.4?2:1),addMat(randOre(),1),addMat(randHerb(),1));
+  else{const g=S.lv*8;S.silver+=g;o.push(`银两 +${g}`,addMat(Math.random()<.6?randHerb():randOre(),1))}
+  mjLog(room,[`击败${enemy.name}`,...o]);mjNext();return o;
+}
+
+/* ============ 赌坊 ============ */
+let BET=0,DICE=null,CRI=null,HQ=null,FSLOT='wpn';
+const betAmt=()=>[100,1000,10000,Math.max(100,Math.floor(S.silver*.1))][BET];
+function gamble(win,bet,total){
+  if(win){const g=Math.round(bet*(total-1));S.silver+=g;S.gamble.win+=g}else S.silver-=bet;S.gamble.n++;
+  if(S.gamble.win>=100000&&!S.legends.includes('biyu')){const t=grantLegend('biyu');toast(t);
+    showStory([['赌坊老板','这位客官手气太旺，再赌下去小店就要关门了。'],['赌坊老板','这支碧玉箫是镇店之宝，送您了。求您……换一家赌坊玩吧。']],null,()=>render())}
+}
+
 /* ============ 剧情浮层 ============ */
-function showStory(lines,choice,after){SV={lines,choice,after,i:0,res:null};drawStory()}
+const STQ=[]; // 同时触发多段剧情时排队播放
+function showStory(lines,choice,after){if(SV){STQ.push([lines,choice,after]);return}SV={lines,choice,after,i:0,res:null};drawStory()}
 function drawStory(){
   let ov=$('#sov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.id='sov';document.body.appendChild(ov)}
   let inner;
@@ -1076,10 +1337,10 @@ function storyNext(){
 }
 function storyPick(j){
   const o=SV.choice.opts[j];
-  if(SV.choice.zi!=null){S.story[o.v]++;S.story.ch[SV.choice.zi]=o.v;save()}
+  if(SV.choice.zi!=null){S.story[o.v]++;S.story.ch[SV.choice.zi]=o.v;S.karma+=o.v==='xia'?20:-20;save()}
   if(o.r){SV.res=o.r;drawStory()}else storyEnd();
 }
-function storyEnd(){const o=$('#sov');if(o)o.remove();const a=SV.after;SV=null;if(a)a()}
+function storyEnd(){const o=$('#sov');if(o)o.remove();const a=SV.after;SV=null;if(a)a();if(!SV&&STQ.length)showStory(...STQ.shift())}
 function storyPending(){
   if(S.story.pend==null||SV||BT)return;
   const z=S.story.pend;S.story.pend=null;S.story.seen[z+'c']=1;save();
@@ -1098,16 +1359,16 @@ const QIYU=[
   {l:'静心参悟',fn:()=>{if(Math.random()<.7){const x=Math.round(30+S.lv*12);S.xw+=x;return `你对着石壁枯坐一夜，忽有所悟。修为 +${x}`}const e=Math.round(needExp(S.lv)*.08);gainExp(e).forEach(toast);return `图形似是而非，你看得头昏脑胀，只得些粗浅心得。经验 +${e}`}},
   {l:'拓印下来',fn:()=>{const g=Math.round(40+S.lv*15);S.silver+=g;return `你将图谱拓下，卖给城中一位收藏家。银两 +${g}`}}]},
  {t:'酒肆老丐',d:'酒肆角落，一位衣衫褴褛的老乞丐盯着你桌上的酒，咽了咽口水。',ch:[
-  {l:'请他喝一坛好酒',cost:()=>20+S.lv*5,fn:()=>{if(Math.random()<.35){const so=newSoul('jiu');return `老丐大笑，拍了拍你的肩膀，一股暖意直透丹田。获得武魂 ${soulTag(so)}`}const e=Math.round(needExp(S.lv)*.2);gainExp(e).forEach(toast);return `老丐喝得酩酊大醉，临走前随手比划了几招。经验 +${e}`}},
-  {l:'不予理会',fn:()=>'你转身离开，身后传来一声长叹。'}]},
+  {l:'请他喝一坛好酒',k:5,cost:()=>20+S.lv*5,fn:()=>{if(Math.random()<.35){const so=newSoul('jiu');return `老丐大笑，拍了拍你的肩膀，一股暖意直透丹田。获得武魂 ${soulTag(so)}`}const e=Math.round(needExp(S.lv)*.2);gainExp(e).forEach(toast);return `老丐喝得酩酊大醉，临走前随手比划了几招。经验 +${e}`}},
+  {l:'不予理会',k:-2,fn:()=>'你转身离开，身后传来一声长叹。'}]},
  {t:'江畔棋局',d:'江边一位渔翁摆着残局，见你驻足，抬手示意你落子。',ch:[
   {l:'对弈一局',fn:()=>{if(Math.random()<.4){const so=randomSoul(2);return `你连下三着妙手，渔翁抚须而笑，赠你一物。获得武魂 ${soulTag(so)}`}const x=Math.round(20+S.lv*6);S.xw+=x;return `你输了半子，却从棋路中悟出些进退之道。修为 +${x}`}},
   {l:'拱手告辞',fn:()=>'你拱手告辞，渔翁也不挽留。'}]},
  {t:'镖车遇劫',d:'山道上，一队镖车被蒙面人围住，镖头已身负重伤。',ch:[
-  {l:'拔刀相助',fn:()=>({battle:mkNPC('蒙面劫匪',pick(SECT_KEYS),S.lv,.92,'劫匪'),win:()=>{const g=Math.round(60+S.lv*25);S.silver+=g;return `你击退劫匪，镖头感激不尽，奉上谢礼。银两 +${g}，${dropItem(S.lv,rollQ(true))}`},lose:'劫匪人多势众，你只得负伤退走。'})},
-  {l:'绕道而行',fn:()=>'你绕开山道，多走了半日路程。'}]},
+  {l:'拔刀相助',k:10,fn:()=>({battle:mkNPC('蒙面劫匪',pick(SECT_KEYS),S.lv,.92,'劫匪'),win:()=>{const g=Math.round(60+S.lv*25);S.silver+=g;return `你击退劫匪，镖头感激不尽，奉上谢礼。银两 +${g}，${dropItem(S.lv,rollQ(true))}`},lose:'劫匪人多势众，你只得负伤退走。'})},
+  {l:'绕道而行',k:-3,fn:()=>'你绕开山道，多走了半日路程。'}]},
  {t:'荒山古墓',d:'荒草中露出半截墓碑，墓门虚掩，阴风阵阵。',ch:[
-  {l:'进去探探',fn:()=>{const r=Math.random();if(r<.4)return '你在墓室深处的石棺旁找到一件旧物。'+dropItem(S.lv+2,Math.random()<.25?4:3);if(r<.6)return '石棺缝里嵌着一颗宝石。'+addGem(pick(GEMK),Math.random()<.3?2:1);if(r<.82){const j=Math.round(20+S.lv*2);S.jade+=j;return `墓室里散落着几块幽光闪烁的魂玉。魂玉 +${j}`}const g=Math.min(S.silver,Math.round(30+S.lv*10));S.silver-=g;return `你触动机关，慌乱中钱袋掉进了暗河。银两 -${g}`}},
+  {l:'进去探探',k:-3,fn:()=>{const r=Math.random();if(r<.4)return '你在墓室深处的石棺旁找到一件旧物。'+dropItem(S.lv+2,Math.random()<.25?4:3);if(r<.6)return '石棺缝里嵌着一颗宝石。'+addGem(pick(GEMK),Math.random()<.3?2:1);if(r<.82){const j=Math.round(20+S.lv*2);S.jade+=j;return `墓室里散落着几块幽光闪烁的魂玉。魂玉 +${j}`}const g=Math.min(S.silver,Math.round(30+S.lv*10));S.silver-=g;return `你触动机关，慌乱中钱袋掉进了暗河。银两 -${g}`}},
   {l:'敬而远之',fn:()=>'你对着墓碑拜了三拜，转身离去。'}]},
  {t:'林中灵泉',d:'密林深处有一眼清泉，泉水微温，四周草木格外茂盛。',ch:[
   {l:'掬水而饮',fn:()=>{const v=10+Math.floor(S.lv/2);S.bonus.hp+=v;return `泉水入腹，四肢百骸暖洋洋的。气血永久 +${v}`}},
@@ -1122,8 +1383,8 @@ const QIYU=[
   {l:'去寻陨铁',fn:()=>{const q=Math.random()<.15?4:Math.random()<.5?3:2;return '你在焦土中挖出一块陨铁，请铁匠打成兵刃。'+dropItem(S.lv,q,'wpn')}},
   {l:'对流星许愿',fn:()=>{S.qiyu.tok=Math.min(9,S.qiyu.tok+1);return '你对着流星许了个愿，心中莫名安定。奇遇令 +1'}}]},
  {t:'落难书生',d:'一位书生被困在客栈，付不起房钱，正被掌柜推搡。',ch:[
-  {l:'替他付账',cost:()=>30+S.lv*8,fn:()=>{if(S.cult.xf<20){S.cult.xf++;return `书生赠你一本手抄心法作为答谢。心法提升至第 ${S.cult.xf} 层`}const x=Math.round(50+S.lv*10);S.xw+=x;return `书生与你秉烛夜谈。修为 +${x}`}},
-  {l:'不管闲事',fn:()=>'你低头喝完了茶。'}]},
+  {l:'替他付账',k:8,cost:()=>30+S.lv*8,fn:()=>{if(S.cult.xf<20){S.cult.xf++;return `书生赠你一本手抄心法作为答谢。心法提升至第 ${S.cult.xf} 层`}const x=Math.round(50+S.lv*10);S.xw+=x;return `书生与你秉烛夜谈。修为 +${x}`}},
+  {l:'不管闲事',k:-3,fn:()=>'你低头喝完了茶。'}]},
  {t:'夜遇刺客',d:'客栈夜半，窗纸被轻轻捅破，一缕迷香飘了进来。',ch:[
   {l:'屏息迎敌',fn:()=>({battle:mkNPC('夜行刺客','tangmen',S.lv,1,'刺客'),win:()=>{const j=Math.round(25+S.lv*3);S.jade+=j;return `刺客身上搜出几块魂玉。魂玉 +${j}`},lose:'刺客一击得手，远遁而去。所幸只是皮肉伤。'})},
   {l:'破窗而逃',fn:()=>'你翻窗而出，在屋顶上吹了一夜冷风。'}]},
@@ -1132,8 +1393,14 @@ const QIYU=[
   {l:'请教守法',fn:()=>{const v=3+Math.floor(S.lv/5);S.bonus.def+=v;return `老者教你卸力之法。防御永久 +${v}`}},
   {l:'请教身法',fn:()=>{S.bonus.spd+=1;S.bonus.dodge+=.5;return '老者在雪地上踏出一串浅浅的脚印。速度永久 +1，闪避 +0.5%'}}]},
  {t:'迷路的灵兽',d:'草丛里窸窸窣窣，钻出一只受了伤的小兽，怯生生地望着你。',ch:[
-  {l:'替它包扎',fn:()=>{const ids=Object.keys(PETS).filter(id=>!S.pets.some(p=>p.id===id));if(ids.length&&Math.random()<.25){const id=ids[0];S.pets.push({id,lv:1});if(!S.pet)S.pet=id;return `小兽伤好后不肯离去。${PETS[id].n}成了你的伙伴！`}S.fruit+=2;return '小兽舔了舔你的手，叼来两枚灵果。灵果 +2'}},
+  {l:'替它包扎',k:5,fn:()=>{const ids=Object.keys(PETS).filter(id=>!S.pets.some(p=>p.id===id));if(ids.length&&Math.random()<.25){const id=ids[0];S.pets.push({id,lv:1});if(!S.pet)S.pet=id;return `小兽伤好后不肯离去。${PETS[id].n}成了你的伙伴！`}S.fruit+=2;return '小兽舔了舔你的手，叼来两枚灵果。灵果 +2'}},
   {l:'悄悄走开',fn:()=>'你没有惊动它。'}]},
+ {t:'废弃药庐',d:'山谷里有一座废弃的药庐，药柜东倒西歪，空气里透着一股淡淡的寒气。',ch:[
+  {l:'翻找药柜',fn:()=>{if(!S.legends.includes('bingpo')&&Math.random()<.3)return '药柜夹层里藏着一只寒气逼人的针匣。'+grantLegend('bingpo');return `你找到些还能用的药材。${addMat('xuelian',2)}，${addMat('lingzhi',2)}`}},
+  {l:'就地打坐',fn:()=>{const x=Math.round(30+S.lv*8);S.xw+=x;return `药香沁人，你在药庐里打坐了一夜。修为 +${x}`}}]},
+ {t:'矿洞塌方',d:'山脚下的矿洞刚刚塌了一角，洞里传来呼救声。',ch:[
+  {l:'进洞救人',k:8,fn:()=>{const n=1+Math.floor(Math.random()*2);return `你救出了两个矿工。他们塞给你一些刚挖出的矿石。${addMat(randOre(),n)}，${addMat(randOre(),1)}`}},
+  {l:'趁乱捡矿',k:-5,fn:()=>`你没理会呼救，捡了几块好矿石就走了。${addMat('hantie',2)}，${addMat(randOre(),1)}`}]},
 ];
 
 /* ============ 论剑 ============ */
@@ -1150,7 +1417,7 @@ function towerEnemy(f){const boss=f%10===0;const name=boss?TOWER_BOSS[(f/10-1)%T
 function towerFight(){
   const run=S.tower.run;if(!run||run.picks||BT)return;
   const f=run.floor,m=towerEnemy(f);
-  startBattle(m,{type:'tower',title:`通天塔 · 第 ${f} 层`,prep:towerPrep(run)});
+  startBattle(m,{type:'tower',manualOK:f%10===0,title:`通天塔 · 第 ${f} 层`,prep:towerPrep(run)});
 }
 
 /* ============ 押镖 ============ */
@@ -1178,7 +1445,8 @@ function checkDaily(){
   const d=today();
   if(S.sm.day!==d)genTasks();
   if(S.online.day!==d)S.online={day:d,sec:0,got:0};
-  if(S.day!==d){S.day=d;S.arena.tries=10;S.arena.claimed=false;S.qiyu.tok=Math.min(9,S.qiyu.tok+3);S.escort.left=3;save();toast('新的一天：论剑、押镖次数已重置，奇遇令 +3，师门任务已刷新')}
+  if(S.day!==d){S.day=d;S.arena.tries=10;S.arena.claimed=false;S.qiyu.tok=Math.min(9,S.qiyu.tok+3);S.escort.left=3;
+    S.kd={good:3,evil:3};S.gather={herb:3,ore:3};S.mj.left=3;S.chatDay={};save();toast('新的一天：论剑、押镖次数已重置，奇遇令 +3，师门任务已刷新')}
 }
 function checkAch(){
   for(const a of ACHS)if(!S.titles.includes(a.id)&&a.t()){S.titles.push(a.id);if(!S.title)S.title=a.id;toast(`获得称号 <span class="q4">「${a.n}」</span>`);save()}
@@ -1208,7 +1476,11 @@ function fillNews(){const el=$('#news-t');if(!el)return;const lines=[];while(NEW
 function toast(m){const t=document.createElement('div');t.className='toast';t.innerHTML=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),2800)}
 
 /* ============ 渲染 ============ */
-const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shimen','师门'],['huodong','活动'],['fuli','福利'],['xiulian','修炼'],['jingmai','经脉'],['wuhun','武魂'],['lingshou','灵兽'],['qiyu','奇遇'],['lunjian','论剑'],['zhuangbei','装备']];
+const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shimen','师门'],['huodong','活动'],['fuli','福利'],['xiulian','修炼'],['jingmai','经脉'],['wuhun','武魂'],['lingshou','灵兽'],['qiyu','奇遇'],['lunjian','论剑'],['zhuangbei','装备'],
+  ['renqing','人情'],['bingqipu','兵器谱'],['dahui','武林大会'],['mijing','秘境'],['shenghuo','生活'],['dufang','赌坊']];
+const TABN=Object.fromEntries(TABS);
+const GROUPS=[['角色',['renwu','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','dufang','fuli']]];
+const groupOf=t=>Math.max(0,GROUPS.findIndex(g=>g[1].includes(t)));
 const brand=()=>`<header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
   ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="btn sm" data-a="dailyAll">一键日常</button><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
 
@@ -1216,7 +1488,7 @@ function render(){
   const app=$('#app');
   $('#news').hidden=!S;
   if(!S){app.innerHTML=brand()+renderCreate();return}
-  checkDaily();checkAch();
+  checkDaily();refreshLegends();updTudi();checkAch();
   const st=calcStats(),s=SECTS[S.sect],need=needExp(S.lv);
   const ttl=S.title&&ACHS.find(a=>a.id===S.title);
   const badge=k=>{
@@ -1228,6 +1500,11 @@ function render(){
     if(k==='huodong'&&(S.escort.left>0||!S.wb||S.wb.day!==today()||(S.wb.tries>0&&!S.wb.killed)))return '<span class="dot"></span>';
     if(k==='fuli'&&(S.sign.last!==today()||onlineReady()))return '<span class="dot"></span>';
     if(k==='tower'&&S.tower.run)return '<span class="dot"></span>';
+    if(k==='renqing'&&Object.keys(COMPS).some(id=>!S.chatDay[id]&&S.comps[id]<100))return '<span class="dot"></span>';
+    if(k==='shenghuo'&&(S.gather.herb>0||S.gather.ore>0))return '<span class="dot"></span>';
+    if(k==='mijing'&&(S.mj.left>0||S.mj.run))return '<span class="dot"></span>';
+    if(k==='dahui'&&(!S.dh||S.dh.wk!==weekId()||(!S.dh.out&&S.dh.r<4)))return '<span class="dot"></span>';
+    if(k==='bingqipu'&&S.karma>=200&&!S.legends.includes('junzi'))return '<span class="dot"></span>';
     return '';
   };
   app.innerHTML=brand()+`
@@ -1239,7 +1516,8 @@ function render(){
     <div class="power"><span class="lbl">战力</span><b>${fmt(st.power)}</b></div>
     <ul class="res"><li><span>银两</span>${fmt(S.silver)}</li><li><span>修为</span>${fmt(S.xw)}</li><li><span>魂玉</span>${fmt(S.jade)}</li><li><span>声望</span>${fmt(S.arena.rep)}</li><li><span>贡献</span>${fmt(S.gx)}</li><li><span>灵果</span>${S.fruit}</li><li><span>奇遇令</span>${S.qiyu.tok}</li></ul>
   </section>
-  <nav class="tabs" role="tablist">${TABS.map(([k,n])=>`<button role="tab" aria-selected="${S.tab===k}" data-a="tab" data-v="${k}">${n}${badge(k)}</button>`).join('')}</nav>
+  <nav class="groups" aria-label="分类">${GROUPS.map(([n,ts],i)=>`<button aria-pressed="${i===groupOf(S.tab)}" data-a="group" data-v="${i}">${n}${ts.some(t=>badge(t))?'<span class="dot"></span>':''}</button>`).join('')}</nav>
+  <nav class="tabs" role="tablist">${GROUPS[groupOf(S.tab)][1].map(k=>`<button role="tab" aria-selected="${S.tab===k}" data-a="tab" data-v="${k}">${TABN[k]}${badge(k)}</button>`).join('')}</nav>
   <main class="panel">${(PANELS[S.tab]||PANELS.jianghu)(st)}</main>`;
 }
 
@@ -1307,7 +1585,7 @@ jianghu(st){
       return `<li class="${cls}"><span class="node">${boss?'首':i<pr?'✓':i+1}</span>
         <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">击败前一个对手后开启</span>'}</div>
         <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}<button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></span></li>`}).join('')}</ol>
-    <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label></div>
+    <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label><label><input type="checkbox" id="opt-manual" data-a="manualT" ${S.manual?'checked':''}> 手动出招（首领、论剑、武林大会、世界首领等重要战斗）</label></div>
    </section></div>`;
 },
 tower(st){
@@ -1452,7 +1730,8 @@ lunjian(st){
      <div class="kv"><span>历史最高</span>第 ${a.best} 名</div>
      <div class="kv"><span>今日剩余挑战</span>${a.tries} / 10</div>
      <div class="kv"><span>每日俸禄</span>声望 ${rw.rep}，银两 ${fmt(rw.silver)}</div>
-     <div class="row"><button class="btn pri" data-a="arenaClaim" ${a.claimed?'disabled':''}>${a.claimed?'今日已领取':'领取俸禄'}</button><button class="btn" data-a="arenaAll" ${a.tries<1||a.rank<=1?'disabled':''}>一键挑战（用完 ${a.tries} 次）</button></div></section>
+     <div class="row"><button class="btn pri" data-a="arenaClaim" ${a.claimed?'disabled':''}>${a.claimed?'今日已领取':'领取俸禄'}</button><button class="btn" data-a="arenaAll" ${a.tries<1||a.rank<=1?'disabled':''}>一键挑战（用完 ${a.tries} 次）</button></div>
+     <div class="toggles"><label><input type="checkbox" id="opt-manual3" data-a="manualT" ${S.manual?'checked':''}> 手动出招</label></div></section>
     <section class="box"><h3>三甲</h3><ol class="ladder">${top.map(f=>f.me?`<li><span class="rk">${f.rank}</span><span><b>${esc(S.name)}</b><br><span class="meta">${SECTS[S.sect].n} · ${S.lv} 级 · 你</span></span><span></span><span></span></li>`
       :`<li><span class="rk">${f.rank}</span><span><b>${f.name}</b><br><span class="meta">${SECTS[f.sect].n} · ${f.lv} 级</span></span><span class="pw meta num">战力 ${fmt(foePower(f))}</span><span></span></li>`).join('')}</ol></section>
    </div>
@@ -1460,9 +1739,104 @@ lunjian(st){
     ${foes.length?`<ol class="ladder">${foes.map(f=>{const p=foePower(f);return `<li><span class="rk">${f.rank}</span><span><b>${f.name}</b> ${diffChip(st.power,p)}<br><span class="meta">${SECTS[f.sect].n} · ${f.lv} 级</span></span><span class="pw meta num">战力 ${fmt(p)}</span><button class="btn" data-a="arenaFight" data-v="${f.rank}" ${a.tries<1?'disabled':''}>挑战</button></li>`}).join('')}</ol>`:'<p class="empty">你已是天下第一。</p>'}</section>
    <section class="box"><h3>声望商店 <small>现有声望 ${fmt(a.rep)}</small></h3><div class="shop">${SHOP.map(w=>`<div class="ware"><b>${w.n}</b><span class="note">${w.d}</span><span class="p">声望 ${w.p}</span><button class="btn sm" data-a="shop" data-v="${w.k}" ${a.rep<w.p?'disabled':''}>兑换</button></div>`).join('')}</div></section>`;
 },
+renqing(){
+  const kt=karmaTier(),kp=clamp((S.karma+300)/600*100,0,100);
+  const gifts=id=>[['jiu','美酒',S.gifts.jiu],['shu','古籍',S.gifts.shu],['xuelian','雪莲',S.mat.xuelian||0],['gem','宝石',gemCount()]]
+    .map(([k,n,c])=>`<button class="btn sm ${COMPS[id].fav===k?'pri':''}" data-a="gift" data-v="${id},${k}" ${c>0?'':'disabled'}>送${n}（${c}）</button>`).join('');
+  const cost=3000*(S.tudi.length+1),canT=S.lv>=20||S.rb>0;
+  return `<section class="box"><h3>善恶 <small>${kt.n}</small></h3>
+    <div class="karma"><span>恶</span><div class="kbar"><i style="left:${kp}%"></i></div><span>善</span></div>
+    <div class="kv"><span>善恶值</span><b class="num">${S.karma>0?'+':''}${S.karma}</b></div>
+    <p class="note">${kt.d}</p>
+    <div class="row"><button class="btn" data-a="doGood" ${S.kd.good<1||S.silver<S.lv*30?'disabled':''}>施粥行善（银两 ${fmt(S.lv*30)}，善 +8，今日 ${S.kd.good}/3）</button>
+     <button class="btn red" data-a="doEvil" ${S.kd.evil<1?'disabled':''}>打家劫舍（恶 +8，可能撞上捕快，今日 ${S.kd.evil}/3）</button></div>
+    <p class="note">剧情抉择和奇遇里的选择也会改变善恶。善恶到 50、150 各有一档加成。恶值超过 150 会被名门正派通缉。善值到 200 可得名器「君子剑」，恶值超过 200 有机会夺得「血刀」。</p></section>
+   <section class="box"><h3>江湖知己 <small>好感到 100 即可结义或结为知己，之后可以请一位随你助战</small></h3>
+    <div class="cards">${Object.entries(COMPS).map(([id,c])=>{const f=S.comps[id],bond=f>=100,on=S.comp===id;
+      return `<div class="cardx ${on?'on':''}"><div class="sh"><b>${c.n}</b><span class="note">${c.t}</span></div>
+       <div class="bar jade"><i style="width:${f}%"></i></div><span class="note">好感 ${f} / 100 · ${favLabel(f,c)}${on?' · 助战中':''}</span>
+       <span class="eff">${c.d}</span>
+       <span class="fl">喜欢${c.likeN}。${c.need==='good'?'不与恶人深交（有恶名时好感最多到 50）。':c.need==='evil'?'看不惯正人君子（有善名时好感最多到 50）。':''}${bond?`${c.rel}加成：${pasTxt(c.pas)}。`:`${c.rel}后加成：${pasTxt(c.pas)}。`}</span>
+       <div class="row">${bond?(on?'<button class="btn sm" data-a="compRest">请其休息</button>':`<button class="btn sm pri" data-a="compGo" data-v="${id}">请其助战</button>`)
+         :`<button class="btn sm" data-a="chat" data-v="${id}" ${S.chatDay[id]?'disabled':''}>${S.chatDay[id]?'今日已闲聊':'闲聊（好感 +3）'}</button>`}</div>
+       ${bond?'':`<div class="row" style="gap:4px">${gifts(id)}</div>`}</div>`}).join('')}</div>
+    <div class="row"><span class="note">礼物：送对方喜欢的好感 +12，其他 +4。美酒 ${S.gifts.jiu} 坛，古籍 ${S.gifts.shu} 本</span>
+     <button class="btn sm" data-a="buyGift" data-v="jiu" ${S.silver<300?'disabled':''}>买美酒（300）</button><button class="btn sm" data-a="buyGift" data-v="shu" ${S.silver<500?'disabled':''}>买古籍（500）</button>
+     <span class="note">雪莲在「生活」采药得到；送宝石会送最便宜的一颗</span></div></section>
+   <section class="box"><h3>门徒 <small>${S.tudi.length} / 3 · 徒弟自己会练功，40 级可以出师</small></h3>
+    ${S.tudi.length?S.tudi.map((t,i)=>`<div class="trow"><div><b>${esc(t.name)}</b> <span class="muted">资质${APT[t.apt].n} · ${t.lv} 级</span>
+       <small>每分钟自修经验 ${fmt((10+S.lv*1.5)*APT[t.apt].m)}；出师时资质越好，谢礼越重</small><div class="bar exp" style="margin-top:4px"><i style="width:${t.lv>=60?100:t.exp/needExp(t.lv)*100}%"></i></div></div>
+      <button class="btn sm" data-a="chuangong" data-v="${i}" ${S.xw<500||t.lv>=60?'disabled':''}>传功（修为 500）</button>
+      <button class="btn sm ${t.lv>=40?'pri':''}" data-a="chushi" data-v="${i}" ${t.lv>=40?'':'disabled'}>${t.lv>=40?'出师':'40 级出师'}</button></div>`).join(''):'<p class="empty">还没有徒弟。</p>'}
+    <div class="row"><button class="btn pri" data-a="recruit" ${S.tudi.length>=3||!canT||S.silver<cost?'disabled':''}>${!canT?'20 级后可收徒':S.tudi.length>=3?'徒弟已满':`收徒（银两 ${fmt(cost)}）`}</button>
+     <button class="btn" data-a="xiaojing" ${!S.tudi.length||S.xj===today()?'disabled':''}>${S.xj===today()?'今日已收孝敬':'收徒弟孝敬'}</button></div></section>`;
+},
+bingqipu(){
+  return `<section class="box"><h3>百晓生兵器谱 <small>已收集 ${S.legends.length} / 10 · 名器属性随你的等级成长，不能出售</small></h3>
+   <div class="cards">${LEGENDS.map(L=>{const own=S.legends.includes(L.id),it=own&&[...SLOTS.map(s=>S.equip[s]),...S.bag].find(x=>x&&x.lg===L.id),worn=it&&S.equip[it.slot]===it;
+    return `<div class="cardx ${worn?'on':''} ${own?'':'off'}"><div class="sh"><b class="${own?'q4':''}">${L.n}</b><span class="note">${SLOT_FULL[L.slot]}</span></div>
+     <span class="eff">特效：${L.fx}</span><span class="fl">${L.lore}</span><span class="note">${own?(worn?'正在使用':'已收入囊中'):'线索：'+L.src}</span>
+     <div class="row">${own&&it&&!worn?`<button class="btn sm pri" data-a="equip" data-v="${it.uid}">装备</button>`:''}${L.id==='junzi'&&!own?`<button class="btn sm" data-a="claimJunzi" ${S.karma>=200?'':'disabled'}>${S.karma>=200?'接受百姓赠剑':`善值 ${S.karma} / 200`}</button>`:''}</div></div>`}).join('')}</div></section>`;
+},
+dahui(){
+  ensureDH();const D=S.dh,done=D.r>=4;
+  return `<section class="box"><h3>武林大会 <small>每周一届，十六人单败淘汰，每周只能参加一次</small></h3>
+   <ol class="bracket">${DH_ROUND.map((rn,i)=>{const [n,s]=DH_NPC[D.opp[i]];const cls=i<D.r?'won':i===D.r&&D.out?'lost':i===D.r&&!done?'now':'';
+     return `<li class="${cls}"><span>${rn}</span><b>${n}</b><span>${SECTS[s].n} · ${i<D.r?'已击败':i===D.r&&D.out?'落败':i===D.r?'下一战':'未交手'}</span></li>`}).join('')}</ol>
+   ${done?'<p class="q4">本届武林大会，你已夺魁。下周再来卫冕。</p>':D.out?`<p class="muted">本届止步${DH_ROUND[D.r]}，下周再来。</p>`
+     :`<div class="row"><button class="btn pri" data-a="dhFight">出战${DH_ROUND[D.r]}</button><span class="note">对手一轮比一轮强</span></div>`}
+   <div class="toggles"><label><input type="checkbox" id="opt-manual2" data-a="manualT" ${S.manual?'checked':''}> 手动出招</label></div>
+   <p class="note">每赢一轮得银两和声望，越往后越多。首次夺魁可得兵器谱名器「霸王枪」，之后夺魁得圣品武魂和 3 级宝石。</p></section>
+   <section class="box"><h3>本届群雄</h3><p class="note">${DH_NPC.map(([n,s])=>`${n}（${SECTS[s].n}）`).join('、')}</p></section>`;
+},
+mijing(){
+  const M=S.mj,run=M.run;
+  if(!run)return `<section class="box"><h3>秘境探险 <small>今日剩余 ${M.left} / 3 次</small></h3>
+    <p>秘境一共 ${MJ_DEPTH} 关，每关从几扇门里选一扇进去，门后可能是埋伏、强敌、宝箱、机关、隐士或灵泉。最深处有秘境守护者。气血在关与关之间不会回满。</p>
+    <p class="note">通关必得武魂、宝石、魂玉和炼丹锻造用的材料，还有机会找到兵器谱名器「鱼肠剑」。中途力竭也能把已得的东西带出来。</p>
+    <div class="row"><button class="btn pri" data-a="mjStart" ${M.left<1?'disabled':''}>进入秘境</button></div></section>`;
+  const boss=run.opts[0]==='boss';
+  return `<section class="box"><h3>秘境 · ${boss?'最深处':`第 ${run.depth} / ${MJ_DEPTH} 关`}</h3>
+    <div class="kv"><span>当前气血</span><span class="num">${Math.round(run.hp*100)}%</span></div><div class="bar hp"><i style="width:${run.hp*100}%"></i></div>
+    ${run.b.atk||run.b.def?`<div class="buffs">${run.b.atk?`<span>攻击 +${Math.round(run.b.atk*100)}%</span>`:''}${run.b.def?`<span>防御 +${Math.round(run.b.def*100)}%</span>`:''}</div>`:''}
+    <p>${boss?'前方石门紧闭，门后传来沉重的呼吸声。门边有一眼灵泉，你喝了几口，气血回复了三成。':'面前有几扇门，你走哪一扇？'}</p>
+    <div class="picks">${run.opts.map((t,i)=>`<button class="pick" data-a="mjGo" data-v="${i}"><b>${RT[t].n}</b><br><span class="note">${RT[t].d}</span></button>`).join('')}</div>
+    ${run.log.length?`<ul class="elog">${run.log.map(l=>`<li>${l}</li>`).join('')}</ul>`:''}
+    <div class="row"><button class="btn" data-a="mjQuit">退出秘境</button></div></section>`;
+},
+shenghuo(){
+  const G=S.gather,pb=[S.pills.kb?`攻击 +25%（还剩 ${S.pills.kb} 场）`:'',S.pills.hx?`防御 +30%（还剩 ${S.pills.hx} 场）`:''].filter(Boolean).join('，');
+  return `<section class="box"><h3>材料 <small>秘境、采集和奇遇都能得到</small></h3>
+    <div class="mats">${Object.entries(MATS).map(([k,n])=>`<span><span>${n}</span>${S.mat[k]||0}</span>`).join('')}</div>
+    <div class="row"><button class="btn" data-a="gather" data-v="herb" ${G.herb<1?'disabled':''}>上山采药（今日 ${G.herb}/3）</button><button class="btn" data-a="gather" data-v="ore" ${G.ore<1?'disabled':''}>下矿挖矿（今日 ${G.ore}/3）</button></div></section>
+   <section class="box"><h3>炼丹 <small>成功率 90%，失败会炸炉${pb?`。当前药效：${pb}`:''}</small></h3>
+    <div class="shop">${PILLS.map(p=>{const cap=p.id==='dahuan'&&S.pillUsed>=30,ok=hasMats(p.need)&&!cap;
+      return `<div class="ware"><b>${p.n}</b><span class="note">${p.d}${p.id==='dahuan'?`，已服 ${S.pillUsed}`:''}</span><span class="p">${matTxt(p.need)}</span><button class="btn sm" data-a="pill" data-v="${p.id}" ${ok?'':'disabled'}>炼制</button></div>`}).join('')}</div></section>
+   <section class="box"><h3>锻造 <small>打造当前等级的装备，放进行囊</small></h3>
+    <div class="row"><span class="note">部位</span><div class="slotpick">${SLOTS.map(s=>`<button aria-pressed="${FSLOT===s}" data-a="fslot" data-v="${s}">${SLOT_FULL[s]}</button>`).join('')}</div></div>
+    <div class="shop">${FORGE.map(f=>{const sil=f.silver*S.lv,ok=hasMats(f.need)&&S.silver>=sil&&S.bag.length<40;
+      return `<div class="ware"><b>${f.n}</b><span class="note">${f.d}</span><span class="p">${matTxt(f.need)}，银两 ${fmt(sil)}</span><button class="btn sm" data-a="forge" data-v="${f.id}" ${ok?'':'disabled'}>打造${SLOT_FULL[FSLOT]}</button></div>`}).join('')}</div>
+    ${S.bag.length>=40?'<p class="note" style="color:var(--cinnabar)">行囊已满，先清理一下再打造。</p>':''}</section>`;
+},
+dufang(){
+  const b=betAmt(),poor=S.silver<b;
+  return `<section class="box"><h3>如意赌坊 <small>老板说：累计赢满 10 万两，镇店之宝碧玉箫相赠</small></h3>
+    <div class="row"><span class="note">每次下注</span><div class="bets">${BET_L.map((l,i)=>`<button aria-pressed="${BET===i}" data-a="bet" data-v="${i}">${l}</button>`).join('')}</div><span class="note">本次 ${fmt(b)} 两</span></div>
+    <div class="kv"><span>累计赢钱</span><span class="num">${fmt(S.gamble.win)} / 100,000${S.legends.includes('biyu')?'（碧玉箫已到手）':''}</span></div>
+    <div class="kv"><span>划拳罚酒</span><span class="num">${S.gamble.drunk} 碗</span></div></section>
+   <section class="box"><h3>骰子 · 猜大小 <small>三颗骰子，11 点以上为大，10 点以下为小，豹子庄家通杀，1 赔 1</small></h3>
+    <div class="row"><span class="dice" aria-hidden="true">${(DICE?DICE.d:[1,1,1]).map(n=>'⚀⚁⚂⚃⚄⚅'[n-1]).join('')}</span><span>${DICE?DICE.txt:'买定离手。'}</span></div>
+    <div class="row"><button class="btn pri" data-a="dice" data-v="big" ${poor?'disabled':''}>押大</button><button class="btn pri" data-a="dice" data-v="small" ${poor?'disabled':''}>押小</button></div></section>
+   <section class="box"><h3>斗蛐蛐</h3>
+    <div class="shop">${CRICKETS.map((c,i)=>`<div class="ware"><b>${c.n}</b><span class="note">${c.d}</span><span class="p">1 赔 ${c.o}</span><button class="btn sm" data-a="cricket" data-v="${i}" ${poor?'disabled':''}>押它</button></div>`).join('')}</div>
+    ${CRI?`<p>${CRI}</p>`:''}</section>
+   <section class="box"><h3>划拳 <small>你和酒客各出几根手指，谁喊中两人手指的总数谁赢；喊不中罚酒一碗</small></h3>
+    <div class="hq">${HQ_CALL.map((n,i)=>`<button class="btn" data-a="huaquan" data-v="${i}" ${poor?'disabled':''}>${i} · ${n}<br><span class="note">1 赔 ${hqOdds(i)}</span></button>`).join('')}</div>
+    ${HQ?`<p>${HQ}</p>`:''}</section>`;
+},
 zhuangbei(){
   const list=[...S.bag].sort((a,b)=>b.q-a.q||SLOTS.indexOf(a.slot)-SLOTS.indexOf(b.slot)||b.ilv-a.ilv);
-  const low=S.bag.filter(i=>i.q<=1&&!i.en&&!(i.gm||[]).some(Boolean)).length;
+  const low=S.bag.filter(i=>i.q<=1&&!i.en&&!(i.gm||[]).some(Boolean)).length,sb=S.bag.filter(i=>!i.lg);
   const gemKeys=Object.keys(S.gems).filter(k=>S.gems[k]>0).sort((a,b)=>GEMK.indexOf(a.slice(0,-1))-GEMK.indexOf(b.slice(0,-1))||b.slice(-1)-a.slice(-1));
   const forge=sl=>{
     const it=S.equip[sl];
@@ -1474,7 +1848,7 @@ zhuangbei(){
       ${gemPick&&gemPick.sl===sl?`<div class="gempick">${gemKeys.length?gemKeys.map(k=>`<button class="gem g-${k.slice(0,-1)}" data-a="gemPut" data-v="${k}">${+k.slice(-1)}级${GEMS[k.slice(0,-1)].n} ×${S.gems[k]}</button>`).join(''):'<span class="note">没有宝石</span>'}<button class="btn sm" data-a="gemCancel">取消</button></div>`:''}
       ${rf?`<div class="reforge"><span>洗练结果：${stList(S.reforge.st)}</span><span class="${powerOf(S.reforge.st)>=powerOf(it.st)?'cmp up':'cmp down'}">基础战力 ${fmt(powerOf(it.st))} → ${fmt(powerOf(S.reforge.st))}</span><div class="row"><button class="btn sm pri" data-a="rfKeep" data-v="new">换成新属性</button><button class="btn sm" data-a="rfKeep" data-v="old">保留原属性</button></div></div>`:''}
       <div class="row">${en>=15?'<span class="q4">已强化至 +15</span>':`<button class="btn sm pri" data-a="enhance" data-v="${sl}" ${S.silver<cost?'disabled':''}>强化 +${en+1}（${Math.round(rate*100)}% · 银两 ${fmt(cost)}）</button><button class="btn sm" data-a="enhanceTo" data-v="${sl}" ${S.silver<cost?'disabled':''}>一键强化至 +${en<10?10:15}</button>`}
-        ${it.q>=2&&!it.toy?`<button class="btn sm" data-a="reforge" data-v="${sl}" ${S.silver<reforgeCost(it)||rf?'disabled':''}>洗练（银两 ${fmt(reforgeCost(it))}）</button>`:''}
+        ${it.q>=2&&!it.toy&&!it.lg?`<button class="btn sm" data-a="reforge" data-v="${sl}" ${S.silver<reforgeCost(it)||rf?'disabled':''}>洗练（银两 ${fmt(reforgeCost(it))}）</button>`:''}
         <button class="btn sm" data-a="unequip" data-v="${sl}">卸下</button></div>
       ${en>=6&&en<15?'<span class="note">+7 起强化失败会掉一级</span>':''}</div>`;
   };
@@ -1487,20 +1861,23 @@ zhuangbei(){
      :'<p class="empty">还没有宝石。首领、通天塔、押镖、世界首领、师门商店都能得到。</p>'}</section>
    <section class="box"><h3>行囊 <small class="num">${S.bag.length} / 40</small></h3>
    <div class="row"><button class="btn" data-a="equipBest">一键换上更好的装备</button><button class="btn" data-a="sellLow" ${low?'':'disabled'}>出售全部凡品、良品（${low} 件，不含强化或镶嵌过的）</button>
-    ${sellAllArm&&S.bag.length?`<button class="btn red" data-a="sellAll" id="sellall-ok">确认：卖掉行囊里全部 ${S.bag.length} 件，得银两 ${fmt(S.bag.reduce((s,i)=>s+sellPrice(i),0))}</button><button class="btn" data-a="sellAllCancel">取消</button>`
-     :`<button class="btn red" data-a="sellAll" ${S.bag.length?'':'disabled'}>全部出售（${S.bag.length} 件）</button>`}</div>
-   ${sellAllArm&&S.bag.length?`<p class="note" style="color:var(--cinnabar)">身上穿着的装备不会被卖。${(w=>`行囊里${w?`包括${w}在内的`:'的'}所有装备都会卖掉`)([S.bag.some(i=>i.q>=3)?'珍品、神品':'',S.bag.some(i=>i.en)?'强化过的装备':''].filter(Boolean).join('和'))}，卖掉就找不回来了；镶嵌的宝石会自动取回。</p>`:''}
+    ${sellAllArm&&sb.length?`<button class="btn red" data-a="sellAll" id="sellall-ok">确认：卖掉行囊里 ${sb.length} 件，得银两 ${fmt(sb.reduce((s,i)=>s+sellPrice(i),0))}</button><button class="btn" data-a="sellAllCancel">取消</button>`
+     :`<button class="btn red" data-a="sellAll" ${sb.length?'':'disabled'}>全部出售（${sb.length} 件）</button>`}</div>
+   ${sellAllArm&&sb.length?`<p class="note" style="color:var(--cinnabar)">身上穿着的装备和兵器谱名器不会被卖。${(w=>`行囊里${w?`包括${w}在内的`:'的'}其他装备都会卖掉`)([sb.some(i=>i.q>=3)?'珍品、神品':'',sb.some(i=>i.en)?'强化过的装备':''].filter(Boolean).join('和'))}，卖掉就找不回来了；镶嵌的宝石会自动取回。</p>`:''}
    ${list.length?`<div class="items">${list.map(it=>{const cur=S.equip[it.slot],d=itemPower(it)-itemPower(cur);
      return `<div class="item">${itemTag(it)}<span class="meta">${QN[it.q]} · ${SLOT_FULL[it.slot]} · ${it.ilv} 级${(it.gm||[]).some(Boolean)?' · 已镶嵌':''}</span><span class="st">${stList(itemStats(it))}</span>
        <span class="cmp ${d>0?'up':d<0?'down':''}">${cur?(d>0?`比当前装备强 ${fmt(d)} 战力`:d<0?`比当前装备弱 ${fmt(-d)} 战力`:'与当前装备相当'):`该部位未装备，+${fmt(d)} 战力`}</span>
-       <div class="row"><button class="btn sm ${d>0?'pri':''}" data-a="equip" data-v="${it.uid}">装备</button><button class="btn sm" data-a="sell" data-v="${it.uid}">出售 ${fmt(sellPrice(it))}</button></div></div>`}).join('')}</div>`
+       <div class="row"><button class="btn sm ${d>0?'pri':''}" data-a="equip" data-v="${it.uid}">装备</button>${it.lg?'<span class="note q4">名器，不可出售</span>':`<button class="btn sm" data-a="sell" data-v="${it.uid}">出售 ${fmt(sellPrice(it))}</button>`}</div></div>`}).join('')}</div>`
    :'<p class="empty">行囊空空。击败对手有几率掉落装备，首领必掉。</p>'}</section>`;
 },
 };
 
 /* ============ 操作 ============ */
 const ACT={
-  tab(v){S.tab=v;resetArm=false;rbArm=false;gemPick=null;save();render();window.scrollTo({top:0})},
+  tab(v){S.tab=v;S.gTab[groupOf(v)]=v;resetArm=false;rbArm=false;gemPick=null;save();render();window.scrollTo({top:0})},
+  group(v){const g=GROUPS[+v];if(!g)return;const t=S.gTab[+v];ACT.tab(g[1].includes(t)?t:g[1][0])},
+  manualT(_,el){S.manual=el.checked;save()},
+  mPick(v){if(!BT||!BT.manual||BT.done)return;const c=v==='auto'?'auto':(+v===0?null:BT.A.skills[+v-1]);manualRun(BT.gen.next(c))},
   pickSect(v){window._cname=$('#cname').value;CS=v;render()},
   randName(){window._cname=randName();render()},
   create(){const n=($('#cname').value||'').trim().slice(0,8)||randName();S=newGame(n,CS);
@@ -1535,7 +1912,7 @@ const ACT={
   soulDis(u){const so=S.souls.find(x=>x.uid===u);if(!so||S.soulSlots.includes(u))return;const g=5*SOULDEF[so.id].r*so.lv;S.jade+=g;S.souls=S.souls.filter(x=>x.uid!==u);save();render();toast(`炼化${SOULDEF[so.id].n}，魂玉 +${g}`)},
   qiyuGo(){if(S.qiyu.tok<1||S.qiyu.cur!==null)return;S.qiyu.tok--;let i;do{i=Math.floor(Math.random()*QIYU.length)}while(i===S.qiyu.last&&QIYU.length>1);S.qiyu.cur=i;S.qiyu.last=i;save();render()},
   qiyuCh(v){const ev=QIYU[S.qiyu.cur];if(!ev)return;const ch=ev.ch[+v];const cost=ch.cost?ch.cost():0;if(S.silver<cost)return;S.silver-=cost;S.qiyu.cur=null;
-    S.stat.qiyu++;track('qiyu');
+    S.stat.qiyu++;track('qiyu');if(ch.k)S.karma+=ch.k;
     const r=ch.fn();
     if(r&&typeof r==='object'&&r.battle){save();render();startBattle(r.battle,{type:'event',title:ev.t,win:r.win,lose:r.lose});return}
     logQ(ev.t,r);save();render();toast(ev.t+'：'+r)},
@@ -1569,7 +1946,7 @@ const ACT={
   escStart(v){const g=ESC[+v],dep=g.dep*S.lv;if(S.escort.run||S.escort.left<1||S.silver<dep)return;S.silver-=dep;S.escort.left--;
     S.escort.run={g:+v,seg:0,log:[`交了押金 ${fmt(dep)} 两，押着${g.n}出发了。`]};save();render()},
   escGo(){const run=S.escort.run;if(!run||BT)return;const g=ESC[run.g];
-    if(Math.random()<g.risk){const name=pick(ROBBERS);startBattle(mkNPC(name,pick(SECT_KEYS),S.lv,g.m+R(-.05,.08),'劫镖'),{type:'escort',title:`押镖 · ${ESC_SEG[run.seg]}`});return}
+    if(Math.random()<g.risk){const name=pick(ROBBERS);startBattle(mkNPC(name,pick(SECT_KEYS),S.lv,g.m+R(-.05,.08),'劫镖'),{type:'escort',manualOK:false,title:`押镖 · ${ESC_SEG[run.seg]}`});return}
     const r=Math.random();let t;
     if(r<.2){const x=Math.round(S.lv*15);S.silver+=x;t=`拾到一个钱袋，银两 +${x}`}else t=pick(['一路无事。','在路边茶摊歇了歇脚。','遇到一队商旅，结伴而行。','山风很大，镖旗猎猎作响。']);
     run.log.push(`${ESC_SEG[run.seg]}：${t}`);run.seg++;
@@ -1641,6 +2018,9 @@ const ACT={
     const p=cultPending();if(p.exp>=1||p.xw>=1){S.cult.last=Date.now();S.xw+=p.xw;gainExp(p.exp);track('collect');o.push('打坐收功')}
     if(!S.arena.claimed){const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;o.push('论剑俸禄')}
     const m=doSmClaims();if(m.n)o.push(`师门任务 ${m.n} 个`);if(m.t)o.push('师门全勤奖');
+    if(S.tudi.length&&S.xj!==today()){const g=S.tudi.reduce((s,t)=>s+t.lv*20,0);S.silver+=g;S.xj=today();o.push('徒弟孝敬')}
+    let gh=0;for(const t of ['herb','ore'])while(S.gather[t]>0){doGather(t);gh++}if(gh)o.push(`采集 ${gh} 次`);
+    let ch=0;for(const id in COMPS)if(!S.chatDay[id]&&S.comps[id]<100){S.chatDay[id]=1;addFavor(id,3);ch++}if(ch)o.push(`与 ${ch} 位江湖人物闲聊`);
     if(!o.length){toast('今天能领的都领过了');return}
     save();render();toast(`已领取：${o.join('、')}。${diffTxt(a)}`)},
   shouchong(){if(SV||BT)return;S.stat.sc++;const L=[['师父',SC_LINES[Math.min(S.stat.sc,SC_LINES.length)-1]]];
@@ -1663,11 +2043,11 @@ const ACT={
   /* 装备 */
   equip(u){const it=S.bag.find(x=>x.uid===u);if(!it)return;const old=S.equip[it.slot];S.bag=S.bag.filter(x=>x.uid!==u);if(old)S.bag.push(old);S.equip[it.slot]=it;S.reforge=null;gemPick=null;save();render();toast(`装备 ${itemTag(it)}`)},
   unequip(sl){const it=S.equip[sl];if(!it)return;if(S.bag.length>=40){toast('行囊已满');return}S.bag.push(it);S.equip[sl]=null;S.reforge=null;gemPick=null;save();render()},
-  sell(u){const it=S.bag.find(x=>x.uid===u);if(!it)return;stripGems(it);S.silver+=sellPrice(it);S.bag=S.bag.filter(x=>x.uid!==u);save();render();toast(`售出，银两 +${fmt(sellPrice(it))}${(it.gm||[]).length?'，宝石已取回':''}`)},
-  sellAll(){if(!S.bag.length)return;if(!sellAllArm){sellAllArm=true;render();const b=$('#sellall-ok');if(b)b.focus({preventScroll:true});return}
-    sellAllArm=false;const n=S.bag.length;let g=0,gems=0;
-    for(const it of S.bag){gems+=(it.gm||[]).filter(Boolean).length;stripGems(it);g+=sellPrice(it)}
-    S.bag=[];S.silver+=g;save();render();toast(`卖掉 ${n} 件装备，银两 +${fmt(g)}${gems?`，取回宝石 ${gems} 颗`:''}`)},
+  sell(u){const it=S.bag.find(x=>x.uid===u);if(!it||it.lg)return;stripGems(it);S.silver+=sellPrice(it);S.bag=S.bag.filter(x=>x.uid!==u);save();render();toast(`售出，银两 +${fmt(sellPrice(it))}${(it.gm||[]).length?'，宝石已取回':''}`)},
+  sellAll(){const sb=S.bag.filter(i=>!i.lg);if(!sb.length)return;if(!sellAllArm){sellAllArm=true;render();const b=$('#sellall-ok');if(b)b.focus({preventScroll:true});return}
+    sellAllArm=false;const n=sb.length;let g=0,gems=0;
+    for(const it of sb){gems+=(it.gm||[]).filter(Boolean).length;stripGems(it);g+=sellPrice(it)}
+    S.bag=S.bag.filter(i=>i.lg);S.silver+=g;save();render();toast(`卖掉 ${n} 件装备，银两 +${fmt(g)}${gems?`，取回宝石 ${gems} 颗`:''}`)},
   sellAllCancel(){sellAllArm=false;render()},
   sellLow(){const low=S.bag.filter(i=>i.q<=1&&!i.en&&!(i.gm||[]).some(Boolean));const g=low.reduce((s,i)=>s+sellPrice(i),0);S.bag=S.bag.filter(i=>!low.includes(i));S.silver+=g;save();render();toast(`售出 ${low.length} 件，银两 +${fmt(g)}`)},
   enhance(sl){const it=S.equip[sl];if(!it)return;const en=it.en||0;if(en>=15)return;const c=enCost(it);if(S.silver<c)return;S.silver-=c;track('enhance');
@@ -1682,6 +2062,80 @@ const ACT={
   gemPut(k){if(!gemPick||!(S.gems[k]>0))return;const it=S.equip[gemPick.sl];if(!it)return;const gm=sockets(it);if(gm[gemPick.i])return;gm[gemPick.i]=k;S.gems[k]--;gemPick=null;save();render()},
   gemOut(v){const [sl,i]=v.split(',');const it=S.equip[sl];if(!it)return;const gm=sockets(it),g=gm[+i];if(!g)return;gm[+i]=null;S.gems[g]=(S.gems[g]||0)+1;save();render()},
   gemMix(k){const l=+k.slice(-1);if(l>=5||!(S.gems[k]>=3)||S.silver<100*l)return;S.gems[k]-=3;S.silver-=100*l;const t=addGem(k.slice(0,-1),l+1);save();render();toast(`合成 ${t}`)},
+  /* 人情 */
+  doGood(){if(S.kd.good<1)return;const c=S.lv*30;if(S.silver<c)return;S.silver-=c;S.kd.good--;S.karma+=8;save();render();toast(`你在城门口施粥一日，百姓交口称赞。善 +8`)},
+  doEvil(){if(S.kd.evil<1||BT)return;S.kd.evil--;
+    if(Math.random()<.3){save();startBattle(mkNPC('捕快','shaolin',S.lv,.9,'官府'),{type:'catch',title:'打家劫舍 · 撞上捕快'});return}
+    const g=S.lv*40;S.silver+=g;S.karma-=8;save();render();toast(`你洗劫了一户为富不仁的财主。银两 +${fmt(g)}，恶 +8`)},
+  chat(id){if(!COMPS[id]||S.chatDay[id]||S.comps[id]>=100)return;S.chatDay[id]=1;addFavor(id,3);save();render()},
+  gift(v){const [id,k]=v.split(',');const c=COMPS[id];if(!c||S.comps[id]>=100)return;
+    if(k==='jiu'){if(S.gifts.jiu<1)return;S.gifts.jiu--}
+    else if(k==='shu'){if(S.gifts.shu<1)return;S.gifts.shu--}
+    else if(k==='xuelian'){if(!(S.mat.xuelian>0))return;S.mat.xuelian--}
+    else if(k==='gem'){const g=Object.keys(S.gems).filter(x=>S.gems[x]>0).sort((a,b)=>gemPow(a)-gemPow(b))[0];if(!g)return;S.gems[g]--}
+    const add=c.fav===k?12:4,before=S.comps[id];addFavor(id,add);save();render();if(S.comps[id]>before)toast(`${c.n}好感 +${S.comps[id]-before}${c.fav===k?'，看得出很喜欢':''}`)},
+  buyGift(k){const p={jiu:300,shu:500}[k];if(!p||S.silver<p)return;S.silver-=p;S.gifts[k]++;save();render()},
+  compGo(id){if(S.comps[id]<100)return;S.comp=id;save();render();toast(`${COMPS[id].n}随你同行`)},
+  compRest(){S.comp=null;save();render()},
+  recruit(){const cost=3000*(S.tudi.length+1);if(S.tudi.length>=3||!(S.lv>=20||S.rb)||S.silver<cost)return;S.silver-=cost;
+    const r=Math.random(),apt=r<.05?3:r<.25?2:r<.6?1:0,name=pick(SUR)+pick(TUDI_NAMES);
+    S.tudi.push({name,apt,lv:1,exp:0,last:Date.now()});save();render();
+    showStory([['旁白',`一个叫${name}的孩子在你门前跪了三天三夜。你收下了他。`],['旁白',`你摸了摸他的根骨：资质${APT[apt].n}。`]],null,()=>render())},
+  chuangong(i){const t=S.tudi[+i];if(!t||S.xw<500||t.lv>=60)return;S.xw-=500;t.exp+=1500*APT[t.apt].m;updTudi();save();render();toast(`你为${esc(t.name)}传功，经验 +${fmt(1500*APT[t.apt].m)}`)},
+  chushi(i){const t=S.tudi[+i];if(!t||t.lv<40)return;const m=APT[t.apt].m,g=Math.round(S.lv*300*m);
+    S.silver+=g;S.gx+=100;const so=randomSoul(t.apt>=2?3:2),gem=addGem(pick(GEMK),Math.min(4,t.apt+1));S.tudi.splice(+i,1);S.stat.chushi++;save();render();
+    showStory([['旁白',`${esc(t.name)}向你磕了三个响头，背起行囊下山去了。`],['旁白',`临走前，他留下了谢礼：银两 ${fmt(g)}，贡献 100，武魂「${SOULDEF[so.id].n}」，${gem.replace(/<[^>]+>/g,'')}。`]],null,()=>render())},
+  xiaojing(){if(!S.tudi.length||S.xj===today())return;const g=S.tudi.reduce((s,t)=>s+t.lv*20,0);S.silver+=g;S.xj=today();save();render();toast(`徒弟们孝敬银两 ${fmt(g)}`)},
+  claimJunzi(){if(S.karma<200||S.legends.includes('junzi'))return;const t=grantLegend('junzi');save();render();
+    showStory([['旁白','城中百姓凑钱请了最好的铁匠，打了一把剑送到你门前。'],['旁白','剑身上刻着两个字：君子。'],['旁白',t.replace(/<[^>]+>/g,'')]],null,()=>render())},
+  /* 武林大会与秘境 */
+  dhFight(){ensureDH();const D=S.dh;if(D.out||D.r>=4||BT)return;const [n,s]=DH_NPC[D.opp[D.r]];
+    startBattle(mkNPC(n,s,S.lv+D.r,DH_M[D.r]),{type:'dahui',title:`武林大会 · ${DH_ROUND[D.r]}`})},
+  mjStart(){const M=S.mj;if(M.left<1||M.run)return;M.left--;M.run={depth:1,hp:1,b:{atk:0,def:0},opts:mjRoll(),log:[]};save();render()},
+  mjQuit(){if(!S.mj.run)return;S.mj.run=null;save();render();toast('你退出了秘境')},
+  mjGo(v){const run=S.mj.run;if(!run||BT)return;const t=run.opts[+v];if(!t)return;
+    if(t==='fight'||t==='elite'||t==='boss'){
+      const m=t==='boss'?mkMonster('秘境守护者',Math.max(1,S.lv+MJ_LV.boss),true,false):mkMonster(pick(MJ_MOB),Math.max(1,S.lv+MJ_LV[t]),false,t==='elite');
+      startBattle(m,{type:'mijing',room:t,manualOK:t==='boss',title:`秘境 · ${t==='boss'?'最深处':`第 ${run.depth} 关`}`,
+        prep:A=>{A.atk*=1+run.b.atk;A.def*=1+run.b.def;A.hp=Math.max(1,Math.round(A.maxhp*run.hp))}});return}
+    const o=[];
+    if(t==='chest'){const r=Math.random();if(r<.3){const g=S.lv*30;S.silver+=g;o.push(`银两 +${g}`)}else if(r<.6)o.push(addMat(randHerb(),2),addMat(randOre(),1));else if(r<.85)o.push(addGem(pick(GEMK),1));else{S.jade+=20;o.push('魂玉 +20')}}
+    if(t==='trap'){if(Math.random()*100<30+calcStats().dodge)o.push('你身形一闪，躲过了机关');else{run.hp=Math.max(.05,run.hp-.2);o.push('暗箭射中了你，气血 -20%')}}
+    if(t==='sage'){const k=Math.random()<.5?'atk':'def';run.b[k]+=.1;o.push(`隐士指点一二，本次秘境${k==='atk'?'攻击':'防御'} +10%`)}
+    if(t==='spring'){run.hp=Math.min(1,run.hp+.4);o.push('饮下灵泉，气血回复 40%')}
+    mjLog(t,o);mjNext();save();render()},
+  /* 生活 */
+  gather(t){if(!(S.gather[t]>0))return;const r=doGather(t);save();render();toast(r)},
+  pill(id){const p=PILLS.find(x=>x.id===id);if(!p||!hasMats(p.need))return;if(id==='dahuan'&&S.pillUsed>=30)return;
+    for(const k in p.need)S.mat[k]-=p.need[k];
+    if(Math.random()<.1){save();render();toast('丹炉“轰”的一声炸了，材料全毁');return}
+    S.stat.dan++;let m='';
+    if(id==='xiaohuan'){const e=Math.round(needExp(S.lv)*.3);gainExp(e).forEach(x=>toast(x));m=`经验 +${fmt(e)}`}
+    if(id==='dahuan'){S.bonus.hp+=40;S.pillUsed++;m='气血永久 +40'}
+    if(id==='peiyuan'){const x=300+S.lv*20;S.xw+=x;m=`修为 +${fmt(x)}`}
+    if(id==='kuangbao'){S.pills.kb+=10;m='接下来 10 场战斗攻击 +25%'}
+    if(id==='huxin'){S.pills.hx+=10;m='接下来 10 场战斗防御 +30%'}
+    if(id==='yirong'){S.karma=0;m='你换了一张脸，善恶值归零'}
+    save();render();toast(`炼成${p.n}：${m}`)},
+  fslot(s){if(SLOTS.includes(s)){FSLOT=s;render()}},
+  forge(id){const f=FORGE.find(x=>x.id===id);if(!f)return;const sil=f.silver*S.lv;if(!hasMats(f.need)||S.silver<sil||S.bag.length>=40)return;
+    for(const k in f.need)S.mat[k]-=f.need[k];S.silver-=sil;S.stat.forge++;
+    if(id==='yun'&&!S.legends.includes('jinsi')&&Math.random()<.1){const t=grantLegend('jinsi');save();render();toast(t);return}
+    let r=Math.random(),q=f.q[f.q.length-1][0];for(const [qq,p] of f.q){if(r<p){q=qq;break}r-=p}
+    const it=mkItem(S.lv,q,FSLOT);if(f.extra)rollExtras(it.st,2,S.lv);S.bag.push(it);save();render();toast(`打造出 ${itemTag(it)}`)},
+  /* 赌坊 */
+  bet(v){BET=clamp(+v,0,3);render()},
+  dice(v){const b=betAmt();if(S.silver<b)return;const d=[0,0,0].map(()=>1+Math.floor(Math.random()*6)),s=d[0]+d[1]+d[2],tri=d[0]===d[1]&&d[1]===d[2],big=s>=11;
+    const win=!tri&&((v==='big')===big);gamble(win,b,2);
+    DICE={d,txt:`${s} 点，${tri?'豹子！庄家通杀':big?'大':'小'}。${win?`你赢了 ${fmt(b)} 两`:`你输了 ${fmt(b)} 两`}`};save();render()},
+  cricket(v){const c=CRICKETS[+v],b=betAmt();if(!c||S.silver<b)return;const win=Math.random()<c.p;gamble(win,b,1+c.o);
+    CRI=pick(win?CRI_WIN:CRI_LOSE).replace('{n}',c.n)+(win?`你赢了 ${fmt(Math.round(b*c.o))} 两。`:`你输了 ${fmt(b)} 两。`);save();render()},
+  huaquan(v){const b=betAmt(),call=+v;if(S.silver<b||!(call>=0&&call<=10))return;
+    const pf=Math.floor(Math.random()*6),nf=Math.floor(Math.random()*6),sum=pf+nf,nc=nf+Math.floor(Math.random()*6),me=call===sum,him=nc===sum;
+    if(me&&!him){gamble(true,b,1+hqOdds(call));HQ=`你喊「${HQ_CALL[call]}」，酒客喊「${HQ_CALL[nc]}」。你出 ${pf}，他出 ${nf}，正好 ${sum}！你赢了 ${fmt(Math.round(b*hqOdds(call)))} 两。`}
+    else if(me&&him)HQ=`你们俩都喊中了 ${sum}，各自干了一碗，不分输赢。`;
+    else{gamble(false,b,0);S.gamble.drunk++;HQ=`你喊「${HQ_CALL[call]}」，可两人一共出了 ${sum}${him?'，被酒客喊中了':''}。输了 ${fmt(b)} 两，罚酒一碗。${S.gamble.drunk%10===0?'你已经开始看见两个酒客了。':''}`}
+    save();render()},
   /* 存档 */
   reset(){if(!resetArm){resetArm=true;render();return}resetArm=false;try{localStorage.removeItem(SAVE_KEY)}catch(e){}S=null;window._cname=null;render()},
   exportSave(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));const box=$('#savebox');box.value=code;box.select();
