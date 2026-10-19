@@ -685,23 +685,40 @@ const SC_LINES=[
 
 /* ============ 人情 ============ */
 const COMPS={
- xiao:{n:'萧寒',t:'酒肆剑客',rel:'结义',fav:'jiu',likeN:'美酒',d:'嗜酒如命的落拓剑客，剑快得看不清。助战时会斩出一道剑气。',pas:{atk:.03},
+ xiao:{n:'萧寒',t:'酒肆剑客',rel:'结义',like:{jiu:2,jianpu:2,feidao:1,mingzhu:1,yanzhi:-1},d:'嗜酒如命、剑不离身的落拓剑客。助战时会斩出一道剑气。',pas:{atk:.03},
   ev:{20:[['萧寒','又是你。这壶酒算我的。'],['萧寒','我在江湖上混了二十年，没几个人敢跟我同桌喝酒。']],
       50:[['萧寒','我年轻时也有个师弟，后来死在血衣楼手里。'],['萧寒','你让我想起他。往后有什么事，喊一声。']],
       100:[['旁白','月下，萧寒把剑插在地上，与你对着关帝像拜了三拜。'],['萧寒','从今往后，你我兄弟相称。'],['旁白','你与萧寒义结金兰。他可以随你助战。']]}},
- su:{n:'苏晚晴',t:'医谷女侠',rel:'知己',fav:'xuelian',likeN:'雪莲',need:'good',d:'医谷传人，心软，见不得人受苦。助战时会为你施针疗伤。',pas:{hp:.05},
+ su:{n:'苏晚晴',t:'医谷女侠',rel:'知己',like:{yaocao:2,hua:2,shu:1,yupei:1,jiu:-1},need:'good',d:'医谷传人，爱侍弄花草，见不得人受苦，也见不得人酗酒。助战时会为你施针疗伤。',pas:{hp:.05},
   ev:{20:[['苏晚晴','你身上这道伤口，再晚两天就要化脓了。别动。'],['苏晚晴','下次受了伤，记得来医谷找我。']],
       50:[['苏晚晴','师父说，医者只救该救之人。可我总觉得，人人都该救。'],['苏晚晴','你说，我是不是太傻了？']],
       100:[['旁白','医谷的杏花开了。苏晚晴把一只亲手缝的药囊系在你腰间。'],['苏晚晴','往后走到哪里，都别忘了医谷。'],['旁白','苏晚晴成了你的红颜知己。她可以随你助战。']]}},
- liu:{n:'柳三变',t:'落魄书生',rel:'结义',fav:'shu',likeN:'古籍',d:'考了九次科举，九次落榜。助战时会在一旁挥毫吟诗，为你壮胆。',pas:{mp:.1,crit:2},
+ liu:{n:'柳三变',t:'落魄书生',rel:'结义',like:{shu:2,zihua:2,jiu:1,hua:1,feidao:-1},d:'考了九次科举、九次落榜的书生，嗜书如命，怕见刀兵。助战时会在一旁挥毫吟诗，为你壮胆。',pas:{mp:.1,crit:2},
   ev:{20:[['柳三变','兄台，可否借在下十文钱？在下写一首诗相抵。'],['旁白','他的诗写得很好，字也好。可惜没人买。']],
       50:[['柳三变','我考了九次科举，九次落榜。'],['柳三变','后来我想通了，天下最大的考场，是江湖。']],
       100:[['旁白','柳三变当街泼墨，写下一幅《侠客行》送给你。'],['柳三变','你我一文一武，却是同道中人。今日结为兄弟！'],['旁白','你与柳三变结为异姓兄弟。他可以随你助战。']]}},
- yan:{n:'燕七七',t:'女飞贼',rel:'知己',fav:'gem',likeN:'宝石',need:'evil',d:'来去无踪的女飞贼，只偷为富不仁的人。助战时会从暗处甩出飞刀。',pas:{spd:.05,dodge:2},
+ yan:{n:'燕七七',t:'女飞贼',rel:'知己',like:{mingzhu:2,tanghulu:2,yupei:1,feidao:1,yanzhi:1,shu:-1},need:'evil',d:'来去无踪的女飞贼，爱亮晶晶的东西，也爱吃甜的，最烦之乎者也。助战时会从暗处甩出飞刀。',pas:{spd:.05,dodge:2},
   ev:{20:[['燕七七','哟，钱袋子挺鼓啊。'],['旁白','你一摸腰间，钱袋已经不见了。燕七七在屋顶上冲你晃了晃，又扔了回来。']],
       50:[['燕七七','我只偷为富不仁的。你信吗？'],['燕七七','……算了，你信不信，我都无所谓。']],
       100:[['旁白','三更天，燕七七翻窗进来，把一枚夜明珠放在你枕边。'],['燕七七','别问哪来的。往后谁敢动你，先问问我的飞刀。'],['旁白','燕七七成了你的红颜知己。她可以随你助战。']]}},
 };
+// 礼物：多从奇遇、秘境、押镖得来。每人喜好不同：2 最爱、1 喜欢、0 一般、-1 讨厌；送过一次才知道对方的反应
+const GIFTS={
+ jiu:{n:'女儿红',d:'埋了十八年的好酒',w:3},
+ hua:{n:'山茶花',d:'刚摘下的，还带着露水',w:3},
+ tanghulu:{n:'糖葫芦',d:'山楂裹糖，酸甜可口',w:3},
+ yanzhi:{n:'胭脂',d:'江南名铺的上等胭脂',w:3},
+ shu:{n:'孤本古籍',d:'前朝大儒的手抄本',w:2},
+ feidao:{n:'柳叶飞刀',d:'刀身薄如柳叶',w:2},
+ yupei:{n:'古玉佩',d:'温润通透，雕着双鱼',w:2},
+ yaocao:{n:'九叶灵草',d:'九片叶子的灵草，药中圣品',w:2},
+ jianpu:{n:'残缺剑谱',d:'半本剑谱，招式凌厉',w:1},
+ zihua:{n:'名家字画',d:'一幅泼墨山水，落款模糊',w:1},
+ mingzhu:{n:'夜明珠',d:'夜里能照亮半间屋子',w:1},
+};
+const GIFT_V={2:15,1:8,0:3,'-1':-5};
+const GIFT_TAG={2:'最爱',1:'喜欢',0:'一般','-1':'讨厌'};
+const GIFT_REACT={2:'眼睛一亮：“你怎么知道我喜欢这个？”',1:'收下了，看起来挺高兴。',0:'道了声谢，随手收了起来。','-1':'皱起眉头：“你送我这个做什么？”'};
 const APT=[{n:'平庸',m:.8},{n:'中等',m:1},{n:'上乘',m:1.25},{n:'奇才',m:1.6}];
 const TUDI_NAMES=['小虎','阿竹','石头','小莲','阿福','青儿','木头','小七','阿蛮','铁蛋','小满','豆子'];
 
@@ -778,7 +795,7 @@ function newGame(name,sect){
     qiyu:{tok:3,cur:null,last:-1,log:[]},arena:{rank:800,best:800,tries:10,claimed:false,rep:0},
     sign:{last:'',total:0},online:{day:today(),sec:0,got:0},
     titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0,chushi:0,champ:0,mj:0,dan:0,forge:0},
-    karma:0,kd:{good:3,evil:3},comps:{xiao:0,su:0,liu:0,yan:0},compEv:{},comp:null,chatDay:{},gifts:{jiu:0,shu:0},
+    karma:0,kd:{good:3,evil:3},comps:{xiao:0,su:0,liu:0,yan:0},compEv:{},comp:null,chatDay:{},gifts:{},giftKnown:{},
     tudi:[],xj:'',legends:[],dh:null,mj:{left:3,run:null},mat:{},gather:{herb:3,ore:3},pills:{kb:0,hx:0},pillUsed:0,
     gamble:{win:0,n:0,drunk:0},manual:false,gTab:{},
     day:today(),tab:'jianghu',kills:0,uidc:1};
@@ -1095,7 +1112,7 @@ function applyResult(win,ctx,enemy,A){
       gainExp(e).forEach(m=>rw.push(`<span class="q4">${m}</span>`));
     }else rw.push('胜败乃兵家常事。去修炼、冲穴或换件好兵器再来。');
   }else if(ctx.type==='event'){
-    const r=win?ctx.win():ctx.lose;logQ(ctx.title,r);rw.push(r);
+    let r=win?ctx.win():ctx.lose;if(win&&Math.random()<.4)r+=`　对方逃跑时落下了${addGift(randomGift())}。`;logQ(ctx.title,r);rw.push(r);
   }else if(ctx.type==='arena'){
     S.arena.tries--;track('arena');
     if(win){
@@ -1254,9 +1271,13 @@ function karmaTier(){const k=S.karma;
   if(k<=-50)return {n:'小有恶名',b:{atk:.03},d:'有人在背后议论你。攻击 +3%。'};
   return {n:'籍籍无名',b:null,d:'江湖上还没什么人知道你。'}}
 const favLabel=(f,c)=>f>=100?c.rel:f>=50?'知交':f>=20?'相识':'陌生';
+const randomGift=()=>wpick(Object.entries(GIFTS).map(([k,g])=>[k,g.w]));
+function addGift(k,n=1){S.gifts[k]=(S.gifts[k]||0)+n;return `<span class="q3">「${GIFTS[k].n}」</span>${n>1?` ×${n}`:''}`}
+const giftCount=()=>Object.values(S.gifts).reduce((s,n)=>s+(n||0),0);
 const pasTxt=p=>Object.entries(p).map(([k,v])=>`${STN[k]} +${isPct(k)?v:Math.round(v*100)}%`).join('，');
+function favCap(id){const c=COMPS[id];return (c.need==='good'&&S.karma<0)||(c.need==='evil'&&S.karma>0)?50:100}
 function addFavor(id,v){
-  const c=COMPS[id];let cap=100;if(c.need==='good'&&S.karma<0)cap=50;if(c.need==='evil'&&S.karma>0)cap=50;
+  const c=COMPS[id],cap=favCap(id);
   const old=S.comps[id];
   if(old>=cap){toast(`${c.n}${c.need==='good'?'不愿与恶人深交':'看不惯你这副正人君子的样子'}，好感暂时无法提升`);return}
   const nw=Math.min(cap,old+v);S.comps[id]=nw;
@@ -1297,7 +1318,7 @@ function mjWin(room,enemy){
   const o=[];
   if(room==='boss'){
     o.push('<span class="q4">秘境通关</span>',`获得武魂 ${soulTag(randomSoul(Math.random()<.3?3:2))}`,addGem(pick(GEMK),2));
-    const j=30+S.lv;S.jade+=j;o.push(`魂玉 +${j}`);for(let i=0;i<3;i++)o.push(addMat(Math.random()<.5?randHerb():randOre(),1));
+    const j=30+S.lv;S.jade+=j;o.push(`魂玉 +${j}`,`礼物${addGift(pick(['jianpu','zihua','mingzhu']))}`);for(let i=0;i<3;i++)o.push(addMat(Math.random()<.5?randHerb():randOre(),1));
     if(Math.random()<.25){const t=grantLegend('yuchang');if(t)o.push(t)}
     S.stat.mj++;S.mj.run=null;return o;
   }
@@ -1401,6 +1422,23 @@ const QIYU=[
  {t:'矿洞塌方',d:'山脚下的矿洞刚刚塌了一角，洞里传来呼救声。',ch:[
   {l:'进洞救人',k:8,fn:()=>{const n=1+Math.floor(Math.random()*2);return `你救出了两个矿工。他们塞给你一些刚挖出的矿石。${addMat(randOre(),n)}，${addMat(randOre(),1)}`}},
   {l:'趁乱捡矿',k:-5,fn:()=>`你没理会呼救，捡了几块好矿石就走了。${addMat('hantie',2)}，${addMat(randOre(),1)}`}]},
+ {t:'江南庙会',d:'庙会上人头攒动，卖胭脂的、卖糖葫芦的、猜灯谜的，热闹非凡。',ch:[
+  {l:'逛胭脂铺',cost:()=>100+S.lv*5,fn:()=>`你挑了一盒上好的胭脂。获得${addGift('yanzhi')}${Math.random()<.4?`，老板娘还送了你${addGift('hua')}`:''}`},
+  {l:'买糖葫芦',cost:()=>20,fn:()=>`小贩多塞给你一串。获得${addGift('tanghulu',2)}`},
+  {l:'猜灯谜',fn:()=>Math.random()<.5?`你连猜十道灯谜，摊主把压箱底的字画送给了你。获得${addGift('zihua')}`:`你猜错了三道，只赢回一朵花。获得${addGift('hua')}`}]},
+ {t:'古董摊',d:'巷子口有个古董摊，摊主眯着眼睛上下打量你。',ch:[
+  {l:'买古玉佩',cost:()=>200+S.lv*10,fn:()=>`玉佩入手温润。获得${addGift('yupei')}`},
+  {l:'买夜明珠',cost:()=>500+S.lv*20,fn:()=>Math.random()<.7?`夜里一照，满屋生辉。获得${addGift('mingzhu')}`:'回家一看，是颗刷了荧光粉的玻璃球。'},
+  {l:'讨价还价',fn:()=>Math.random()<.4?`摊主被你磨得没了脾气，把一本旧书塞给你打发了。获得${addGift('shu')}`:'摊主嫌你烦，把你轰走了。'}]},
+ {t:'江湖醉汉',d:'一个醉汉抱着酒坛坐在路边，腰间插着一排柳叶飞刀。',ch:[
+  {l:'陪他喝两碗',k:2,fn:()=>`他喝高兴了，把剩下的半坛酒塞给了你。获得${addGift('jiu')}`},
+  {l:'顺走他的飞刀',k:-4,fn:()=>`趁他打盹，你摸走了两柄飞刀。获得${addGift('feidao',2)}`}]},
+ {t:'崖边采药',d:'悬崖边，一位老人正伸手去够一株灵草，脚下的石头摇摇欲坠。',ch:[
+  {l:'替他去采',k:5,fn:()=>`你攀上崖壁采下灵草，老人分了你一株。获得${addGift('yaocao')}`},
+  {l:'买下他的药篓',cost:()=>150+S.lv*8,fn:()=>`药篓里还有些花草。获得${addGift('yaocao')}，${addGift('hua')}`}]},
+ {t:'荒山剑冢',d:'荒山里有一座剑冢，插满了锈迹斑斑的断剑。',ch:[
+  {l:'挖开剑冢',k:-3,fn:()=>Math.random()<.5?`剑冢底下压着半本剑谱。获得${addGift('jianpu')}`:`只挖出一堆锈铁。${addMat('xuantie',2)}`},
+  {l:'祭拜离开',k:2,fn:()=>Math.random()<.3?`你拜了三拜。起身时，一阵风吹来一页残谱。获得${addGift('jianpu')}`:'你拜了三拜，转身离去。'}]},
 ];
 
 /* ============ 论剑 ============ */
@@ -1426,6 +1464,7 @@ function escComplete(){
   const sil=(g.dep+g.rw)*S.lv;S.silver+=sil;S.gx+=20;rw.push(`<span class="q4">镖车平安抵达</span>`,`银两 +${fmt(sil)}（含押金）`,'贡献 +20');
   if(run.g===2)rw.push(addGem(pick(GEMK),2));else if(Math.random()<(run.g?.5:.2))rw.push(addGem(pick(GEMK),1));
   if(run.g>0){S.fruit+=1;rw.push('灵果 +1')}
+  if(Math.random()<.35)rw.push(`客商谢礼${addGift(randomGift())}`);
   S.stat.escort++;track('escort');
   S.escort.last=`${g.n}平安抵达，获利 ${fmt(g.rw*S.lv)} 两。`;S.escort.run=null;
   return rw;
@@ -1741,8 +1780,10 @@ lunjian(st){
 },
 renqing(){
   const kt=karmaTier(),kp=clamp((S.karma+300)/600*100,0,100);
-  const gifts=id=>[['jiu','美酒',S.gifts.jiu],['shu','古籍',S.gifts.shu],['xuelian','雪莲',S.mat.xuelian||0],['gem','宝石',gemCount()]]
-    .map(([k,n,c])=>`<button class="btn sm ${COMPS[id].fav===k?'pri':''}" data-a="gift" data-v="${id},${k}" ${c>0?'':'disabled'}>送${n}（${c}）</button>`).join('');
+  const known=(id,k)=>S.giftKnown[id+'.'+k];
+  const prefs=id=>{const by={};for(const k in GIFTS){const t=known(id,k);if(t!=null)(by[t]=by[t]||[]).push(GIFTS[k].n)}
+    const s=[2,1,0,-1].filter(t=>by[t]).map(t=>`${GIFT_TAG[t]}${by[t].join('、')}`).join('；');return s?`已知喜好：${s}。`:'还不清楚喜好，送过一次才知道。'};
+  const owned=Object.keys(GIFTS).filter(k=>S.gifts[k]>0),open=Object.keys(COMPS).filter(id=>S.comps[id]<100);
   const cost=3000*(S.tudi.length+1),canT=S.lv>=20||S.rb>0;
   return `<section class="box"><h3>善恶 <small>${kt.n}</small></h3>
     <div class="karma"><span>恶</span><div class="kbar"><i style="left:${kp}%"></i></div><span>善</span></div>
@@ -1756,13 +1797,15 @@ renqing(){
       return `<div class="cardx ${on?'on':''}"><div class="sh"><b>${c.n}</b><span class="note">${c.t}</span></div>
        <div class="bar jade"><i style="width:${f}%"></i></div><span class="note">好感 ${f} / 100 · ${favLabel(f,c)}${on?' · 助战中':''}</span>
        <span class="eff">${c.d}</span>
-       <span class="fl">喜欢${c.likeN}。${c.need==='good'?'不与恶人深交（有恶名时好感最多到 50）。':c.need==='evil'?'看不惯正人君子（有善名时好感最多到 50）。':''}${bond?`${c.rel}加成：${pasTxt(c.pas)}。`:`${c.rel}后加成：${pasTxt(c.pas)}。`}</span>
+       <span class="fl">${bond?'':prefs(id)}${c.need==='good'?'不与恶人深交（有恶名时好感最多到 50）。':c.need==='evil'?'看不惯正人君子（有善名时好感最多到 50）。':''}${bond?`${c.rel}加成：${pasTxt(c.pas)}。`:`${c.rel}后加成：${pasTxt(c.pas)}。`}</span>
        <div class="row">${bond?(on?'<button class="btn sm" data-a="compRest">请其休息</button>':`<button class="btn sm pri" data-a="compGo" data-v="${id}">请其助战</button>`)
          :`<button class="btn sm" data-a="chat" data-v="${id}" ${S.chatDay[id]?'disabled':''}>${S.chatDay[id]?'今日已闲聊':'闲聊（好感 +3）'}</button>`}</div>
-       ${bond?'':`<div class="row" style="gap:4px">${gifts(id)}</div>`}</div>`}).join('')}</div>
-    <div class="row"><span class="note">礼物：送对方喜欢的好感 +12，其他 +4。美酒 ${S.gifts.jiu} 坛，古籍 ${S.gifts.shu} 本</span>
-     <button class="btn sm" data-a="buyGift" data-v="jiu" ${S.silver<300?'disabled':''}>买美酒（300）</button><button class="btn sm" data-a="buyGift" data-v="shu" ${S.silver<500?'disabled':''}>买古籍（500）</button>
-     <span class="note">雪莲在「生活」采药得到；送宝石会送最便宜的一颗</span></div></section>
+       </div>`}).join('')}</div></section>
+   <section class="box"><h3>礼物 <small>每人喜好不同：送最爱的好感 +15，喜欢的 +8，一般的 +3，讨厌的 -5</small></h3>
+    ${owned.length?`<div class="items">${owned.map(k=>`<div class="item"><b class="q3">${GIFTS[k].n} <span class="note">×${S.gifts[k]}</span></b><span class="meta">${GIFTS[k].d}</span>
+      <div class="row" style="gap:4px">${open.length?open.map(id=>{const t=known(id,k);return `<button class="btn sm ${t===2?'pri':t===-1?'red':''}" data-a="gift" data-v="${id},${k}">送${COMPS[id].n}${t!=null?` · ${GIFT_TAG[t]}`:''}</button>`}).join(''):'<span class="note">大家都已结交</span>'}</div></div>`).join('')}</div>`
+     :'<p class="empty">礼物包是空的。奇遇里常能得到礼物：庙会、古董摊、醉汉、采药老人、剑冢……秘境宝箱、押镖谢礼也会送。</p>'}
+    <div class="row"><span class="note">杂货铺只卖两样：</span><button class="btn sm" data-a="buyGift" data-v="jiu" ${S.silver<500?'disabled':''}>女儿红（500）</button><button class="btn sm" data-a="buyGift" data-v="yanzhi" ${S.silver<500?'disabled':''}>胭脂（500）</button></div></section>
    <section class="box"><h3>门徒 <small>${S.tudi.length} / 3 · 徒弟自己会练功，40 级可以出师</small></h3>
     ${S.tudi.length?S.tudi.map((t,i)=>`<div class="trow"><div><b>${esc(t.name)}</b> <span class="muted">资质${APT[t.apt].n} · ${t.lv} 级</span>
        <small>每分钟自修经验 ${fmt((10+S.lv*1.5)*APT[t.apt].m)}；出师时资质越好，谢礼越重</small><div class="bar exp" style="margin-top:4px"><i style="width:${t.lv>=60?100:t.exp/needExp(t.lv)*100}%"></i></div></div>
@@ -1915,7 +1958,8 @@ const ACT={
     S.stat.qiyu++;track('qiyu');if(ch.k)S.karma+=ch.k;
     const r=ch.fn();
     if(r&&typeof r==='object'&&r.battle){save();render();startBattle(r.battle,{type:'event',title:ev.t,win:r.win,lose:r.lose});return}
-    logQ(ev.t,r);save();render();toast(ev.t+'：'+r)},
+    let rr=r;if(Math.random()<.3)rr+=`　回程路上，你还捡到了${addGift(randomGift())}。`;
+    logQ(ev.t,rr);save();render();toast(ev.t+'：'+rr)},
   arenaFight(v){if(S.arena.tries<1||BT)return;const f=arenaFoe(+v);startBattle(mkNPC(f.name,f.sect,f.lv,f.m),{type:'arena',foe:f,title:`论剑 · 挑战第 ${f.rank} 名`})},
   arenaClaim(){if(S.arena.claimed)return;const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;save();render();toast(`领取俸禄：声望 +${r.rep}，银两 +${fmt(r.silver)}`)},
   shop(k){const w=SHOP.find(x=>x.k===k);if(!w||S.arena.rep<w.p)return;
@@ -2068,13 +2112,14 @@ const ACT={
     if(Math.random()<.3){save();startBattle(mkNPC('捕快','shaolin',S.lv,.9,'官府'),{type:'catch',title:'打家劫舍 · 撞上捕快'});return}
     const g=S.lv*40;S.silver+=g;S.karma-=8;save();render();toast(`你洗劫了一户为富不仁的财主。银两 +${fmt(g)}，恶 +8`)},
   chat(id){if(!COMPS[id]||S.chatDay[id]||S.comps[id]>=100)return;S.chatDay[id]=1;addFavor(id,3);save();render()},
-  gift(v){const [id,k]=v.split(',');const c=COMPS[id];if(!c||S.comps[id]>=100)return;
-    if(k==='jiu'){if(S.gifts.jiu<1)return;S.gifts.jiu--}
-    else if(k==='shu'){if(S.gifts.shu<1)return;S.gifts.shu--}
-    else if(k==='xuelian'){if(!(S.mat.xuelian>0))return;S.mat.xuelian--}
-    else if(k==='gem'){const g=Object.keys(S.gems).filter(x=>S.gems[x]>0).sort((a,b)=>gemPow(a)-gemPow(b))[0];if(!g)return;S.gems[g]--}
-    const add=c.fav===k?12:4,before=S.comps[id];addFavor(id,add);save();render();if(S.comps[id]>before)toast(`${c.n}好感 +${S.comps[id]-before}${c.fav===k?'，看得出很喜欢':''}`)},
-  buyGift(k){const p={jiu:300,shu:500}[k];if(!p||S.silver<p)return;S.silver-=p;S.gifts[k]++;save();render()},
+  gift(v){const [id,k]=v.split(',');const c=COMPS[id];if(!c||!GIFTS[k]||S.comps[id]>=100||!(S.gifts[k]>0))return;
+    const t=c.like[k]||0,key=id+'.'+k,first=S.giftKnown[key]==null,before=S.comps[id];
+    if(t>=0&&before>=favCap(id)){addFavor(id,0);return} // 被善恶卡住时不白白送掉礼物
+    S.gifts[k]--;S.giftKnown[key]=t;
+    if(t<0)S.comps[id]=Math.max(0,before+GIFT_V[t]);else addFavor(id,GIFT_V[t]);
+    const d=S.comps[id]-before;save();render();
+    toast(`${c.n}${GIFT_REACT[t]}${d?` 好感 ${d>0?'+':''}${d}`:''}${first?`（记下了：${c.n}${GIFT_TAG[t]}${GIFTS[k].n}）`:''}`)},
+  buyGift(k){const p={jiu:500,yanzhi:500}[k];if(!p||S.silver<p)return;S.silver-=p;S.gifts[k]=(S.gifts[k]||0)+1;save();render()},
   compGo(id){if(S.comps[id]<100)return;S.comp=id;save();render();toast(`${COMPS[id].n}随你同行`)},
   compRest(){S.comp=null;save();render()},
   recruit(){const cost=3000*(S.tudi.length+1);if(S.tudi.length>=3||!(S.lv>=20||S.rb)||S.silver<cost)return;S.silver-=cost;
@@ -2100,6 +2145,7 @@ const ACT={
         prep:A=>{A.atk*=1+run.b.atk;A.def*=1+run.b.def;A.hp=Math.max(1,Math.round(A.maxhp*run.hp))}});return}
     const o=[];
     if(t==='chest'){const r=Math.random();if(r<.3){const g=S.lv*30;S.silver+=g;o.push(`银两 +${g}`)}else if(r<.6)o.push(addMat(randHerb(),2),addMat(randOre(),1));else if(r<.85)o.push(addGem(pick(GEMK),1));else{S.jade+=20;o.push('魂玉 +20')}}
+    if(t==='chest'&&Math.random()<.35)o.push(`礼物${addGift(randomGift())}`);
     if(t==='trap'){if(Math.random()*100<30+calcStats().dodge)o.push('你身形一闪，躲过了机关');else{run.hp=Math.max(.05,run.hp-.2);o.push('暗箭射中了你，气血 -20%')}}
     if(t==='sage'){const k=Math.random()<.5?'atk':'def';run.b[k]+=.1;o.push(`隐士指点一二，本次秘境${k==='atk'?'攻击':'防御'} +10%`)}
     if(t==='spring'){run.hp=Math.min(1,run.hp+.4);o.push('饮下灵泉，气血回复 40%')}
