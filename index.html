@@ -354,6 +354,16 @@ button.gem{cursor:pointer}
 
 @media (max-width:520px){.bracket{grid-template-columns:repeat(2,1fr)}.groups button{font-size:17px;padding:3px 12px}}
 
+/* 江湖风云、未开启的页签 */
+.fy{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:8px 14px;border-radius:8px;background:#1f1d14;border:1px solid #3d3420;font-size:13px;color:var(--muted)}
+.fy>b{font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--gold);letter-spacing:2px}
+.fy em{font-style:normal;color:var(--fg);font-weight:600;margin-right:6px}
+.tabs button.locked{color:var(--dim);cursor:not-allowed}
+.tabs button.locked small{display:block;font-size:10px;letter-spacing:0;line-height:1.2}
+.skill .from{font-size:11px;color:var(--q2);margin-left:6px}
+.skill.on{border-color:var(--gold-d)}
+.skill .row{margin-top:6px}
+
 /* 提示 */
 .toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)}
 .toast{background:#253436;border:1px solid var(--gold-d);color:var(--fg);padding:8px 16px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.4);animation:tin .25s ease-out}
@@ -485,6 +495,65 @@ const ZONES=[
 ];
 const STAGE_MOB=[0,0,1,1,2];
 
+/* ============ 首领机制 ============ */
+const MECH={
+ shield:{n:'铁布衫',d:'前三回合受到的伤害减半。先上增益、慢慢磨，别急着放大招'},
+ guard:{n:'护体罡气',d:'防御极高，但中毒、灼烧、寒毒等持续伤害对他翻倍'},
+ regen:{n:'水遁回春',d:'每三回合回复 10% 气血，被晕眩时无法回复。带控制招式'},
+ venom:{n:'五毒缠身',d:'每次命中都会让你中毒。带疗伤、吸血或速战速决'},
+ sand:{n:'黄沙遮眼',d:'闪避极高，但多段攻击更容易打中'},
+ berserk:{n:'狂暴',d:'气血低于一半时攻击和速度大增。把大招留到最后收尾'},
+ reflect:{n:'剑意反震',d:'反弹所受伤害，多段攻击被反弹得更多。用单发重招'},
+};
+const ZONE_MECH=['shield','guard','regen','venom','sand','berserk','reflect'];
+function applyMech(f,m){if(!m)return f;f.mech=m;if(m==='guard')f.def*=3;if(m==='sand')f.dodge+=30;return f}
+
+/* ============ 江湖风云 ============ */
+const FY=[
+ {id:'miaohui',n:'洛阳庙会',d:'奇遇令额外 +2，奇遇得到礼物的几率翻倍'},
+ {id:'lunjian',n:'华山论剑周',d:'论剑所得声望翻倍'},
+ {id:'rain',n:'大雨连绵',d:'灼烧伤害减半，中毒类伤害翻倍'},
+ {id:'xueyi',n:'血衣楼余孽作乱',d:'江湖首领掉落宝石、武魂的几率翻倍，但闯江湖时可能遭到血衣楼杀手伏击'},
+ {id:'fengshou',n:'丰收年',d:'采药挖矿产量翻倍'},
+ {id:'jiuxian',n:'酒仙下凡',d:'打坐收益 +50%'},
+ {id:'shangdui',n:'商队云集',d:'押镖镖银 +50%'},
+ {id:'taling',n:'塔灵苏醒',d:'通天塔首次闯过的奖励翻倍'},
+ {id:'yidong',n:'秘境异动',d:'秘境次数额外 +2，宝箱更容易出礼物'},
+ {id:'dufang',n:'赌坊开张大吉',d:'在赌坊赢钱多一成'},
+ {id:'shimen',n:'师门大比',d:'师门任务所得贡献翻倍'},
+];
+let FYC={d:'',ids:[]};
+function todayFY(){const d=today();if(FYC.d!==d){const h=[...d].reduce((s,c)=>s*31+c.charCodeAt(0),7)%100000;const a=Math.floor(seeded(h)*FY.length);let b=Math.floor(seeded(h+99)*(FY.length-1));if(b>=a)b++;FYC={d,ids:[FY[a].id,FY[b].id]}}return FYC.ids}
+const fy=id=>todayFY().includes(id);
+
+/* ============ 悬赏 ============ */
+const BOUNTIES=[
+ {n:'千面郎君',d:'易容大盗，从没人见过他的真面目',mech:'sand',sect:'tangmen',z:2,clue:'江南戏班新来了个花旦，长得比画还俊，却从不卸妆。'},
+ {n:'鬼影子',d:'专在半夜杀人的刺客',mech:'berserk',sect:'tianshan',z:5,clue:'雪域的牧民说，每到半夜羊圈里就少一只羊，雪地上却没有脚印。'},
+ {n:'铁罗汉',d:'少林叛徒，号称刀枪不入',mech:'guard',sect:'shaolin',z:1,clue:'嵩山脚下的铁匠铺，有个光头一口气买走了全部铁砂。'},
+ {n:'毒娘子',d:'往井里下毒的女人',mech:'venom',sect:'tangmen',z:3,clue:'竹海边的村子，一夜之间井水全变黑了。'},
+ {n:'沙里飞',d:'大漠马贼头子',mech:'sand',sect:'mingjiao',z:4,clue:'驼队说，黄沙里有一伙人，马蹄声比风还快。'},
+ {n:'血手人屠',d:'血衣楼余孽',mech:'reflect',sect:'mingjiao',z:6,clue:'华山脚下的客栈，掌柜说有个客人每天只点生肉。'},
+ {n:'翻江龙',d:'太湖水寨的余党',mech:'regen',sect:'gaibang',z:2,clue:'太湖上又有船被劫，劫匪潜进水里，半个时辰都没浮上来。'},
+ {n:'黑心判官',d:'贪官的打手，专收保护费',mech:'shield',sect:'wudang',z:0,clue:'洛阳城的商户都在抱怨，有人穿着官服挨家挨户收钱。'},
+];
+
+/* ============ 秘境主题与遗物 ============ */
+const MJ_THEME=[
+ {id:'gumu',n:'古墓',d:'机关和宝箱更多',w:{trap:10,chest:10}},
+ {id:'jianzhong',n:'剑冢',d:'强敌更多，守护者必掉剑谱',w:{elite:12}},
+ {id:'duku',n:'毒窟',d:'怪物攻击带毒，灵泉也更多',w:{spring:10}},
+ {id:'xianjing',n:'仙境',d:'隐士、灵泉和古匣更多',w:{sage:10,spring:6,relic:6}},
+];
+const RELICS={
+ xixue:{n:'噬血玉',d:'所有攻击吸血 10%'},xianshou:{n:'疾风令',d:'速度 +50%'},baoji:{n:'破军符',d:'暴击率 +15%'},huixue:{n:'回春佩',d:'每场胜利多回复 15% 气血'},
+ jingang:{n:'金刚符',d:'受到的伤害 -15%'},lianji:{n:'连环扣',d:'多段攻击伤害 +20%'},zhuoshao:{n:'火灵珠',d:'命中后 25% 几率令对手灼烧'},mingzhong:{n:'鹰眼石',d:'对手闪避 -20%'},
+};
+
+/* ============ 玩法解锁 ============ */
+const UNLOCK={jingmai:{lv:3},qiyu:{zc:1},lunjian:{zc:1},wuhun:{lv:10},lingshou:{lv:10},shimen:{lv:12},huodong:{lv:15},
+  tower:{zc:2},renqing:{zc:2},xuanshang:{zc:2},dufang:{zc:2},mijing:{zc:3},shenghuo:{zc:3},bingqipu:{zc:3},dahui:{zc:4}};
+
 /* ============ 主线剧情 ============ */
 const STORY=[
  {t:'残玉',
@@ -608,6 +677,7 @@ const SM_SHOP=[
  {k:'gem2',n:'精炼宝石袋',p:500,d:'随机一颗 2 级宝石'},
  {k:'fruit',n:'灵果 ×5',p:100,d:'喂养灵兽用'},
  {k:'tok',n:'奇遇令',p:120,d:'多一次游历江湖的机会'},
+ {k:'steal',n:'偷师令',p:600,d:'随机学会一招其他门派的武功'},
 ];
 
 /* ============ 论剑 ============ */
@@ -659,6 +729,8 @@ const ACHS=[
  {id:'dandao',n:'丹道宗师',d:'成功炼丹 50 次',t:()=>S.stat.dan>=50,b:{hp:250}},
  {id:'zhujian',n:'铸剑名家',d:'锻造 30 件装备',t:()=>S.stat.forge>=30,b:{atk:20}},
  {id:'dushen',n:'赌神',d:'在赌坊累计赢得 50 万两',t:()=>S.gamble.win>=500000,b:{crit:3}},
+ {id:'shangjin',n:'赏金猎人',d:'缉拿 10 名悬赏要犯',t:()=>S.stat.bounty>=10,b:{atk:25}},
+ {id:'boca',n:'博采众长',d:'偷学 6 招其他门派的武功',t:()=>S.learned.length>=6,b:{mp:60,crit:2}},
 ];
 
 /* ============ 福利 ============ */
@@ -747,7 +819,7 @@ const DH_M=[.85,.9,.95,1];
 const MJ_DEPTH=8;
 const MJ_LV={fight:-4,elite:-2,boss:-3}; // 秘境怪物相对人物等级的差值（连战且不回血，所以比江湖同级怪弱）
 const MJ_MOB=['山魈','守墓傀儡','毒蝎','石像武士','游魂','铜甲尸'];
-const RT={fight:{n:'刀光',d:'门后有人埋伏'},elite:{n:'煞气',d:'强敌镇守此门'},chest:{n:'宝光',d:'似乎藏着宝物'},trap:{n:'诡异',d:'机关重重'},sage:{n:'琴声',d:'有隐士在抚琴'},spring:{n:'水声',d:'灵泉涌动'},boss:{n:'秘境守护者',d:'最后一战'}};
+const RT={relic:{n:'古匣',d:'匣中似有遗物'},fight:{n:'刀光',d:'门后有人埋伏'},elite:{n:'煞气',d:'强敌镇守此门'},chest:{n:'宝光',d:'似乎藏着宝物'},trap:{n:'诡异',d:'机关重重'},sage:{n:'琴声',d:'有隐士在抚琴'},spring:{n:'水声',d:'灵泉涌动'},boss:{n:'秘境守护者',d:'最后一战'}};
 const RT_W=[['fight',30],['elite',12],['chest',18],['trap',15],['sage',12],['spring',13]];
 
 /* ============ 生活 ============ */
@@ -782,7 +854,7 @@ let resetArm=false, rbArm=false, sellAllArm=false;
 let BT=null, SV=null, gemPick=null;
 
 function newGame(name,sect){
-  return {v:2,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,
+  return {v:3,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,learned:[],loadout:null,bounty:{day:'',list:[]},unlocked:{},
     train:{hp:0,mp:0,atk:0,def:0},bonus:{hp:0,mp:0,atk:0,def:0,spd:0,crit:0,dodge:0},
     mer:{ren:0,du:0},equip:{wpn:null,arm:null,acc:null,boot:null},bag:[],gems:{},reforge:null,
     souls:[],soulSlots:[null,null,null],pets:[],pet:null,secret:0,
@@ -794,7 +866,7 @@ function newGame(name,sect){
     wb:null,
     qiyu:{tok:3,cur:null,last:-1,log:[]},arena:{rank:800,best:800,tries:10,claimed:false,rep:0},
     sign:{last:'',total:0},online:{day:today(),sec:0,got:0},
-    titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0,chushi:0,champ:0,mj:0,dan:0,forge:0},
+    titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0,chushi:0,champ:0,mj:0,dan:0,forge:0,bounty:0},
     karma:0,kd:{good:3,evil:3},comps:{xiao:0,su:0,liu:0,yan:0},compEv:{},comp:null,chatDay:{},gifts:{},giftKnown:{},
     tudi:[],xj:'',legends:[],dh:null,mj:{left:3,run:null},mat:{},gather:{herb:3,ore:3},pills:{kb:0,hx:0},pillUsed:0,
     gamble:{win:0,n:0,drunk:0},manual:false,gTab:{},
@@ -805,8 +877,15 @@ function migrate(o){
   o=fill(newGame(o.name,o.sect),o);
   if(o.tab==='xingnang')o.tab='zhuangbei';
   if(!o.sm.tasks.length)o.sm.day='';
+  if((o.v||1)<3){for(const k in UNLOCK)o.unlocked[k]=1;o.v=3} // 老存档已经玩过这些玩法，不再重新上锁
   return o;
 }
+/* 玩法按进度解锁：一旦开启就永久保留 */
+const zonesCleared=()=>S.prog.filter(p=>p>=6).length;
+function isOpen(k){const u=UNLOCK[k];return !u||S.rb>0||!!S.unlocked[k]||(u.lv?S.lv>=u.lv:zonesCleared()>=u.zc)}
+const unlockTxt=k=>{const u=UNLOCK[k];return u.lv?`${u.lv} 级开启`:`通关「${ZONES[u.zc-1].n}」开启`};
+function checkUnlock(){const n=[];for(const k in UNLOCK)if(!S.unlocked[k]&&isOpen(k)){S.unlocked[k]=1;n.push(TABN[k])}
+  if(n.length){toast(`<span class="q4">新玩法开启：${n.join('、')}</span>`);save()}}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 function load(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return null;const o=JSON.parse(t);if(!o||!o.sect||!SECTS[o.sect])return null;return migrate(o)}catch(e){return null}}
 const uid=()=>'u'+(S.uidc++);
@@ -906,7 +985,8 @@ function gainExp(e){
   S.exp+=Math.round(e);
   while(S.lv<60&&S.exp>=needExp(S.lv)){
     S.exp-=needExp(S.lv);S.lv++;msgs.push(`突破至 ${S.lv} 级`);
-    for(const k of SECTS[S.sect].sk)if(k.lv===S.lv)msgs.push(`习得武学「${k.n}」`);
+    SECTS[S.sect].sk.forEach((k,i)=>{if(k.lv!==S.lv)return;msgs.push(`习得武学「${k.n}」`);
+      if(S.loadout){const lo=loadout();if(lo.length<4)S.loadout=[...lo,'own:'+i]}}); // 搭配里有空位就自动带上新学会的本门武学
     const si=SOUL_SLOT_LV.indexOf(S.lv);if(si>=0&&!S.rb)msgs.push(`第 ${si+1} 个武魂槽开启`);
     const mi=MER_REQ.indexOf(S.lv);if(mi>0)msgs.push(`可冲击经脉第 ${LAYER[mi]} 重`);
     if(S.lv===SECRET_LV&&!S.rb)msgs.push('可向师门求学秘传绝学');
@@ -915,7 +995,7 @@ function gainExp(e){
   if(S.lv>=60)S.exp=0;
   return msgs;
 }
-function cultRate(){const m=1+.15*(S.cult.xf-1);return {exp:(2+S.lv*1.2)*m,xw:(1+S.lv*.15)*m}}
+function cultRate(){const m=(1+.15*(S.cult.xf-1))*(fy('jiuxian')?1.5:1);return {exp:(2+S.lv*1.2)*m,xw:(1+S.lv*.15)*m}}
 function cultPending(){const mins=Math.min(720,Math.max(0,(Date.now()-S.cult.last)/60000));const r=cultRate();return {mins,exp:Math.floor(r.exp*mins),xw:Math.floor(r.xw*mins)}}
 const xfCap=()=>Math.min(20,1+Math.floor(S.lv/3));
 const xfCost=()=>Math.round(120*Math.pow(S.cult.xf,2.1));
@@ -942,9 +1022,23 @@ function mkNPC(name,sect,lv,m,tag){
     skills:s.sk.filter(k=>k.lv<=lv),cds:{},buffs:[],dots:[]};
 }
 function secretSkill(){const s=SECTS[S.sect].secret;return {...s,lv:SECRET_LV,mult:s.mult*(1+.12*(S.secret-1))}}
+/* 武学搭配：本门武学 key 为 own:序号，偷学的他派武学 key 为 门派:序号 */
+function skillOf(key){const [s,i]=key.split(':');const sect=s==='own'?S.sect:s;const k=SECTS[sect]&&SECTS[sect].sk[+i];return k?{...k,from:sect,key}:null}
+function knownSkills(){return [...SECTS[S.sect].sk.map((_,i)=>'own:'+i),...S.learned.filter(k=>k.split(':')[0]!==S.sect&&skillOf(k))]}
+const usable=key=>{const k=skillOf(key);return !!k&&k.lv<=S.lv};
+function loadout(){
+  const av=knownSkills().filter(usable);
+  if(!S.loadout)return av.filter(k=>k.startsWith('own:')).slice(0,4); // 没自己搭配过时，默认带本门已会的武学
+  return S.loadout.filter(k=>av.includes(k)).slice(0,4);
+}
+function learnSkill(sect){
+  const pool=[];for(const s of SECT_KEYS){if(s===S.sect||(sect&&s!==sect))continue;SECTS[s].sk.forEach((k,i)=>{const key=s+':'+i;if(!S.learned.includes(key))pool.push(key)})}
+  if(!pool.length)return '';const key=pick(pool);S.learned.push(key);const k=skillOf(key);
+  return `<span class="q4">偷学到${SECTS[k.from].n}武学「${k.n}」</span>`;
+}
 function mkPlayer(){
   const st=calcStats(),s=SECTS[S.sect];
-  const skills=s.sk.filter(k=>k.lv<=S.lv);
+  const skills=loadout().map(skillOf);
   if(S.secret&&secretOpen())skills.push(secretSkill());
   const p=S.pet&&S.pets.find(x=>x.id===S.pet);
   const lg=new Set(SLOTS.map(x=>S.equip[x]&&S.equip[x].lg).filter(Boolean));
@@ -969,19 +1063,25 @@ function chooseSkill(a){
   const dmg=av.filter(k=>k.mult).sort((x,y)=>y.mult*(y.hits||1)-x.mult*(x.hits||1));
   return dmg[0]||null;
 }
-const tagsOf=f=>{const t=f.buffs.map(b=>b.src);f.dots.forEach(d=>t.push(d.l));if(f.stun)t.push('晕眩');return t};
+const tagsOf=f=>{const t=f.buffs.map(b=>b.src);if(f.mech)t.unshift(MECH[f.mech].n);if(f.rage)t.push('狂暴');f.dots.forEach(d=>t.push(d.l));if(f.stun)t.push('晕眩');return t};
+const hasRl=(f,id)=>!!(f.rl&&f.rl.has(id));
 // 战斗写成生成器：手动出招时在玩家出手前暂停，等待选择；自动战斗直接一路跑完
 function* battleGen(A,B,opt,log){
   const maxR=opt.rounds||40;
   const nm=f=>`<span class="${f.side}">${esc(f.name)}</span>`;
   const push=(text,side,fx)=>log.push({text,side,fx:fx||[],a:[A.hp,A.mp],b:[B.hp,B.mp],ta:tagsOf(A),tb:tagsOf(B)});
   const tick=f=>{f.buffs.forEach(b=>b.left--);f.buffs=f.buffs.filter(b=>b.left>0)};
+  const rain=fy('rain');
+  // 护体罡气挡不住持续伤害：对其施加的持续伤害翻 2.5 倍
+  const addDot=(t,v,n,l)=>{if(t.mech==='guard')v=Math.round(v*2.5);t.dots=t.dots.filter(d=>d.l!==l);t.dots.push({v,t:n,l})};
   const act=function*(a,t){
-    for(const d of a.dots){a.hp=Math.max(0,a.hp-d.v);d.t--;push(`${nm(a)} ${d.l}发作，损失 <b class="d">${d.v}</b> 气血`,a.side,[{on:a.side,v:'-'+d.v,k:'dmg'}])}
+    for(const d of a.dots){const v=rain?Math.round(d.v*(d.l==='灼烧'?.5:/毒/.test(d.l)?2:1)):d.v;a.hp=Math.max(0,a.hp-v);d.t--;push(`${nm(a)} ${d.l}发作，损失 <b class="d">${v}</b> 气血`,a.side,[{on:a.side,v:'-'+v,k:'dmg'}])}
     a.dots=a.dots.filter(d=>d.t>0);
     if(a.hp<=0)return;
     for(const k in a.cds)if(a.cds[k]>0)a.cds[k]--;
     if(a.stun){a.stun=false;tick(a);push(`${nm(a)} 被震晕，无法出手`,a.side);return}
+    if(a.mech==='regen'&&round%3===0){const h=Math.round(a.maxhp*.1);a.hp=Math.min(a.maxhp,a.hp+h);push(`${nm(a)} 运起水遁回春，回复 <b class="h">${h}</b> 气血`,a.side,[{on:a.side,v:'+'+h,k:'heal'}])}
+    if(a.mech==='berserk'&&!a.rage&&a.hp<a.maxhp*.5){a.rage=true;a.atk*=1.8;a.spd*=1.3;push(`${nm(a)} 气血翻涌，陷入狂暴！`,a.side)}
     let sk;
     if(a.manual){sk=yield a;if(sk==='auto'){a.manual=false;sk=chooseSkill(a)}else if(sk&&(sk.mp>a.mp||a.cds[sk.n]>0))sk=null}
     else sk=chooseSkill(a);
@@ -993,9 +1093,11 @@ function* battleGen(A,B,opt,log){
       const hits=s.hits||1,K=50+5*a.lv;let total=0,landed=0,crits=0;
       a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
       let mul=1;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
+      if(t.mech==='shield'&&round<=3)mul*=.5;if(hasRl(t,'jingang'))mul*=.85;if(hits>1&&hasRl(a,'lianji'))mul*=1.2;
       const defF=LA.has('yitian')?.7:1;
+      const dg=Math.min(t.mech==='sand'?60:40,eff(t,'dodge'))*(t.mech==='sand'&&hits>1?.5:1)-(hasRl(a,'mingzhong')?20:0);
       for(let i=0;i<hits;i++){
-        if(Math.random()*100<Math.min(40,eff(t,'dodge')))continue;
+        if(Math.random()*100<dg)continue;
         let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08);
         if((forceCrit&&!crits)||Math.random()*100<Math.min(60,a.crit+(s.crit||0))){d*=1.6;crits++}
         total+=Math.max(1,Math.round(d));landed++;
@@ -1007,10 +1109,13 @@ function* battleGen(A,B,opt,log){
         fx.push({on:t.side,v:'-'+total,k:crits?'crit':'dmg'});
         const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0);
         if(stl){const h=Math.round(total*stl);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，吸取 <b class="h">${h}</b> 气血`}
-        if(s.dot&&t.hp>0){const v=Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def'))));t.dots=t.dots.filter(d=>d.l!==s.dot.l);t.dots.push({v,t:s.dot.t,l:s.dot.l});txt+=`，${nm(t)} 身中${s.dot.l}`}
+        if(s.dot&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def')))),s.dot.t,s.dot.l);txt+=`，${nm(t)} 身中${s.dot.l}`}
+        if(a.mech==='venom'&&t.hp>0){addDot(t,Math.max(1,Math.round(t.maxhp*.03)),3,'五毒');txt+=`，${nm(t)} 中了五毒`}
+        if(hasRl(a,'zhuoshao')&&t.hp>0&&Math.random()<.25){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.35*K/(K+eff(t,'def')))),3,'灼烧');txt+=`，火灵珠燃起灼焰`}
+        if(t.mech==='reflect'&&a.hp>0){const back=Math.round(total*(hits>1?.2:.08));a.hp=Math.max(0,a.hp-back);txt+=`，剑意反震，${nm(a)} 受到 <b class="d">${back}</b> 点反伤`;fx.push({on:a.side,v:'-'+back,k:'dmg'})}
         if(s.stun&&t.hp>0&&Math.random()<s.stun*(t.boss?.5:1)){t.stun=true;txt+=`，${nm(t)} 被震晕`}
         if(LA.has('biyu')&&t.hp>0&&!t.stun&&Math.random()<.2*(t.boss?.5:1)){t.stun=true;txt+=`，箫声摇曳，${nm(t)} 心神失守`}
-        if(LA.has('bingpo')&&t.hp>0&&Math.random()<.3){const v=Math.max(1,Math.round(eff(a,'atk')*.4*K/(K+eff(t,'def'))));t.dots=t.dots.filter(d=>d.l!=='寒毒');t.dots.push({v,t:3,l:'寒毒'});txt+=`，银针透骨，${nm(t)} 身中寒毒`}
+        if(LA.has('bingpo')&&t.hp>0&&Math.random()<.3){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.4*K/(K+eff(t,'def')))),3,'寒毒');txt+=`，银针透骨，${nm(t)} 身中寒毒`}
       }
     }
     if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
@@ -1071,8 +1176,9 @@ function fight(zi,i){
   if(i===0&&!S.story.seen[zi+'a']){S.story.seen[zi+'a']=1;save();showStory(st.pre,null,()=>fight(zi,i));return}
   if(i===5&&!S.story.seen[zi+'b']){S.story.seen[zi+'b']=1;save();showStory(st.boss,null,()=>fight(zi,i));return}
   if(S.karma<=-150&&Math.random()<.1){startBattle(mkNPC('名门弟子',pick(['shaolin','wudang','emei']),S.lv,1,'追杀'),{type:'hunt',zi,i,title:'通缉 · 名门弟子追杀'});return}
+  if(fy('xueyi')&&Math.random()<.08){startBattle(mkNPC('血衣楼杀手',pick(SECT_KEYS),S.lv,.95,'血衣楼'),{type:'xueyi',zi,i,title:'血衣楼杀手伏击'});return}
   const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
-  const m=mkMonster(name,lv,boss,false);if(boss)m.skills[0].n=z.bs;
+  const m=applyMech(mkMonster(name,lv,boss,false),boss?ZONE_MECH[zi]:null);if(boss)m.skills[0].n=z.bs;
   startBattle(m,{type:'stage',zi,i,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
 }
 function startBattle(enemy,ctx){
@@ -1102,8 +1208,8 @@ function applyResult(win,ctx,enemy,A){
       if(boss||Math.random()<.25)rw.push(dropItem(lv,rollQ(boss)));
       const first=ctx.i===S.prog[ctx.zi];
       if(boss){const j=10+lv;S.jade+=j;rw.push(`魂玉 +${j}`);
-        if(first||Math.random()<.15){const so=randomSoul(first?2:1);rw.push(`获得武魂 ${soulTag(so)}`)}
-        if(Math.random()<.3)rw.push(addGem(pick(GEMK),1));
+        if(first||Math.random()<.15*(fy('xueyi')?2:1)){const so=randomSoul(first?2:1);rw.push(`获得武魂 ${soulTag(so)}`)}
+        if(Math.random()<(fy('xueyi')?.6:.3))rw.push(addGem(pick(GEMK),1));
         if(ctx.zi>=5&&Math.random()<.03){const t=grantLegend('yitian');if(t)rw.push(t)}}
       if(Math.random()<.04){S.qiyu.tok=Math.min(9,S.qiyu.tok+1);rw.push('奇遇令 +1')}
       if(first){S.prog[ctx.zi]++;rw.push('<span class="q4">首次通关</span>');
@@ -1119,15 +1225,15 @@ function applyResult(win,ctx,enemy,A){
       S.stat.arenaWin++;const old=S.arena.rank;
       if(ctx.foe.rank<old){S.arena.rank=ctx.foe.rank;S.arena.best=Math.min(S.arena.best,S.arena.rank);rw.push(`排名 ${old} → <span class="q4">${S.arena.rank}</span>`);
         if(S.arena.rank<=10)newsPush(`【${esc(S.name)}】在论剑中击败【${ctx.foe.name}】，登上第 ${S.arena.rank} 名！`)}
-      S.arena.rep+=15;rw.push('声望 +15');
-    }else{S.arena.rep+=3;rw.push('虽败犹荣，声望 +3')}
+      {const p=fy('lunjian')?30:15;S.arena.rep+=p;rw.push(`声望 +${p}`)}
+    }else{const p=fy('lunjian')?6:3;S.arena.rep+=p;rw.push(`虽败犹荣，声望 +${p}`)}
   }else if(ctx.type==='tower'){
     const run=S.tower.run,f=run.floor;
     if(win){
       track('tower');S.kills++;
       if(f>S.tower.best){
         S.tower.best=f;rw.push(`<span class="q4">新纪录：第 ${f} 层</span>`);
-        const g=30+f*15,x=5+f*2;S.silver+=g;S.xw+=x;rw.push(`银两 +${g}`,`修为 +${x}`);
+        const tm=fy('taling')?2:1,g=(30+f*15)*tm,x=(5+f*2)*tm;S.silver+=g;S.xw+=x;rw.push(`银两 +${g}`,`修为 +${x}`);
         gainExp(12+enemy.lv*6).forEach(m=>rw.push(`<span class="q4">${m}</span>`));
         if(f%5===0){const j=10+f;S.jade+=j;rw.push(`魂玉 +${j}`)}
         if(f===50){const t=grantLegend('xuantie');if(t)rw.push(t)}
@@ -1161,12 +1267,23 @@ function applyResult(win,ctx,enemy,A){
     const D=S.dh,r=D.r;
     if(win){const g=S.lv*80*(r+1),p=25*(r+1);S.silver+=g;S.arena.rep+=p;D.r++;rw.push(r<3?`晋级${DH_ROUND[r+1]}`:'<span class="q4">武林大会夺魁！</span>',`银两 +${fmt(g)}`,`声望 +${p}`);
       if(D.r>=4){S.stat.champ++;const t=grantLegend('bawang');if(t)rw.push(t);else rw.push(`获得武魂 ${soulTag(randomSoul(3))}`,addGem(pick(GEMK),3));
+        const l=learnSkill(DH_NPC[D.opp[3]][1]);if(l)rw.push(l+'（与决赛对手过招时偷师）');
         newsPush(`【${esc(S.name)}】在本届武林大会夺魁，号令群雄！`)}}
     else{D.out=true;rw.push(`止步${DH_ROUND[r]}。下周再来。`)}
   }else if(ctx.type==='mijing'){
     const run=S.mj.run;
-    if(win){S.kills++;run.hp=Math.min(1,A.hp/A.maxhp+.12);rw.push(...mjWin(ctx.room,enemy))}
+    if(win){S.kills++;run.hp=Math.min(1,A.hp/A.maxhp+.12+((run.relics||[]).includes('huixue')?.15:0));rw.push(...mjWin(ctx.room,enemy))}
     else{S.mj.run=null;rw.push(`你在秘境第 ${run.depth} 关力竭退出，已得的东西都带出来了。`)}
+  }else if(ctx.type==='xueyi'){
+    if(win){S.kills++;const g=S.lv*60;S.silver+=g;rw.push(`击退血衣楼杀手。银两 +${fmt(g)}`,`搜出${addGift(randomGift())}`)}
+    else rw.push('你负伤逃走，杀手没有追来。');
+  }else if(ctx.type==='bounty'){
+    const b=S.bounty.list[ctx.bi],B=BOUNTIES[b.i];
+    if(win){b.done=true;S.kills++;S.stat.bounty++;const g=S.lv*100;S.silver+=g;S.arena.rep+=30;
+      rw.push(`<span class="q4">${B.n}伏法</span>`,`赏银 +${fmt(g)}`,'声望 +30',`缴获${addGift(randomGift())}`);
+      if(Math.random()<.3){const l=learnSkill(B.sect);if(l)rw.push(l)}
+      newsPush(`【${esc(S.name)}】缉拿了悬赏要犯「${B.n}」！`)}
+    else rw.push(`${B.n}太难缠了。他还在这一带，你可以准备好了再来。`);
   }
   return rw;
 }
@@ -1228,7 +1345,7 @@ function btSkip(){
 function btEnd(){
   clearInterval(BT.timer);BT.done=true;
   const win=BT.res.win,c=BT.ctx;
-  const autoStage=S.auto&&(c.type==='stage'||c.type==='hunt')&&win&&S.story.pend==null;
+  const autoStage=S.auto&&(c.type==='stage'||c.type==='hunt'||c.type==='xueyi')&&win&&S.story.pend==null;
   const autoTower=S.tAuto&&c.type==='tower'&&win&&S.tower.run&&!S.tower.run.picks;
   const big=c.type==='wb'?(win?'斩':'伤'):(win?'胜':'败');
   $('#bt-foot').outerHTML=`<div class="result ${win||c.type==='wb'?'win':'lose'}"><span class="res-big">${big}</span><ul class="rw">${BT.reward.map(r=>`<li>${r}</li>`).join('')}</ul></div>
@@ -1257,7 +1374,7 @@ function doSign(){if(S.sign.last===today())return '';const r=SIGN[S.sign.total%7
 function doOnline(){if(!onlineReady())return '';S.online.got++;const r=Math.random();
   if(r<.4){const g=S.lv*40;S.silver+=g;return `银两 +${fmt(g)}`}if(r<.65){S.jade+=15;return '魂玉 +15'}if(r<.85){S.fruit+=1;return '灵果 +1'}if(r<.95)return addGem(pick(GEMK),1);
   S.qiyu.tok=Math.min(9,S.qiyu.tok+1);return '奇遇令 +1'}
-function doSmClaims(){let n=0;for(const x of S.sm.tasks)if(!x.got&&x.cur>=x.need){x.got=true;S.gx+=50;S.silver+=S.lv*40;n++}
+function doSmClaims(){let n=0;for(const x of S.sm.tasks)if(!x.got&&x.cur>=x.need){x.got=true;S.gx+=fy('shimen')?100:50;S.silver+=S.lv*40;n++}
   let t='';if(!S.sm.bonus&&S.sm.tasks.length&&S.sm.tasks.every(x=>x.got)){S.sm.bonus=true;S.gx+=100;t=addGem(pick(GEMK),1)}return {n,t}}
 function mkWB(){const W=S.wb,b=WBS[W.idx];const B=mkNPC(b.n,b.s,S.lv+2,1.1,'世界首领');B.maxhp=W.max;B.hp=W.hp;B.boss=true;B.atk*=.85;return B}
 const towerPrep=run=>A=>{const b=run.b;A.atk*=1+b.atk;A.def*=1+b.def;A.spd*=1+b.spd;A.crit+=b.crit;A.dodge+=b.dodge;A.lsteal=b.steal;
@@ -1304,14 +1421,21 @@ const wpick=arr=>{let r=Math.random()*arr.reduce((s,x)=>s+x[1],0);for(const [k,w
 const randHerb=()=>wpick([['renshen',45],['lingzhi',35],['xuelian',20]]);
 const randOre=()=>wpick([['xuantie',55],['hantie',33],['yuntie',12]]);
 function addMat(k,n=1){S.mat[k]=(S.mat[k]||0)+n;return `${MATS[k]} +${n}`}
-function doGather(t){S.gather[t]--;const n=1+(Math.random()<.4?1:0);return (t==='herb'?'上山采药：':'下矿挖矿：')+addMat(t==='herb'?randHerb():randOre(),n)}
+function doGather(t){S.gather[t]--;const n=(1+(Math.random()<.4?1:0))*(fy('fengshou')?2:1);return (t==='herb'?'上山采药：':'下矿挖矿：')+addMat(t==='herb'?randHerb():randOre(),n)}
 const hasMats=need=>Object.entries(need).every(([k,n])=>(S.mat[k]||0)>=n);
 const matTxt=need=>Object.entries(need).map(([k,n])=>`${MATS[k]}×${n}`).join(' ');
 
 /* ============ 武林大会与秘境 ============ */
 const weekId=()=>Math.floor((Date.now()/864e5+3)/7);
 function ensureDH(){const w=weekId();if(S.dh&&S.dh.wk===w)return;S.dh={wk:w,r:0,out:false,opp:shuffle(DH_NPC.map((_,i)=>i)).slice(0,4)}}
-function mjRoll(){const n=Math.random()<.3?2:3,set=new Set();while(set.size<n)set.add(wpick(RT_W));return [...set]}
+function mjRoll(){
+  const th=MJ_THEME.find(x=>S.mj.run&&x.id===S.mj.run.theme)||{w:{}};
+  const W=[...RT_W.map(([k,w])=>[k,w+(th.w[k]||0)]),['relic',6+(th.w.relic||0)]];
+  const n=Math.random()<.3?2:3,set=new Set();while(set.size<n)set.add(wpick(W));return [...set];
+}
+function mjRelicPick(){const run=S.mj.run;run.relics=run.relics||[];const pool=Object.keys(RELICS).filter(k=>!run.relics.includes(k));if(pool.length)run.rpick=shuffle(pool).slice(0,3)}
+function mjPrep(run){return A=>{A.atk*=1+run.b.atk;A.def*=1+run.b.def;A.hp=Math.max(1,Math.round(A.maxhp*run.hp));
+  A.rl=new Set(run.relics||[]);if(A.rl.has('xixue'))A.lsteal=(A.lsteal||0)+.1;if(A.rl.has('xianshou'))A.spd*=1.5;if(A.rl.has('baoji'))A.crit+=15}}
 function mjNext(){const run=S.mj.run;run.depth++;if(run.depth>MJ_DEPTH){run.opts=['boss'];run.hp=Math.min(1,run.hp+.3)}else run.opts=mjRoll()} // 守护者门前回复三成气血
 function mjLog(t,o){const run=S.mj.run;run.log.unshift(`第 ${run.depth} 关「${RT[t].n}」：${o.join('，').replace(/<[^>]+>/g,'')}`);run.log=run.log.slice(0,6)}
 function mjWin(room,enemy){
@@ -1320,9 +1444,11 @@ function mjWin(room,enemy){
     o.push('<span class="q4">秘境通关</span>',`获得武魂 ${soulTag(randomSoul(Math.random()<.3?3:2))}`,addGem(pick(GEMK),2));
     const j=30+S.lv;S.jade+=j;o.push(`魂玉 +${j}`,`礼物${addGift(pick(['jianpu','zihua','mingzhu']))}`);for(let i=0;i<3;i++)o.push(addMat(Math.random()<.5?randHerb():randOre(),1));
     if(Math.random()<.25){const t=grantLegend('yuchang');if(t)o.push(t)}
+    if(S.mj.run.theme==='jianzhong')o.push(`剑谱${addGift('jianpu')}`);
+    if(Math.random()<.3){const l=learnSkill();if(l)o.push(l)}
     S.stat.mj++;S.mj.run=null;return o;
   }
-  if(room==='elite')o.push(addGem(pick(GEMK),Math.random()<.4?2:1),addMat(randOre(),1),addMat(randHerb(),1));
+  if(room==='elite'){o.push(addGem(pick(GEMK),Math.random()<.4?2:1),addMat(randOre(),1),addMat(randHerb(),1));if(Math.random()<.3){mjRelicPick();o.push('守卫身后有个古匣')}}
   else{const g=S.lv*8;S.silver+=g;o.push(`银两 +${g}`,addMat(Math.random()<.6?randHerb():randOre(),1))}
   mjLog(room,[`击败${enemy.name}`,...o]);mjNext();return o;
 }
@@ -1331,7 +1457,7 @@ function mjWin(room,enemy){
 let BET=0,DICE=null,CRI=null,HQ=null,FSLOT='wpn';
 const betAmt=()=>[100,1000,10000,Math.max(100,Math.floor(S.silver*.1))][BET];
 function gamble(win,bet,total){
-  if(win){const g=Math.round(bet*(total-1));S.silver+=g;S.gamble.win+=g}else S.silver-=bet;S.gamble.n++;
+  if(win){const g=Math.round(bet*(total-1)*(fy('dufang')?1.1:1));S.silver+=g;S.gamble.win+=g}else S.silver-=bet;S.gamble.n++;
   if(S.gamble.win>=100000&&!S.legends.includes('biyu')){const t=grantLegend('biyu');toast(t);
     showStory([['赌坊老板','这位客官手气太旺，再赌下去小店就要关门了。'],['赌坊老板','这支碧玉箫是镇店之宝，送您了。求您……换一家赌坊玩吧。']],null,()=>render())}
 }
@@ -1439,6 +1565,12 @@ const QIYU=[
  {t:'荒山剑冢',d:'荒山里有一座剑冢，插满了锈迹斑斑的断剑。',ch:[
   {l:'挖开剑冢',k:-3,fn:()=>Math.random()<.5?`剑冢底下压着半本剑谱。获得${addGift('jianpu')}`:`只挖出一堆锈铁。${addMat('xuantie',2)}`},
   {l:'祭拜离开',k:2,fn:()=>Math.random()<.3?`你拜了三拜。起身时，一阵风吹来一页残谱。获得${addGift('jianpu')}`:'你拜了三拜，转身离去。'}]},
+ {t:'残破秘籍',d:'旧书摊的角落里压着一本残破的秘籍，封皮上的门派印记已经模糊。',ch:[
+  {l:'买下研读',cost:()=>200+S.lv*10,fn:()=>{const t=learnSkill();if(t)return `你挑灯夜读了三天三夜，${t}。去「人物」页的武学搭配里装上它。`;const x=Math.round(40+S.lv*8);S.xw+=x;return `都是你早已会的招式，倒也温故知新。修为 +${x}`}},
+  {l:'翻翻就走',fn:()=>{const x=Math.round(20+S.lv*5);S.xw+=x;return `你随手翻了几页，若有所思。修为 +${x}`}}]},
+ {t:'过路高手',d:'茶馆里，一个外乡人正和人比划拳脚，招式和你见过的都不一样。',ch:[
+  {l:'上前讨教',fn:()=>({battle:mkNPC('过路高手',pick(SECT_KEYS.filter(x=>x!==S.sect)),S.lv,.95),win:()=>{const t=learnSkill();return t?`过了几十招，你看清了他的路数。${t}`:'他抱拳说你武功已臻化境，转身走了。'},lose:'他点到为止，笑着说你还得再练几年。'})},
+  {l:'在旁边看',fn:()=>{const e=Math.round(needExp(S.lv)*.1);gainExp(e).forEach(toast);return `你看了一下午，心里默默记下几招。经验 +${e}`}}]},
 ];
 
 /* ============ 论剑 ============ */
@@ -1447,11 +1579,20 @@ function arenaFoe(rank){
   return {rank,name:SUR[Math.floor(s1*SUR.length)]+GIV[Math.floor(s2*GIV.length)],sect:SECT_KEYS[Math.floor(s3*7)],lv:clamp(S.lv+Math.round(str*4+s1*2-2),1,60),m:.75+str*.3};
 }
 const foePower=f=>powerOf(mkNPC(f.name,f.sect,f.lv,f.m));
-const arenaReward=()=>({rep:Math.max(20,Math.round(300-S.arena.rank*.3)),silver:Math.round((1000-S.arena.rank)*.5+S.lv*20)});
+const arenaReward=()=>({rep:Math.max(20,Math.round(300-S.arena.rank*.3))*(fy('lunjian')?2:1),silver:Math.round((1000-S.arena.rank)*.5+S.lv*20)});
 
 /* ============ 通天塔 ============ */
 const towerCP=()=>S.tower.best>=10?Math.floor(S.tower.best/10)*10+1:1;
-function towerEnemy(f){const boss=f%10===0;const name=boss?TOWER_BOSS[(f/10-1)%TOWER_BOSS.length]:TOWER_MOB[f%TOWER_MOB.length];return mkMonster(name,f+4,boss,!boss&&f%5===0)}
+function towerEnemy(f){const boss=f%10===0;const name=boss?TOWER_BOSS[(f/10-1)%TOWER_BOSS.length]:TOWER_MOB[f%TOWER_MOB.length];
+  return applyMech(mkMonster(name,f+4,boss,!boss&&f%5===0),boss?ZONE_MECH[(f/10-1)%ZONE_MECH.length]:null)}
+/* ============ 悬赏 ============ */
+function ensureBounty(){
+  if(S.bounty.day===today())return;
+  const zs=[0,1,2,3,4,5,6];
+  S.bounty={day:today(),list:shuffle(BOUNTIES.map((_,i)=>i)).slice(0,3).map(i=>{const z=BOUNTIES[i].z;
+    return {i,tries:2,found:false,done:false,opts:shuffle([z,...shuffle(zs.filter(x=>x!==z)).slice(0,2)])}})};
+}
+const mkBounty=b=>{const B=BOUNTIES[b.i];return applyMech(mkNPC(B.n,B.sect,S.lv+1,.9,'悬赏'),B.mech)};
 function towerFight(){
   const run=S.tower.run;if(!run||run.picks||BT)return;
   const f=run.floor,m=towerEnemy(f);
@@ -1461,7 +1602,7 @@ function towerFight(){
 /* ============ 押镖 ============ */
 function escComplete(){
   const run=S.escort.run,g=ESC[run.g],rw=[];
-  const sil=(g.dep+g.rw)*S.lv;S.silver+=sil;S.gx+=20;rw.push(`<span class="q4">镖车平安抵达</span>`,`银两 +${fmt(sil)}（含押金）`,'贡献 +20');
+  const sil=Math.round((g.dep+g.rw*(fy('shangdui')?1.5:1))*S.lv);S.silver+=sil;S.gx+=20;rw.push(`<span class="q4">镖车平安抵达</span>`,`银两 +${fmt(sil)}（含押金）`,'贡献 +20');
   if(run.g===2)rw.push(addGem(pick(GEMK),2));else if(Math.random()<(run.g?.5:.2))rw.push(addGem(pick(GEMK),1));
   if(run.g>0){S.fruit+=1;rw.push('灵果 +1')}
   if(Math.random()<.35)rw.push(`客商谢礼${addGift(randomGift())}`);
@@ -1485,7 +1626,7 @@ function checkDaily(){
   if(S.sm.day!==d)genTasks();
   if(S.online.day!==d)S.online={day:d,sec:0,got:0};
   if(S.day!==d){S.day=d;S.arena.tries=10;S.arena.claimed=false;S.qiyu.tok=Math.min(9,S.qiyu.tok+3);S.escort.left=3;
-    S.kd={good:3,evil:3};S.gather={herb:3,ore:3};S.mj.left=3;S.chatDay={};save();toast('新的一天：论剑、押镖次数已重置，奇遇令 +3，师门任务已刷新')}
+    S.kd={good:3,evil:3};S.gather={herb:3,ore:3};S.mj.left=3+(fy('yidong')?2:0);S.chatDay={};if(fy('miaohui'))S.qiyu.tok=Math.min(11,S.qiyu.tok+2);save();toast('新的一天：论剑、押镖次数已重置，奇遇令 +3，师门任务已刷新')}
 }
 function checkAch(){
   for(const a of ACHS)if(!S.titles.includes(a.id)&&a.t()){S.titles.push(a.id);if(!S.title)S.title=a.id;toast(`获得称号 <span class="q4">「${a.n}」</span>`);save()}
@@ -1516,9 +1657,9 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.in
 
 /* ============ 渲染 ============ */
 const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shimen','师门'],['huodong','活动'],['fuli','福利'],['xiulian','修炼'],['jingmai','经脉'],['wuhun','武魂'],['lingshou','灵兽'],['qiyu','奇遇'],['lunjian','论剑'],['zhuangbei','装备'],
-  ['renqing','人情'],['bingqipu','兵器谱'],['dahui','武林大会'],['mijing','秘境'],['shenghuo','生活'],['dufang','赌坊']];
+  ['renqing','人情'],['bingqipu','兵器谱'],['dahui','武林大会'],['mijing','秘境'],['shenghuo','生活'],['dufang','赌坊'],['xuanshang','悬赏']];
 const TABN=Object.fromEntries(TABS);
-const GROUPS=[['角色',['renwu','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','dufang','fuli']]];
+const GROUPS=[['角色',['renwu','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','xuanshang','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','dufang','fuli']]];
 const groupOf=t=>Math.max(0,GROUPS.findIndex(g=>g[1].includes(t)));
 const brand=()=>`<header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
   ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="btn sm" data-a="dailyAll">一键日常</button><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
@@ -1527,10 +1668,13 @@ function render(){
   const app=$('#app');
   $('#news').hidden=!S;
   if(!S){app.innerHTML=brand()+renderCreate();return}
-  checkDaily();refreshLegends();updTudi();checkAch();
+  checkDaily();refreshLegends();updTudi();ensureBounty();checkUnlock();checkAch();
+  if(!isOpen(S.tab))S.tab='jianghu';
   const st=calcStats(),s=SECTS[S.sect],need=needExp(S.lv);
   const ttl=S.title&&ACHS.find(a=>a.id===S.title);
-  const badge=k=>{
+  const badge=k=>isOpen(k)?badge0(k):'';
+  const badge0=k=>{
+    if(k==='xuanshang'&&S.bounty.list.some(b=>!b.done&&(b.found||b.tries>0)))return '<span class="dot"></span>';
     if(k==='qiyu'&&(S.qiyu.tok>0||S.qiyu.cur!==null))return `<span class="badge">${S.qiyu.cur!==null?'!':S.qiyu.tok}</span>`;
     if(k==='lunjian'&&(S.arena.tries>0||!S.arena.claimed))return '<span class="dot"></span>';
     if(k==='xiulian'&&cultPending().mins>=60)return '<span class="dot"></span>';
@@ -1555,8 +1699,10 @@ function render(){
     <div class="power"><span class="lbl">战力</span><b>${fmt(st.power)}</b></div>
     <ul class="res"><li><span>银两</span>${fmt(S.silver)}</li><li><span>修为</span>${fmt(S.xw)}</li><li><span>魂玉</span>${fmt(S.jade)}</li><li><span>声望</span>${fmt(S.arena.rep)}</li><li><span>贡献</span>${fmt(S.gx)}</li><li><span>灵果</span>${S.fruit}</li><li><span>奇遇令</span>${S.qiyu.tok}</li></ul>
   </section>
+  <section class="fy" aria-label="今日江湖风云"><b>今日江湖风云</b>${todayFY().map(id=>{const f=FY.find(x=>x.id===id);return `<span><em>${f.n}</em>${f.d}</span>`}).join('')}</section>
   <nav class="groups" aria-label="分类">${GROUPS.map(([n,ts],i)=>`<button aria-pressed="${i===groupOf(S.tab)}" data-a="group" data-v="${i}">${n}${ts.some(t=>badge(t))?'<span class="dot"></span>':''}</button>`).join('')}</nav>
-  <nav class="tabs" role="tablist">${GROUPS[groupOf(S.tab)][1].map(k=>`<button role="tab" aria-selected="${S.tab===k}" data-a="tab" data-v="${k}">${TABN[k]}${badge(k)}</button>`).join('')}</nav>
+  <nav class="tabs" role="tablist">${GROUPS[groupOf(S.tab)][1].map(k=>isOpen(k)?`<button role="tab" aria-selected="${S.tab===k}" data-a="tab" data-v="${k}">${TABN[k]}${badge(k)}</button>`
+    :`<button role="tab" class="locked" aria-disabled="true" data-a="tabLocked" data-v="${k}" title="${unlockTxt(k)}">${TABN[k]}<small>${unlockTxt(k)}</small></button>`).join('')}</nav>
   <main class="panel">${(PANELS[S.tab]||PANELS.jianghu)(st)}</main>`;
 }
 
@@ -1589,7 +1735,7 @@ function onlineLive(){const o=S.online;if(o.got>=ONLINE_MAX)return '今日在线
 const PANELS={
 renwu(st){
   const s=SECTS[S.sect],mb=meridianBonus();
-  const sk=[...s.sk.map(k=>({...k,locked:k.lv>S.lv})),{...s.secret,lv:SECRET_LV,secret:true,locked:!S.secret}];
+  const lo=loadout(),known=knownSkills();
   const can=S.lv>=60&&S.rb<5;
   return `<div class="grid2">
    <section class="box"><h3>属性</h3><dl class="stats">${['hp','mp','atk','def','spd','crit','dodge'].map(k=>`<div><dt>${STN[k]}</dt><dd>${isPct(k)?st[k].toFixed(1)+'%':fmt(st[k])}</dd></div>`).join('')}</dl>
@@ -1599,7 +1745,15 @@ renwu(st){
     ${S.rb>=5?'<p class="q4">已达五转，登峰造极。</p>':`<div class="sectpick">${SECT_KEYS.map(k=>`<button aria-pressed="${(RBS||S.sect)===k}" data-a="rbSect" data-v="${k}">${SECTS[k].n}</button>`).join('')}</div>
     <div class="row"><button class="btn ${rbArm?'red':'pri'}" data-a="rebirth" ${can?'':'disabled'}>${!can?'满 60 级后可转生':rbArm?`再点一次，转生为${SECTS[RBS||S.sect].n}弟子`:'转生'}</button></div>`}</section>
   </div>
-  <section class="box"><h3>${s.n}武学 <small>战斗中自动施展</small></h3><div class="skills">${sk.map(k=>`<div class="skill ${k.locked?'locked':''} ${k.secret?'secret':''}"><div class="sk-h"><b class="${k.secret?'q4':''}">${k.n}${k.secret&&S.secret?` · ${CN[S.secret]}重`:''}</b><span>${k.secret&&!S.secret?'秘传 · 在师门求学':k.locked?`${k.lv} 级习得`:`内力 ${k.mp}${k.cd?` · 冷却 ${k.cd} 回合`:''}`}</span></div><p>${k.d}</p></div>`).join('')}</div></section>
+  <section class="box"><h3>武学搭配 <small>最多带 4 招上阵（秘传绝学另算）；他派武学可从奇遇、秘境、悬赏、武林大会和师门偷师得来</small></h3>
+   <div class="skills">${[0,1,2,3].map(i=>{const key=lo[i],k=key&&skillOf(key);
+     return k?`<div class="skill on"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>内力 ${k.mp}${k.cd?` · 冷却 ${k.cd} 回合`:''}</span></div><p>${k.d}</p>
+       <div class="row"><button class="btn sm" data-a="skUn" data-v="${key}">卸下</button></div></div>`:`<div class="skill locked"><div class="sk-h"><b>空位</b></div><p>从下面挑一招装上</p></div>`}).join('')}
+    ${S.secret?`<div class="skill secret"><div class="sk-h"><b class="q4">${s.secret.n} · ${CN[S.secret]}重</b><span>秘传 · 常驻</span></div><p>${s.secret.d}</p></div>`:''}</div>
+   <h3 style="font-size:14px;color:var(--muted);letter-spacing:1px">已会的武学（${known.length}）</h3>
+   <div class="skills">${known.map(key=>{const k=skillOf(key),on=lo.includes(key),ok=k.lv<=S.lv;
+     return `<div class="skill ${ok?'':'locked'} ${on?'on':''}"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>${ok?`内力 ${k.mp}${k.cd?` · 冷却 ${k.cd} 回合`:''}`:`${k.lv} 级可用`}</span></div><p>${k.d}</p>
+       ${ok?`<div class="row">${on?'<span class="note">已上阵</span>':`<button class="btn sm pri" data-a="skEq" data-v="${key}" ${lo.length>=4?'disabled':''}>${lo.length>=4?'先卸下一招':'装上'}</button>`}</div>`:''}</div>`}).join('')}</div></section>
   <section class="box"><h3>称号 <small>已获得 ${S.titles.length} / ${ACHS.length}，佩戴一个称号即获得它的属性</small></h3>
    <div class="achs">${ACHS.map(a=>{const on=S.titles.includes(a.id),w=S.title===a.id;return `<div class="ach ${on?'':'off'} ${w?'worn':''}"><b>${a.n}</b><span>${a.d}</span><span>${stList(a.b)}</span>${on?`<button class="btn sm ${w?'':'pri'}" data-a="wearTitle" data-v="${a.id}" ${w?'disabled':''}>${w?'佩戴中':'佩戴'}</button>`:''}</div>`}).join('')}</div></section>
   <section class="box"><h3>存档</h3><p class="note">进度保存在当前浏览器中，清除浏览器数据会丢失。换设备时先导出存档码，再到新设备上导入。</p>
@@ -1620,12 +1774,24 @@ jianghu(st){
     <ol class="path">${[0,1,2,3,4,5].map(i=>{
       const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
       const cls=[i<pr?'done':'',i===pr?'cur':'',i>pr?'lock':'',boss?'boss':''].join(' ');
-      const ep=powerOf(mkMonster(name,lv,boss,false));
+      const ep=powerOf(mkMonster(name,lv,boss,false)),mc=boss&&MECH[ZONE_MECH[zi]];
       return `<li class="${cls}"><span class="node">${boss?'首':i<pr?'✓':i+1}</span>
-        <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">击败前一个对手后开启</span>'}</div>
+        <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">击败前一个对手后开启</span>'}
+          ${mc?`<br><span class="note"><b class="q4">${mc.n}</b>：${mc.d}</span>`:''}</div>
         <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}<button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></span></li>`}).join('')}</ol>
     <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label><label><input type="checkbox" id="opt-manual" data-a="manualT" ${S.manual?'checked':''}> 手动出招（首领、论剑、武林大会、世界首领等重要战斗）</label></div>
    </section></div>`;
+},
+xuanshang(st){
+  return `<section class="box"><h3>悬赏通缉令 <small>每天张贴三名要犯。先按线索猜他藏在哪，猜对才能交手；每人只有两次机会，猜错两次他就跑了</small></h3>
+   <div class="cards">${S.bounty.list.map((b,bi)=>{const B=BOUNTIES[b.i],mc=MECH[B.mech],gone=!b.done&&!b.found&&b.tries<1;
+     return `<div class="cardx ${b.done?'on':''} ${gone?'off':''}"><div class="sh"><b>${B.n}</b><span class="note">${SECTS[B.sect].n} · ${S.lv+1} 级</span></div>
+      <span class="eff">${B.d}</span><span class="note"><b class="q4">${mc.n}</b>：${mc.d}</span>
+      <span class="fl">线索：${B.clue}</span>
+      ${b.done?'<span class="q4">已伏法</span>':gone?'<span class="muted">让他跑了</span>':b.found?`<div class="row"><span class="note">你在${ZONES[B.z].n}找到了他</span><button class="btn sm pri" data-a="bountyFight" data-v="${bi}">出手缉拿</button></div>`
+       :`<span class="note">他藏在哪？（还能猜 ${b.tries} 次）</span><div class="row" style="gap:4px">${b.opts.map(z=>`<button class="btn sm" data-a="bountyGuess" data-v="${bi},${z}">${ZONES[z].n}</button>`).join('')}</div>`}</div>`}).join('')}</div>
+   <div class="toggles"><label><input type="checkbox" id="opt-manual4" data-a="manualT" ${S.manual?'checked':''}> 手动出招</label></div>
+   <p class="note">赏金：银两、声望和一件礼物，还有三成几率从要犯身上偷学一招他门派的武功。已缉拿 ${S.stat.bounty} 人。</p></section>`;
 },
 tower(st){
   const T=S.tower,run=T.run,cp=towerCP();
@@ -1642,6 +1808,7 @@ tower(st){
   return `<section class="box"><h3>通天塔 · 第 ${f} 层 <small>最高纪录 ${T.best} 层</small></h3>
     <div class="tower-head">${pag(f)}<div style="display:flex;flex-direction:column;gap:6px">
      <div class="kv"><span>本层对手</span><span><b>${m.name}</b> <span class="muted">${m.lv} 级${m.boss?' · 塔主':m.elite?' · 精英':''}</span> ${diffChip(st.power,powerOf(m))}</span></div>
+     ${m.mech?`<p class="note"><b class="q4">${MECH[m.mech].n}</b>：${MECH[m.mech].d}</p>`:''}
      <div class="kv"><span>当前气血</span><span class="num">${Math.round(run.hp*100)}%</span></div><div class="bar hp"><i style="width:${run.hp*100}%"></i></div>
      <div class="kv"><span>本趟增益</span><span class="buffs">${run.got.length?run.got.map(n=>`<span>${n}</span>`).join(''):'<span class="muted" style="background:none;border:0">暂无</span>'}</span></div></div></div>
     ${run.picks?`<p>闯过 3 层，选一项增益：</p><div class="picks">${run.picks.map(i=>`<button class="pick" data-a="towerPick" data-v="${i}">${TOWER_BUFFS[i].n}</button>`).join('')}</div>`
@@ -1835,15 +2002,17 @@ dahui(){
 mijing(){
   const M=S.mj,run=M.run;
   if(!run)return `<section class="box"><h3>秘境探险 <small>今日剩余 ${M.left} / 3 次</small></h3>
-    <p>秘境一共 ${MJ_DEPTH} 关，每关从几扇门里选一扇进去，门后可能是埋伏、强敌、宝箱、机关、隐士或灵泉。最深处有秘境守护者。气血在关与关之间不会回满。</p>
+    <p>秘境一共 ${MJ_DEPTH} 关，每关从几扇门里选一扇进去，门后可能是埋伏、强敌、宝箱、机关、隐士、灵泉或装着遗物的古匣。最深处有秘境守护者。气血在关与关之间不会回满。</p>
+    <p class="note">每次进去的秘境主题随机：${MJ_THEME.map(t=>`${t.n}（${t.d}）`).join('、')}。遗物三选一，只在这一趟有效，几件遗物叠在一起往往很强。</p>
     <p class="note">通关必得武魂、宝石、魂玉和炼丹锻造用的材料，还有机会找到兵器谱名器「鱼肠剑」。中途力竭也能把已得的东西带出来。</p>
     <div class="row"><button class="btn pri" data-a="mjStart" ${M.left<1?'disabled':''}>进入秘境</button></div></section>`;
-  const boss=run.opts[0]==='boss';
-  return `<section class="box"><h3>秘境 · ${boss?'最深处':`第 ${run.depth} / ${MJ_DEPTH} 关`}</h3>
+  const boss=run.opts[0]==='boss',th=MJ_THEME.find(x=>x.id===run.theme),rl=run.relics||[];
+  return `<section class="box"><h3>秘境${th?`「${th.n}」`:''} · ${boss?'最深处':`第 ${run.depth} / ${MJ_DEPTH} 关`} <small>${th?th.d:''}</small></h3>
     <div class="kv"><span>当前气血</span><span class="num">${Math.round(run.hp*100)}%</span></div><div class="bar hp"><i style="width:${run.hp*100}%"></i></div>
-    ${run.b.atk||run.b.def?`<div class="buffs">${run.b.atk?`<span>攻击 +${Math.round(run.b.atk*100)}%</span>`:''}${run.b.def?`<span>防御 +${Math.round(run.b.def*100)}%</span>`:''}</div>`:''}
-    <p>${boss?'前方石门紧闭，门后传来沉重的呼吸声。门边有一眼灵泉，你喝了几口，气血回复了三成。':'面前有几扇门，你走哪一扇？'}</p>
-    <div class="picks">${run.opts.map((t,i)=>`<button class="pick" data-a="mjGo" data-v="${i}"><b>${RT[t].n}</b><br><span class="note">${RT[t].d}</span></button>`).join('')}</div>
+    ${run.b.atk||run.b.def||rl.length?`<div class="buffs">${run.b.atk?`<span>攻击 +${Math.round(run.b.atk*100)}%</span>`:''}${run.b.def?`<span>防御 +${Math.round(run.b.def*100)}%</span>`:''}${rl.map(k=>`<span title="${RELICS[k].d}">${RELICS[k].n}：${RELICS[k].d}</span>`).join('')}</div>`:''}
+    ${run.rpick?`<p>古匣里有几件遗物，只能带走一件（只在这次秘境里有效）：</p><div class="picks">${run.rpick.map(k=>`<button class="pick" data-a="mjRelic" data-v="${k}"><b>${RELICS[k].n}</b><br><span class="note">${RELICS[k].d}</span></button>`).join('')}</div>`
+    :`<p>${boss?'前方石门紧闭，门后传来沉重的呼吸声。门边有一眼灵泉，你喝了几口，气血回复了三成。':'面前有几扇门，你走哪一扇？'}</p>
+    <div class="picks">${run.opts.map((t,i)=>`<button class="pick" data-a="mjGo" data-v="${i}"><b>${RT[t].n}</b><br><span class="note">${RT[t].d}</span></button>`).join('')}</div>`}
     ${run.log.length?`<ul class="elog">${run.log.map(l=>`<li>${l}</li>`).join('')}</ul>`:''}
     <div class="row"><button class="btn" data-a="mjQuit">退出秘境</button></div></section>`;
 },
@@ -1918,7 +2087,16 @@ zhuangbei(){
 /* ============ 操作 ============ */
 const ACT={
   tab(v){S.tab=v;S.gTab[groupOf(v)]=v;resetArm=false;rbArm=false;gemPick=null;save();render();window.scrollTo({top:0})},
-  group(v){const g=GROUPS[+v];if(!g)return;const t=S.gTab[+v];ACT.tab(g[1].includes(t)?t:g[1][0])},
+  group(v){const g=GROUPS[+v];if(!g)return;const t=S.gTab[+v];const open=g[1].filter(isOpen);
+    if(!open.length){toast(`这一类玩法还没开启：${g[1].map(k=>`${TABN[k]}（${unlockTxt(k)}）`).join('、')}`);return}
+    ACT.tab(open.includes(t)?t:open[0])},
+  tabLocked(k){if(UNLOCK[k])toast(`「${TABN[k]}」${unlockTxt(k)}`)},
+  skEq(key){const lo=loadout();if(lo.length>=4||lo.includes(key)||!usable(key))return;S.loadout=[...lo,key];save();render()},
+  skUn(key){S.loadout=loadout().filter(k=>k!==key);save();render()},
+  bountyGuess(v){const [bi,z]=v.split(',').map(Number);const b=S.bounty.list[bi];if(!b||b.done||b.found||b.tries<1)return;const B=BOUNTIES[b.i];
+    if(z===B.z){b.found=true;save();render();toast(`你在${ZONES[z].n}找到了${B.n}的踪迹！`)}
+    else{b.tries--;save();render();toast(b.tries?`${ZONES[z].n}扑了个空，再想想线索。`:`又扑空了。${B.n}已经逃之夭夭。`)}},
+  bountyFight(v){const b=S.bounty.list[+v];if(!b||b.done||!b.found||BT)return;startBattle(mkBounty(b),{type:'bounty',bi:+v,title:`悬赏 · ${BOUNTIES[b.i].n}`})},
   manualT(_,el){S.manual=el.checked;save()},
   mPick(v){if(!BT||!BT.manual||BT.done)return;const c=v==='auto'?'auto':(+v===0?null:BT.A.skills[+v-1]);manualRun(BT.gen.next(c))},
   pickSect(v){window._cname=$('#cname').value;CS=v;render()},
@@ -1958,7 +2136,7 @@ const ACT={
     S.stat.qiyu++;track('qiyu');if(ch.k)S.karma+=ch.k;
     const r=ch.fn();
     if(r&&typeof r==='object'&&r.battle){save();render();startBattle(r.battle,{type:'event',title:ev.t,win:r.win,lose:r.lose});return}
-    let rr=r;if(Math.random()<.3)rr+=`　回程路上，你还捡到了${addGift(randomGift())}。`;
+    let rr=r;if(Math.random()<(fy('miaohui')?.6:.3))rr+=`　回程路上，你还捡到了${addGift(randomGift())}。`;
     logQ(ev.t,rr);save();render();toast(ev.t+'：'+rr)},
   arenaFight(v){if(S.arena.tries<1||BT)return;const f=arenaFoe(+v);startBattle(mkNPC(f.name,f.sect,f.lv,f.m),{type:'arena',foe:f,title:`论剑 · 挑战第 ${f.rank} 名`})},
   arenaClaim(){if(S.arena.claimed)return;const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;save();render();toast(`领取俸禄：声望 +${r.rep}，银两 +${fmt(r.silver)}`)},
@@ -1979,12 +2157,13 @@ const ACT={
     if(S.tAuto)setTimeout(()=>{if(S.tAuto&&S.tower.run&&!S.tower.run.picks&&!BT)towerFight()},400)},
   towerQuit(){if(!S.tower.run)return;const f=S.tower.run.floor;S.tower.run=null;save();render();toast(`你在第 ${f} 层前收手离开`)},
   /* 师门 */
-  smClaim(v){const x=S.sm.tasks[+v];if(!x||x.got||x.cur<x.need)return;x.got=true;S.gx+=50;const g=S.lv*40;S.silver+=g;save();render();toast(`贡献 +50，银两 +${fmt(g)}`)},
+  smClaim(v){const x=S.sm.tasks[+v];if(!x||x.got||x.cur<x.need)return;x.got=true;const gx=fy('shimen')?100:50;S.gx+=gx;const g=S.lv*40;S.silver+=g;save();render();toast(`贡献 +${gx}，银两 +${fmt(g)}`)},
   smBonus(){if(S.sm.bonus||S.sm.tasks.filter(x=>x.got).length<4)return;S.sm.bonus=true;S.gx+=100;const t=addGem(pick(GEMK),1);save();render();toast(`全勤奖：贡献 +100，${t}`)},
   secret(){if(!secretOpen()||S.secret>=5)return;const c=S.secret?600*S.secret:800;if(S.gx<c)return;S.gx-=c;S.secret++;save();render();
     toast(S.secret===1?`习得秘传「${SECTS[S.sect].secret.n}」`:`「${SECTS[S.sect].secret.n}」修至第${CN[S.secret]}重`)},
   smShop(k){const w=SM_SHOP.find(x=>x.k===k);if(!w||S.gx<w.p)return;S.gx-=w.p;let m='';
     if(k==='gem')m=addGem(pick(GEMK),1);if(k==='gem2')m=addGem(pick(GEMK),2);if(k==='fruit'){S.fruit+=5;m='灵果 +5'}if(k==='tok'){S.qiyu.tok++;m='奇遇令 +1'}
+    if(k==='steal'){m=learnSkill();if(!m){S.gx+=w.p;m='天下武功你都已学会，贡献已退还'}}
     save();render();toast(m)},
   /* 活动 */
   escStart(v){const g=ESC[+v],dep=g.dep*S.lv;if(S.escort.run||S.escort.left<1||S.silver<dep)return;S.silver-=dep;S.escort.left--;
@@ -2060,11 +2239,11 @@ const ACT={
     const s=doSign();if(s)o.push('签到');
     let c=0;while(doOnline())c++;if(c)o.push(`在线宝箱 ${c} 个`);
     const p=cultPending();if(p.exp>=1||p.xw>=1){S.cult.last=Date.now();S.xw+=p.xw;gainExp(p.exp);track('collect');o.push('打坐收功')}
-    if(!S.arena.claimed){const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;o.push('论剑俸禄')}
-    const m=doSmClaims();if(m.n)o.push(`师门任务 ${m.n} 个`);if(m.t)o.push('师门全勤奖');
+    if(isOpen('lunjian')&&!S.arena.claimed){const r=arenaReward();S.arena.claimed=true;S.arena.rep+=r.rep;S.silver+=r.silver;o.push('论剑俸禄')}
+    const m=isOpen('shimen')?doSmClaims():{n:0,t:''};if(m.n)o.push(`师门任务 ${m.n} 个`);if(m.t)o.push('师门全勤奖');
     if(S.tudi.length&&S.xj!==today()){const g=S.tudi.reduce((s,t)=>s+t.lv*20,0);S.silver+=g;S.xj=today();o.push('徒弟孝敬')}
-    let gh=0;for(const t of ['herb','ore'])while(S.gather[t]>0){doGather(t);gh++}if(gh)o.push(`采集 ${gh} 次`);
-    let ch=0;for(const id in COMPS)if(!S.chatDay[id]&&S.comps[id]<100){S.chatDay[id]=1;addFavor(id,3);ch++}if(ch)o.push(`与 ${ch} 位江湖人物闲聊`);
+    let gh=0;if(isOpen('shenghuo'))for(const t of ['herb','ore'])while(S.gather[t]>0){doGather(t);gh++}if(gh)o.push(`采集 ${gh} 次`);
+    let ch=0;if(isOpen('renqing'))for(const id in COMPS)if(!S.chatDay[id]&&S.comps[id]<100){S.chatDay[id]=1;addFavor(id,3);ch++}if(ch)o.push(`与 ${ch} 位江湖人物闲聊`);
     if(!o.length){toast('今天能领的都领过了');return}
     save();render();toast(`已领取：${o.join('、')}。${diffTxt(a)}`)},
   shouchong(){if(SV||BT)return;S.stat.sc++;const L=[['师父',SC_LINES[Math.min(S.stat.sc,SC_LINES.length)-1]]];
@@ -2081,7 +2260,7 @@ const ACT={
   wearTitle(id){if(!S.titles.includes(id))return;S.title=id;save();render()},
   rbSect(k){RBS=k;rbArm=false;render()},
   rebirth(){if(S.lv<60||S.rb>=5)return;if(!rbArm){rbArm=true;render();return}rbArm=false;
-    const ns=RBS||S.sect;S.rb++;S.sect=ns;S.lv=1;S.exp=0;S.mer={ren:0,du:0};S.train={hp:0,mp:0,atk:0,def:0};S.prog=[0,0,0,0,0,0,0];S.zSel=0;S.cult={last:Date.now(),xf:1};S.tower.run=null;
+    const ns=RBS||S.sect;if(ns!==S.sect){SECTS[S.sect].sk.forEach((_,i)=>{const k=S.sect+':'+i;if(!S.learned.includes(k))S.learned.push(k)})}S.loadout=null;S.rb++;S.sect=ns;S.lv=1;S.exp=0;S.mer={ren:0,du:0};S.train={hp:0,mp:0,atk:0,def:0};S.prog=[0,0,0,0,0,0,0];S.zSel=0;S.cult={last:Date.now(),xf:1};S.tower.run=null;
     RBS=null;S.tab='jianghu';save();render();newsPush(`【${esc(S.name)}】完成${CN[S.rb]}转，改投${SECTS[ns].n}门下！`);
     showStory([['旁白',`你散去一身功力，从头练起。这一次，你是${SECTS[ns].n}弟子。`],['旁白',`${CN[S.rb]}转完成：门派基础属性与成长 +${S.rb*20}%。`]],null,()=>render())},
   /* 装备 */
@@ -2136,16 +2315,21 @@ const ACT={
   /* 武林大会与秘境 */
   dhFight(){ensureDH();const D=S.dh;if(D.out||D.r>=4||BT)return;const [n,s]=DH_NPC[D.opp[D.r]];
     startBattle(mkNPC(n,s,S.lv+D.r,DH_M[D.r]),{type:'dahui',title:`武林大会 · ${DH_ROUND[D.r]}`})},
-  mjStart(){const M=S.mj;if(M.left<1||M.run)return;M.left--;M.run={depth:1,hp:1,b:{atk:0,def:0},opts:mjRoll(),log:[]};save();render()},
+  mjStart(){const M=S.mj;if(M.left<1||M.run)return;M.left--;M.run={depth:1,hp:1,b:{atk:0,def:0},opts:[],log:[],relics:[],rpick:null,theme:pick(MJ_THEME).id};M.run.opts=mjRoll();
+    save();render();const th=MJ_THEME.find(x=>x.id===M.run.theme);toast(`这次误入的是「${th.n}」：${th.d}`)},
   mjQuit(){if(!S.mj.run)return;S.mj.run=null;save();render();toast('你退出了秘境')},
-  mjGo(v){const run=S.mj.run;if(!run||BT)return;const t=run.opts[+v];if(!t)return;
+  mjRelic(k){const run=S.mj.run;if(!run||!run.rpick||!run.rpick.includes(k))return;run.relics=run.relics||[];run.relics.push(k);run.rpick=null;
+    run.log.unshift(`得到遗物「${RELICS[k].n}」：${RELICS[k].d}`);run.log=run.log.slice(0,6);save();render()},
+  mjGo(v){const run=S.mj.run;if(!run||BT||run.rpick)return;const t=run.opts[+v];if(!t)return;
     if(t==='fight'||t==='elite'||t==='boss'){
-      const m=t==='boss'?mkMonster('秘境守护者',Math.max(1,S.lv+MJ_LV.boss),true,false):mkMonster(pick(MJ_MOB),Math.max(1,S.lv+MJ_LV[t]),false,t==='elite');
-      startBattle(m,{type:'mijing',room:t,manualOK:t==='boss',title:`秘境 · ${t==='boss'?'最深处':`第 ${run.depth} 关`}`,
-        prep:A=>{A.atk*=1+run.b.atk;A.def*=1+run.b.def;A.hp=Math.max(1,Math.round(A.maxhp*run.hp))}});return}
+      const duku=run.theme==='duku'&&t!=='boss';
+      const m=t==='boss'?mkMonster('秘境守护者',Math.max(1,S.lv+MJ_LV.boss),true,false):mkMonster(pick(MJ_MOB),Math.max(1,S.lv+MJ_LV[t]-(duku?1:0)),false,t==='elite');
+      if(duku)applyMech(m,'venom');
+      startBattle(m,{type:'mijing',room:t,manualOK:t==='boss',title:`秘境 · ${t==='boss'?'最深处':`第 ${run.depth} 关`}`,prep:mjPrep(run)});return}
     const o=[];
+    if(t==='relic'){mjRelicPick();o.push(run.rpick?'打开古匣，里面有几件遗物，只能带走一件':'古匣里空空如也')}
     if(t==='chest'){const r=Math.random();if(r<.3){const g=S.lv*30;S.silver+=g;o.push(`银两 +${g}`)}else if(r<.6)o.push(addMat(randHerb(),2),addMat(randOre(),1));else if(r<.85)o.push(addGem(pick(GEMK),1));else{S.jade+=20;o.push('魂玉 +20')}}
-    if(t==='chest'&&Math.random()<.35)o.push(`礼物${addGift(randomGift())}`);
+    if(t==='chest'&&Math.random()<(fy('yidong')?.7:.35))o.push(`礼物${addGift(randomGift())}`);
     if(t==='trap'){if(Math.random()*100<30+calcStats().dodge)o.push('你身形一闪，躲过了机关');else{run.hp=Math.max(.05,run.hp-.2);o.push('暗箭射中了你，气血 -20%')}}
     if(t==='sage'){const k=Math.random()<.5?'atk':'def';run.b[k]+=.1;o.push(`隐士指点一二，本次秘境${k==='atk'?'攻击':'防御'} +10%`)}
     if(t==='spring'){run.hp=Math.min(1,run.hp+.4);o.push('饮下灵泉，气血回复 40%')}
