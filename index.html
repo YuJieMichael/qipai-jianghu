@@ -374,6 +374,12 @@ button.gem{cursor:pointer}
 .die b{font-size:28px;font-weight:700;font-family:Georgia,"Times New Roman",serif;line-height:1}
 .die i{position:absolute;right:4px;top:2px;font-style:normal;font-size:12px;font-weight:700;color:var(--cinnabar)}
 .die small{position:absolute;left:4px;bottom:2px;font-size:10px;color:#8d6b2b}
+.die i.inn{right:auto;left:4px;color:#2f7d5f}
+.die.mini{width:34px;height:34px;border-radius:7px;cursor:default;box-shadow:0 2px 0 #b3a47e}
+.die.mini b{font-size:17px}
+.die.mini i{font-size:10px;top:0}
+span.die{cursor:default}
+.blog .cbx{color:var(--gold);font-weight:700;margin:0 2px}
 .die.held{background:#ffe7a1;border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 3px 0 #b38a30;transform:translateY(-3px)}
 .die.rolled{animation:roll .4s ease-out}
 @keyframes roll{0%{transform:rotate(-30deg) scale(.7)}60%{transform:rotate(8deg)}100%{transform:none}}
@@ -599,6 +605,7 @@ const PAGES={
  xi:{n:'吸',c:'吸',d:'这一招吸血 +6%'},
  chun:{n:'回春',c:'春',d:'出招后回复 3% 气血'},
  jin:{n:'金刚',c:'金',d:'防御 +12%，持续到下回合'},
+ wan:{n:'万能',c:'万',d:'这一面可以当作任意点数'},
 };
 const PAGE_K=Object.keys(PAGES);
 function addPage(k,n=1){k=k||pick(PAGE_K);S.pages[k]=(S.pages[k]||0)+n;return `<span class="q3">残页「${PAGES[k].n}」</span>${n>1?' ×'+n:''}`}
@@ -670,7 +677,7 @@ const WTYPES={
  dao:{n:'刀',d:'一对、两对伤害 +25%',w:['钢刀','弯刀','柳叶刀','雁翎刀']},
  gun:{n:'棍',d:'葫芦、四条、豹子伤害 +30%',w:['齐眉棍','伏虎棍','降魔杖','青竹杖']},
  zhang:{n:'掌',d:'三条伤害 +35%，并有 15% 几率震晕',w:['铁掌套','金丝手套','冰蚕掌套']},
- shan:{n:'扇',d:'点数带来的伤害加成翻倍',w:['铁骨扇','玉箫','判官笔']},
+ shan:{n:'扇',d:'点数总和超过 15 的部分，每点伤害 +3%',w:['铁骨扇','玉箫','判官笔']},
  anqi:{n:'暗器',d:'散招变成三连发；多段攻击每段伤害 +10%',w:['袖箭匣','飞蝗石囊','机关匣','梅花针']},
 };
 const WT_K=Object.keys(WTYPES);
@@ -954,7 +961,7 @@ let resetArm=false, rbArm=false, sellAllArm=false;
 let BT=null, SV=null, gemPick=null;
 
 function newGame(name,sect){
-  return {v:3,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,learned:[],loadout:null,bounty:{day:'',list:[]},unlocked:{},dice:blankDice(),pages:{jianqi:2,du:1},sand:0,gacha:{tickets:3,pity:0,free:'',total:0,log:[]},
+  return {v:4,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,learned:[],loadout:null,bounty:{day:'',list:[]},unlocked:{},dice:blankDice(),pages:{jianqi:2,du:1},sand:0,gacha:{tickets:3,pity:0,free:'',total:0,log:[]},
     train:{hp:0,mp:0,atk:0,def:0},bonus:{hp:0,mp:0,atk:0,def:0,spd:0,crit:0,dodge:0},
     mer:{ren:0,du:0},equip:{wpn:null,arm:null,acc:null,boot:null},bag:[],gems:{},reforge:null,
     souls:[],soulSlots:[null,null,null],pets:[],pet:null,secret:0,
@@ -978,6 +985,9 @@ function migrate(o){
   if(o.tab==='xingnang')o.tab='zhuangbei';
   if(!o.sm.tasks.length)o.sm.day='';
   if((o.v||1)<3){for(const k in UNLOCK)o.unlocked[k]=1;o.v=3} // 老存档已经玩过这些玩法，不再重新上锁
+  if(o.v<4){ // 装备特效词条并入骰面印记：每条词条折成一张残页
+    for(const it of [...Object.values(o.equip),...o.bag])if(it&&it.fx&&it.fx.length){for(let n=0;n<it.fx.length;n++){const k=['jianqi','bao','du','huo','han','xi','chun','jin','wan'][Math.floor(Math.random()*9)];o.pages[k]=(o.pages[k]||0)+1}it.fx=[]}
+    o.loadout=null;o.v=4}
   return o;
 }
 /* 玩法按进度解锁：一旦开启就永久保留 */
@@ -1048,7 +1058,7 @@ function mkItem(ilv,q,slot,opt={}){
   else noun=pick(NOUN[slot]);
   const set=opt.set!==undefined?opt.set:(q>=3&&Math.random()<.2?pick(SET_K):null);
   const name=set?`${SETS[set].n}·${noun}`:TIER[Math.min(5,Math.floor(ilv/10))]+noun;
-  return {uid:uid(),slot,q,ilv,name,st:rollExtras(mainStats(slot,q,ilv),q,ilv),en:0,star:0,gm:Array(SOCK[q]).fill(null),wt,set,fx:q>=3?shuffle(AFX_K).slice(0,q-2):[]};
+  return {uid:uid(),slot,q,ilv,name,st:rollExtras(mainStats(slot,q,ilv),q,ilv),en:0,star:0,gm:Array(SOCK[q]).fill(null),wt,set,fx:[]};
 }
 const sockets=it=>{if(!it.gm)it.gm=Array(SOCK[it.q]).fill(null);return it.gm};
 function itemStats(it){
@@ -1064,7 +1074,7 @@ const itemName=it=>esc(it.name)+(it.en?` +${it.en}`:'')+(it.star?` ${'★'.repea
 const itemTag=it=>`<b class="q${it.q}">${itemName(it)}</b>`;
 // 物品的类型、套装、词条说明，一行
 function itemExtra(it){const o=[];const wt=itemWt(it);if(wt)o.push(`<span class="wtag">${WTYPES[wt].n}</span>${WTYPES[wt].d}`);
-  if(it.set)o.push(`<span class="stag">${SETS[it.set].n}套</span>`);for(const k of it.fx||[])o.push(`<span class="ftag">${AFFIX[k].n}</span>${AFFIX[k].d}`);return o.join('　')}
+  if(it.set)o.push(`<span class="stag">${SETS[it.set].n}套</span>`);return o.join('　')}
 function setCounts(){const c={};for(const sl of SLOTS){const it=S.equip[sl];if(it&&it.set)c[it.set]=(c[it.set]||0)+1}return c}
 
 /* ============ 天机阁抽奖 ============
@@ -1126,7 +1136,7 @@ function gainExp(e){
     const si=SOUL_SLOT_LV.indexOf(S.lv);if(si>=0&&!S.rb)msgs.push(`第 ${si+1} 个武魂槽开启`);
     const mi=MER_REQ.indexOf(S.lv);if(mi>0)msgs.push(`可冲击经脉第 ${LAYER[mi]} 重`);
     if(S.lv===SECRET_LV&&!S.rb)msgs.push('可向师门求学秘传绝学');
-    if(S.lv===60)msgs.push('已臻化境，可以转生');
+    if(S.lv===60)msgs.push('已臻化境');
   }
   if(S.lv>=60)S.exp=0;
   return msgs;
@@ -1145,9 +1155,9 @@ function mkMonster(name,lv,boss,elite){
   let hp=(60+lv*36+lv*lv*.6)*f,atk=(8+lv*4.2+lv*lv*.04)*f,def=(4+lv*2.4)*f,spd=7+lv*1.05;
   if(boss){hp*=2.6;atk*=1.25;def*=1.2;spd*=1.1}
   if(elite){hp*=1.6;atk*=1.12;def*=1.1}
-  hp=Math.round(hp);
+  hp=Math.round(hp*MON_HPF);
   return {name,lv,mon:true,boss:!!boss,elite:!!elite,maxhp:hp,hp,maxmp:100,mp:100,atk,def,spd,crit:boss?10:5,dodge:boss?6:3,
-    skills:[{n:boss?'绝技':'狠击',lv:1,mp:0,cd:boss?2:3,mult:boss?1.8:1.5,stun:boss?.15:0}],cds:{},buffs:[],dots:[]};
+    passives:[{n:boss?'绝技':'狠击',on:[3,4],dmg:0,stun:boss?.15:0}],cds:{},buffs:[],dots:[]};
 }
 // 人形对手以玩家当前属性为底，乘以强度系数 m，再按所属门派的属性偏向微调
 function mkNPC(name,sect,lv,m,tag){
@@ -1155,7 +1165,7 @@ function mkNPC(name,sect,lv,m,tag){
   for(const k of ['hp','mp','atk','def','spd'])o[k]=me[k]*m*Math.sqrt(s.grow[k]/mine.grow[k]);
   return {name,lv,sectN:tag||s.n,maxhp:Math.round(o.hp),hp:Math.round(o.hp),maxmp:Math.round(o.mp),mp:Math.round(o.mp),atk:o.atk,def:o.def,spd:o.spd,
     crit:clamp(me.crit+s.base.crit-mine.base.crit,3,60),dodge:clamp(me.dodge+s.base.dodge-mine.base.dodge,2,40),
-    skills:s.sk.filter(k=>k.lv<=lv).sort((x,y)=>skPow(x)-skPow(y)),cds:{},buffs:[],dots:[]};
+    dset:SECT_DICE[sect],passives:s.sk.map((k,i)=>k.lv<=lv?passiveOf(k,[SK_ON[i]]):null).filter(Boolean),cds:{},buffs:[],dots:[]};
 }
 function secretSkill(){const s=SECTS[S.sect].secret;return {...s,lv:SECRET_LV,mult:s.mult*(1+.12*(S.secret-1))}}
 /* 武学搭配：本门武学 key 为 own:序号，偷学的他派武学 key 为 门派:序号 */
@@ -1174,17 +1184,16 @@ function learnSkill(sect){
 }
 function mkPlayer(){
   const st=calcStats(),s=SECTS[S.sect];
-  const skills=loadout().map(skillOf);
-  const secret=S.secret&&secretOpen()?secretSkill():null;
+  const passives=loadout().map(key=>passiveOf(skillOf(key),[SK_ON[+key.split(':')[1]]]));
+  if(S.secret&&secretOpen())passives.push(passiveOf(secretSkill(),[6,7],1.5)); // 秘传：四条、豹子触发
   const p=S.pet&&S.pets.find(x=>x.id===S.pet);
   const lg=new Set(SLOTS.map(x=>S.equip[x]&&S.equip[x].lg).filter(Boolean));
   const A={name:S.name,lv:S.lv,sectN:s.n,maxhp:st.hp,hp:st.hp,maxmp:st.mp,mp:st.mp,atk:st.atk,def:st.def,spd:st.spd,crit:st.crit,dodge:st.dodge,
-    skills,secret,faces:S.dice,cds:{},buffs:[],dots:[],pet:p?{id:p.id,n:PETS[p.id].n,pw:1+.06*(p.lv-1)}:null,lg,comp:S.comp&&S.comps[S.comp]>=100?S.comp:null};
+    passives,dset:SECT_DICE[S.sect],faces:S.dice,cds:{},buffs:[],dots:[],pet:p?{id:p.id,n:PETS[p.id].n,pw:1+.06*(p.lv-1)}:null,lg,comp:S.comp&&S.comps[S.comp]>=100?S.comp:null};
   if(lg.has('xuantie'))A.spd*=.85;
   if(S.pills.kb>0)A.atk*=1.25;
   if(S.pills.hx>0)A.def*=1.3;
   const eq=SLOTS.map(x=>S.equip[x]).filter(Boolean),sc=setCounts();
-  A.efx={};eq.forEach(it=>(it.fx||[]).forEach(k=>A.efx[k]=(A.efx[k]||0)+1));
   A.set4=new Set(Object.keys(sc).filter(k=>sc[k]>=4));A.wt=itemWt(S.equip.wpn);
   return A;
 }
@@ -1195,43 +1204,67 @@ function eff(f,k){
   if(k==='dodge')return f.dodge+f.buffs.reduce((s,b)=>s+(b.dodge||0),0);
   return f[k]*(1+f.buffs.reduce((s,b)=>s+(b[k]||0),0));
 }
-function chooseSkill(a){
-  const av=a.skills.filter(k=>k.mp<=a.mp&&!(a.cds[k.n]>0));
-  const heal=av.find(k=>k.heal&&a.hp/a.maxhp<.55);if(heal)return heal;
-  const buff=av.find(k=>k.buff&&!k.mult&&!k.heal&&!a.buffs.some(b=>b.src===k.n));if(buff)return buff;
-  const dmg=av.filter(k=>k.mult).sort((x,y)=>y.mult*(y.hits||1)-x.mult*(x.hits||1));
-  return dmg[0]||null;
-}
 const tagsOf=f=>{const t=f.buffs.map(b=>b.src);if(f.mech)t.unshift(MECH[f.mech].n);if(f.rage)t.push('狂暴');f.dots.forEach(d=>t.push(d.l));if(f.stun)t.push('晕眩');return t};
 const hasRl=(f,id)=>!!(f.rl&&f.rl.has(id));
 const afx=(f,k)=>(f.efx&&f.efx[k])||0;           // 身上装备某个特效词条的条数
 const hasSet4=(f,k)=>!!(f.set4&&f.set4.has(k));  // 是否穿齐某套装 4 件
 
 /* ============ 掷骰出招 ============
-   每回合掷 5 颗骰子，可锁定一部分重掷（免费 2 次，之后每次耗 25% 内力）。
-   骰型决定招式：武学搭配第 1~4 位依次对应 一对/两对/三条/顺子；葫芦、四条、豹子打出最强一招（有秘传出秘传）。 */
+   伤害 = 攻击 × 骰型倍率（再算防御、暴击等），倍率就是界面上写的那个数。
+   每回合掷 5 颗本门骰子，免费重掷 1 次，之后每次耗 25% 内力。
+   门派武学是被动：掷出对应骰型时触发；大骰型同时触发它包含的小骰型（葫芦里有三条，也有一对）。 */
 const DIE='⚀⚁⚂⚃⚄⚅';
-const COMBO=[{n:'散招',b:1},{n:'一对',b:1},{n:'两对',b:1.05},{n:'三条',b:1.1},{n:'顺子',b:1.2},{n:'葫芦',b:1.5},{n:'四条',b:2},{n:'豹子',b:3}];
-const SLOT_COMBO=['一对','两对','三条','顺子'];
-const MON_B=[1,1.1,1.2,1.35,1.5,1.7,2,2.5];
-const DSCALE={p:.66,m:.83}; // 掷骰后整体伤害的校准系数（见数值测试）
-const d6=()=>1+Math.floor(Math.random()*6);
+const COMBO=[{n:'散招',m:1,mv:'随手一击'},{n:'一对',m:1.5,mv:'双峰贯耳'},{n:'两对',m:2,mv:'左右开弓'},{n:'三条',m:3,mv:'三花聚顶'},
+  {n:'顺子',m:4,mv:'剑气纵横'},{n:'葫芦',m:5,mv:'龙虎交汇'},{n:'四条',m:7,mv:'四象归一'},{n:'豹子',m:10,mv:'万剑归宗'}];
+const CONT=[[],[1],[1,2],[1,3],[4],[1,2,3,5],[1,2,3,6],[1,2,3,7]]; // 每种骰型包含哪些骰型
+const TN=['散招','一对','两对','三条','顺子','葫芦','四条','豹子'];
+const SK_ON=[1,2,3,4];                       // 门派四招依次在 一对/两对/三条/顺子 触发
+const MON_B=[.9,1,1.1,1.2,1.3,1.45,1.6,2]; // 怪物没有武学，骰型倍率温和些
+const MON_HPF=2.1; // 怪物血量系数：骰型倍率拉开后用它把战斗节奏调回来（见数值测试）
+const STD_FACES=[1,2,3,4,5,6];
+// 每个门派的骰子不一样：点数分布和自带印记各有特色（inn 的键是骰面序号 0~5）
+const SECT_DICE={
+ shaolin:{n:'金刚骰',faces:[1,2,3,4,4,5],inn:{},d:'两面 4 点、没有 6 点：更容易成对，但只能掷出 1~5 的顺子'},
+ wudang:{n:'太极骰',faces:STD_FACES,inn:{},rr:1,d:'标准六面，阴阳流转：每回合多 1 次免费重掷'},
+ emei:{n:'莲花骰',faces:STD_FACES,inn:{0:'chun',2:'xi'},d:'1 点自带「回春」，3 点自带「吸」，掷小点也能回血'},
+ gaibang:{n:'打狗骰',faces:STD_FACES,inn:{0:'bao',5:'jianqi'},d:'1 点自带「暴」，6 点自带「剑气」：掷大掷小都有好处'},
+ mingjiao:{n:'圣火骰',faces:STD_FACES,inn:{5:'huo'},d:'6 点自带「火」，凑出 6 点的大骰型时火势最猛'},
+ tangmen:{n:'机关骰',faces:STD_FACES,inn:{0:'du',5:'bao'},d:'1 点自带「毒」，6 点自带「暴」'},
+ tianshan:{n:'寒冰骰',faces:STD_FACES,inn:{0:'han',1:'han'},d:'1 点和 2 点自带「寒」'},
+};
+const faceVal=(f,i)=>(f.dset?f.dset.faces:STD_FACES)[i];
 function evalDice(d){
   const c=[0,0,0,0,0,0,0];d.forEach(v=>c[v]++);const cs=c.slice(1).filter(Boolean).sort((a,b)=>b-a);
   const u=[...new Set(d)].sort((a,b)=>a-b).join(''),sum=d.reduce((a,b)=>a+b,0);
   const t=cs[0]===5?7:cs[0]===4?6:cs[0]===3&&cs[1]===2?5:u==='12345'||u==='23456'?4:cs[0]===3?3:cs[0]===2&&cs[1]===2?2:cs[0]===2?1:0;
   return {t,n:COMBO[t].n,sum};
 }
-const skPow=k=>k?(k.mult||0)*(k.hits||1)+(k.heal?1.2:0)+(k.buff&&!k.mult?1:0):0;
-function skillForTier(f,t){
-  if(f.mon)return {s:t>=3?f.skills[0]:null,b:MON_B[t]*DSCALE.m};
-  const L=f.skills||[],b=COMBO[t].b*DSCALE.p;
-  if(t===0)return {s:null,b};
-  if(t<=4){let i=t-1;while(i>=0&&!L[i])i--;return {s:i>=0?L[i]:null,b}}
-  return {s:f.secret||L.filter(Boolean).reduce((m,k)=>!m||skPow(k)>skPow(m)?k:m,null),b};
+// 某颗骰子当前朝上那一面的印记：自己刻的 + 门派骰子自带的
+function faceMarks(f,i){const o=[],idx=f.fi[i];const ins=f.faces&&f.faces[i]&&f.faces[i][idx];if(ins)o.push(ins);const inn=f.dset&&f.dset.inn[idx];if(inn)o.push(inn);return o}
+// 「万能」面可以当任意点数：最多试两颗，取最好的骰型
+function evalBest(f){
+  const w=[];f.dice.forEach((v,i)=>{if(faceMarks(f,i).includes('wan')&&w.length<2)w.push(i)});
+  if(!w.length)return evalDice(f.dice);
+  let best=null;for(let c=0;c<Math.pow(6,w.length);c++){const d=f.dice.slice();let x=c;for(const i of w){d[i]=1+x%6;x=Math.floor(x/6)}const e=evalDice(d);if(!best||e.t>best.t||(e.t===best.t&&e.sum>best.sum))best={...e,dice:d}}
+  return best;
 }
+const skPow=k=>k?(k.mult||0)*(k.hits||1)+(k.heal?1.2:0)+(k.buff&&!k.mult?1:0):0;
+// 把一招武学变成「掷出某骰型时触发」的被动效果
+function passiveOf(k,on,mul=1){
+  const p={n:k.n,on,dmg:Math.round(Math.max(0,(k.mult||0)*(k.hits||1)-1)*.3*mul*100)/100};
+  if(k.dot)p.dot=k.dot;if(k.stun)p.stun=k.stun;if(k.steal)p.steal=+(k.steal*.5).toFixed(2);if(k.heal)p.heal=+(k.heal*.35).toFixed(2); // 被动触发频繁，疗伤和吸血按比例压低if(k.buff)p.buff=k.buff;
+  const cr=(k.crit||0)+((k.hits||1)>1?5*(k.hits-1):0);if(cr)p.crit=cr;return p;
+}
+const fires=(p,t)=>p.on.some(b=>CONT[t].includes(b));
+function passiveTxt(p){
+  const o=[];if(p.dmg)o.push(`伤害 +${Math.round(p.dmg*100)}%`);if(p.crit)o.push(`暴击率 +${p.crit}%`);if(p.dot)o.push(`附带${p.dot.l}`);
+  if(p.stun)o.push(`${Math.round(p.stun*100)}% 几率震晕`);if(p.steal)o.push(`吸血 ${Math.round(p.steal*100)}%`);if(p.heal)o.push(`回复 ${Math.round(p.heal*100)}% 气血`);
+  if(p.buff){const b=p.buff;o.push([b.atk?`攻击 +${Math.round(b.atk*100)}%`:'',b.def?`防御 +${Math.round(b.def*100)}%`:'',b.spd?`速度 +${Math.round(b.spd*100)}%`:'',b.dodge?`闪避 +${b.dodge}%`:''].filter(Boolean).join('、')+`（${b.t} 回合）`)}
+  return o.join('，')||'无额外效果';
+}
+const onTxt=on=>on.map(b=>TN[b]).join('、');
 const rerollCost=f=>Math.max(1,Math.round(f.maxmp*.25));
-function doReroll(f){if(f.rr>0)f.rr--;else{const c=rerollCost(f);if(f.mp<c)return false;f.mp-=c}for(let i=0;i<5;i++)if(!f.held[i])f.dice[i]=d6();return true}
+function doReroll(f){if(f.rr>0)f.rr--;else{const c=rerollCost(f);if(f.mp<c)return false;f.mp-=c}for(let i=0;i<5;i++)if(!f.held[i]){f.fi[i]=Math.floor(Math.random()*6);f.dice[i]=faceVal(f,f.fi[i])}return true}
 // 电脑锁骰：差一张成顺子就保顺子，否则保留成对的点数，什么都没有就保最大的一颗
 function aiHold(f){
   const d=f.dice,c=[0,0,0,0,0,0,0];d.forEach(v=>c[v]++);const mx=Math.max(...c);
@@ -1239,8 +1272,8 @@ function aiHold(f){
   if(mx>=2){f.held=d.map(v=>c[v]>=2);return}
   const hi=Math.max(...d);let k=false;f.held=d.map(v=>v===hi&&!k&&(k=true));
 }
-function aiDice(f){let paid=0;for(;;){const t=evalDice(f.dice).t;if(t>=5)break;if(f.rr<=0){if(paid>=1||t>=3||f.mp<rerollCost(f))break;paid++}aiHold(f);if(!doReroll(f))break}}
-function markCount(f){const m={};if(f.faces)f.dice.forEach((v,i)=>{const k=f.faces[i]&&f.faces[i][v-1];if(k)m[k]=(m[k]||0)+1});return m}
+function aiDice(f){let paid=0;for(;;){const t=evalBest(f).t;if(t>=5)break;if(f.rr<=0){if(paid>=1||t>=3||f.mp<rerollCost(f))break;paid++}aiHold(f);if(!doReroll(f))break}}
+function markCount(f){const m={};f.dice.forEach((_,i)=>faceMarks(f,i).forEach(k=>m[k]=(m[k]||0)+1));return m}
 // 战斗写成生成器：手动出招时在玩家出手前暂停，等待选择；自动战斗直接一路跑完
 function* battleGen(A,B,opt,log){
   const maxR=opt.rounds||40;
@@ -1259,22 +1292,23 @@ function* battleGen(A,B,opt,log){
     if(a.mech==='regen'&&round%3===0){const h=Math.round(a.maxhp*.1);a.hp=Math.min(a.maxhp,a.hp+h);push(`${nm(a)} 运起水遁回春，回复 <b class="h">${h}</b> 气血`,a.side,[{on:a.side,v:'+'+h,k:'heal'}])}
     if(a.mech==='berserk'&&!a.rage&&a.hp<a.maxhp*.5){a.rage=true;a.atk*=1.8;a.spd*=1.3;push(`${nm(a)} 气血翻涌，陷入狂暴！`,a.side)}
     // 掷骰：手动时把骰子交给玩家锁定、重掷，直到出招；否则电脑按策略掷
-    a.dice=[d6(),d6(),d6(),d6(),d6()];a.held=[false,false,false,false,false];a.rr=2+Math.min(2,afx(a,'reroll'))+(hasSet4(a,'zhenwu')?1:0);
+    a.fi=[0,0,0,0,0].map(()=>Math.floor(Math.random()*6));a.dice=a.fi.map(i=>faceVal(a,i));a.held=[false,false,false,false,false];
+    a.rr=1+((a.dset&&a.dset.rr)||0)+(hasSet4(a,'zhenwu')?1:0);
     if(a.manual){for(;;){const c=yield a;if(c==='auto'){a.manual=false;break}if(!c||c.go)break;if(c.reroll)doReroll(a)}}
     if(!a.manual)aiDice(a);
-    const dv=afx(a,'one6')?a.dice.map(v=>v===1?6:v):a.dice; // 化腐朽：1 点当 6 点
-    const cb=evalDice(dv),pk=skillForTier(a,cb.t),mk=markCount(a),wt=a.wt;
-    const sk=wt==='anqi'&&cb.t===0?{n:'暗器连发',mult:.5,hits:3}:pk.s; // 暗器：散招变三连发
+    const cb=evalBest(a),mk=markCount(a),wt=a.wt,cm=a.mon?MON_B[cb.t]:COMBO[cb.t].m;
+    const trig=(a.passives||[]).filter(p=>fires(p,cb.t));
+    const anqi=wt==='anqi'&&cb.t===0; // 暗器：散招变成三连发
+    // 触发的武学合成这一招：伤害加成相加，暴击、吸血、疗伤累加，持续伤害和增益取第一个
+    const s={n:anqi?'暗器连发':a.mon&&trig.length?trig[0].n:COMBO[cb.t].mv,mult:anqi?.5:1,hits:anqi?3:1,crit:0,steal:0,heal:0,stun:0,dot:null,buff:null,bsrc:''};
+    let bonus=0;for(const p of trig){bonus+=p.dmg||0;s.crit+=p.crit||0;s.steal+=p.steal||0;s.heal+=p.heal||0;s.stun=Math.max(s.stun,p.stun||0);if(p.dot&&!s.dot)s.dot=p.dot;if(p.buff&&!s.buff){s.buff=p.buff;s.bsrc=p.n}}
     const LA=a.lg||NOLG,LT=t.lg||NOLG;
-    const s=sk?(sk.mult?sk:{...sk,mult:1}):{n:'',mult:1}; // 纯增益/疗伤招式顺带打一下
     const mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
-    let txt=`${nm(a)} 掷出 <span class="dc">${a.dice.map(v=>DIE[v-1]).join('')}</span>（${cb.n}${mkTxt?`，${mkTxt}`:''}），`+(sk?`施展「<em>${s.n}</em>」`:'出招攻击');const fx=[];
-    // 骰型倍率 × 点数加成（扇翻倍）× 剑气印 × 兵器类型 × 装备词条 × 套装
-    let M=pk.b*(wt==='shan'?.7+cb.sum/30:.85+cb.sum/60)*(1+.12*(mk.jianqi||0));
-    if(wt==='jian'&&cb.t===4)M*=1.4;if(wt==='dao'&&(cb.t===1||cb.t===2))M*=1.25;if(wt==='gun'&&cb.t>=5)M*=1.3;if(wt==='zhang'&&cb.t===3)M*=1.35;
-    if(cb.t===4)M*=1+.35*afx(a,'lianhuan');if(cb.sum>=22)M*=1+.25*afx(a,'qianjun');if(cb.sum<=12)M*=1+.4*afx(a,'xiaobo');if(round===1)M*=1+.5*afx(a,'xiansheng');
+    let txt=`${nm(a)} 掷出 <span class="dc">${a.dice.map(v=>DIE[v-1]).join('')}</span> <b class="cbx">${cb.n} ×${cm}</b>「<em>${s.n}</em>」${!a.mon&&trig.length?`，触发 ${trig.map(p=>p.n).join('、')}`:''}${mkTxt?`，${mkTxt}`:''}`;const fx=[];
+    // 骰型倍率 × 武学加成 × 剑气印 × 兵器类型 × 套装
+    let M=cm*(1+bonus)*(1+.12*(mk.jianqi||0));
+    if(wt==='jian'&&cb.t===4)M*=1.4;if(wt==='dao'&&(cb.t===1||cb.t===2))M*=1.25;if(wt==='gun'&&cb.t>=5)M*=1.3;if(wt==='zhang'&&cb.t===3)M*=1.35;if(wt==='shan')M*=1+Math.max(0,cb.sum-15)*.03;
     if(hasSet4(a,'lieyang')&&cb.t>=5)M*=1.3;if(hasSet4(a,'fengyun'))M*=1+.06*a.dice.filter(v=>v===6).length;
-    M*=Math.pow(.92,afx(t,'taishan'));
     if(s.mult){
       const hits=s.hits||1,K=50+5*a.lv;let total=0,landed=0,crits=0;
       a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
@@ -1285,7 +1319,7 @@ function* battleGen(A,B,opt,log){
       for(let i=0;i<hits;i++){
         if(Math.random()*100<dg)continue;
         let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08);
-        if((forceCrit&&!crits)||Math.random()*100<Math.min(80,a.crit+(s.crit||0)+12*(mk.bao||0)+(cb.t===1||cb.t===2?30*afx(a,'pairCrit'):0))){d*=1.6;crits++}
+        if((forceCrit&&!crits)||Math.random()*100<Math.min(80,a.crit+(s.crit||0)+12*(mk.bao||0))){d*=1.6;crits++}
         total+=Math.max(1,Math.round(d));landed++;
       }
       if(!landed){txt+=`，被 ${nm(t)} 闪身避过`;fx.push({on:t.side,v:'闪避',k:'miss'})}
@@ -1311,10 +1345,9 @@ function* battleGen(A,B,opt,log){
     if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
     if(LA.has('junzi')&&a.hp>0)a.hp=Math.min(a.maxhp,a.hp+Math.round(a.maxhp*.03));
     if(mk.chun&&a.hp>0){const h=Math.round(a.maxhp*.03*mk.chun);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回春印回复 <b class="h">${h}</b> 气血`}
-    if(afx(a,'yuanman')&&cb.t>=5&&a.hp>0){const h=Math.round(a.maxhp*.08*afx(a,'yuanman'));a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，圆满回复 <b class="h">${h}</b> 气血`}
     if(mk.jin){a.buffs=a.buffs.filter(b=>b.src!=='金刚印');a.buffs.push({def:.12*mk.jin,src:'金刚印',left:2})}
-    if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.n);a.buffs.push({...s.buff,src:s.n,left:s.buff.t+1});txt+=`，${s.d.split('，').filter(x=>/提升|\+/.test(x)).join('，')||'气势大涨'}`}
-    a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*(.06+.05*afx(a,'qihai'))));
+    if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.bsrc);a.buffs.push({...s.buff,src:s.bsrc,left:s.buff.t+1});txt+=`，${s.bsrc}：${passiveTxt({buff:s.buff})}`}
+    a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*.06));
     tick(a);push(txt,a.side,fx);
   };
   const petAct=(f,t)=>{
@@ -1371,7 +1404,7 @@ function fight(zi,i){
   if(S.karma<=-150&&Math.random()<.1){startBattle(mkNPC('名门弟子',pick(['shaolin','wudang','emei']),S.lv,1,'追杀'),{type:'hunt',zi,i,title:'通缉 · 名门弟子追杀'});return}
   if(fy('xueyi')&&Math.random()<.08){startBattle(mkNPC('血衣楼杀手',pick(SECT_KEYS),S.lv,.95,'血衣楼'),{type:'xueyi',zi,i,title:'血衣楼杀手伏击'});return}
   const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
-  const m=applyMech(mkMonster(name,lv,boss,false),boss?ZONE_MECH[zi]:null);if(boss)m.skills[0].n=z.bs;
+  const m=applyMech(mkMonster(name,lv,boss,false),boss?ZONE_MECH[zi]:null);if(boss)m.passives[0].n=z.bs;
   startBattle(m,{type:'stage',zi,i,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
 }
 function startBattle(enemy,ctx){
@@ -1522,15 +1555,17 @@ function manualRun(r){
   BT.timer=setInterval(()=>{if(BT.i>=BT.log.length-1){clearInterval(BT.timer);next();return}BT.i++;btApply(BT.log[BT.i],true)},260);
 }
 // 手动掷骰：点骰子锁定，重掷只换没锁的，满意了再出招
-function ladderTxt(f){return COMBO.slice(1).map((c,i)=>{const p=skillForTier(f,i+1);return `${c.n}${p.s?p.s.n:'普攻'}`}).join(' · ')}
+// 骰面：大字是点数，右上角红字是自己刻的印记，左上角绿字是门派骰子自带的印记
+function dieFace(v,ins,inn){return `<b>${v}</b>${ins?`<i>${PAGES[ins].c}</i>`:''}${inn?`<i class="inn">${PAGES[inn].c}</i>`:''}`}
 function showChoices(){
-  const A=BT.A,cb=evalDice(A.dice),pk=skillForTier(A,cb.t),mk=markCount(A),cost=rerollCost(A),canRoll=A.rr>0||A.mp>=cost,rolled=BT.rolled||[];BT.rolled=null;
-  const mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
-  $('#bt-foot').innerHTML=`<div class="tray">${A.dice.map((v,i)=>{const m=A.faces&&A.faces[i]&&A.faces[i][v-1];
-      return `<button class="die ${A.held[i]?'held':''} ${rolled[i]?'rolled':''}" data-a="dHold" data-v="${i}" aria-pressed="${A.held[i]}" aria-label="第 ${i+1} 颗，${v} 点${m?'，'+PAGES[m].n+'印':''}${A.held[i]?'，已锁定':''}"><b>${v}</b>${m?`<i>${PAGES[m].c}</i>`:''}${A.held[i]?'<small>锁</small>':''}</button>`}).join('')}</div>
-    <p class="dnow"><b>${cb.n}</b> → ${pk.s?`「${pk.s.n}」`:'普通攻击'}，骰型 ×${COMBO[cb.t].b}，点数 ${cb.sum}${mkTxt?`，触发 ${mkTxt}`:''}</p>
-    <p class="note dhelp">点骰子可以锁定，重掷只换没锁的骰子。${ladderTxt(A)}</p>
+  const A=BT.A,cb=evalBest(A),mk=markCount(A),cost=rerollCost(A),canRoll=A.rr>0||A.mp>=cost,rolled=BT.rolled||[];BT.rolled=null;
+  const trig=(A.passives||[]).filter(p=>fires(p,cb.t)),mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
+  $('#bt-foot').innerHTML=`<div class="tray">${A.dice.map((v,i)=>{const fi=A.fi[i],ins=A.faces&&A.faces[i]&&A.faces[i][fi],inn=A.dset&&A.dset.inn[fi];
+      return `<button class="die ${A.held[i]?'held':''} ${rolled[i]?'rolled':''}" data-a="dHold" data-v="${i}" aria-pressed="${A.held[i]}" aria-label="第 ${i+1} 颗，${v} 点${A.held[i]?'，已锁定':''}">${dieFace(v,ins,inn)}${A.held[i]?'<small>锁</small>':''}</button>`}).join('')}</div>
+    <p class="dnow"><b>${cb.n} ×${COMBO[cb.t].m}</b>「${COMBO[cb.t].mv}」${trig.length?`，触发 ${trig.map(p=>p.n).join('、')}`:''}${mkTxt?`，印记 ${mkTxt}`:''}</p>
+    <p class="note dhelp">点骰子锁定，重掷只换没锁的骰子。${A.dset?`${A.dset.n}：${A.dset.d}`:''}</p>
     <button class="btn" data-a="dRoll" ${canRoll?'':'disabled'}>${A.rr>0?`重掷（免费 ${A.rr} 次）`:`重掷（耗内力 ${cost}，现有 ${A.mp}）`}</button>
+    <button class="btn" data-a="dBest">一键最优锁骰</button>
     <button class="btn pri" data-a="dGo">出招</button><button class="btn" data-a="mPick" data-v="auto">自动打完</button>`;
   const b=$('#bt-foot [data-a=dGo]');if(b)b.focus({preventScroll:true});
 }
@@ -1815,7 +1850,7 @@ function escComplete(){
 function ensureWB(){
   if(S.wb&&S.wb.day===today())return;
   const d=today(),idx=[...d].reduce((s,c)=>s+c.charCodeAt(0),0)%WBS.length,b=WBS[idx];
-  const max=Math.round(mkNPC(b.n,b.s,S.lv+2,1.1).maxhp*1.8);
+  const max=Math.round(mkNPC(b.n,b.s,S.lv+2,1.1).maxhp*3.6);
   S.wb={day:d,idx,max,hp:max,tries:3,killed:false,dmg:0};
 }
 
@@ -1940,24 +1975,23 @@ renwu(st){
   return `<div class="grid2">
    <section class="box"><h3>属性</h3><dl class="stats">${['hp','mp','atk','def','spd','crit','dodge'].map(k=>`<div><dt>${STN[k]}</dt><dd>${isPct(k)?st[k].toFixed(1)+'%':fmt(st[k])}</dd></div>`).join('')}</dl>
     <p class="note">已打通穴位 ${S.mer.ren+S.mer.du} 处${mb.tong?`，任督贯通 ${mb.tong} 重`:''}；装配武魂 ${S.soulSlots.filter(Boolean).length} 个；击败对手 ${fmt(S.kills)} 人${S.rb?`；${CN[S.rb]}转，基础属性 +${S.rb*20}%`:''}。</p></section>
-   <section class="box"><h3>转生 <small>${S.rb}/5 转</small></h3>
-    <p class="note">满 60 级后可以转生：等级、经脉、属性修炼、心法与江湖进度归零，装备、武魂、宝石、灵兽、称号、秘传与资源全部保留。每转一次，门派基础属性与成长 +20%，还可以改投其他门派。</p>
-    ${S.rb>=5?'<p class="q4">已达五转，登峰造极。</p>':`<div class="sectpick">${SECT_KEYS.map(k=>`<button aria-pressed="${(RBS||S.sect)===k}" data-a="rbSect" data-v="${k}">${SECTS[k].n}</button>`).join('')}</div>
-    <div class="row"><button class="btn ${rbArm?'red':'pri'}" data-a="rebirth" ${can?'':'disabled'}>${!can?'满 60 级后可转生':rbArm?`再点一次，转生为${SECTS[RBS||S.sect].n}弟子`:'转生'}</button></div>`}</section>
+   <section class="box"><h3>本门骰子 · ${SECT_DICE[S.sect].n}</h3><p>${SECT_DICE[S.sect].d}</p>
+    <div class="tray" style="justify-content:flex-start">${SECT_DICE[S.sect].faces.map((v,i)=>`<span class="die">${dieFace(v,null,SECT_DICE[S.sect].inn[i])}</span>`).join('')}</div>
+    <p class="note">在「骰子」页可以给骰面刻上印记。</p></section>
   </div>
-  <section class="box"><h3>武学搭配 <small>掷出的骰型决定出哪一招：第 1~4 位依次对应 一对、两对、三条、顺子；葫芦、四条、豹子打出最强一招（有秘传出秘传）</small></h3>
-   <div class="skills">${[0,1,2,3].map(i=>{const key=lo[i],k=key&&skillOf(key);
-     return k?`<div class="skill on"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>骰诀：<b class="q4">${SLOT_COMBO[i]}</b></span></div><p>${k.d}</p>
-       <div class="row">${i?`<button class="btn sm" data-a="skUp" data-v="${key}">上移</button>`:''}<button class="btn sm" data-a="skUn" data-v="${key}">卸下</button></div></div>`
-       :`<div class="skill locked"><div class="sk-h"><b>空位</b><span>骰诀：${SLOT_COMBO[i]}</span></div><p>从下面挑一招装上；空着时掷出${SLOT_COMBO[i]}会改出前一位的招式</p></div>`}).join('')}
-    <div class="skill secret"><div class="sk-h"><b class="q4">${S.secret?`${s.secret.n} · ${CN[S.secret]}重`:'葫芦、四条、豹子'}</b><span>骰诀：葫芦 ×1.5 / 四条 ×2 / 豹子 ×3</span></div><p>${S.secret?s.secret.d:'还没学秘传，打出搭配里最强的一招。去师门求学秘传绝学，这一档就会换成秘传。'}</p></div></div>
-   <p class="note">建议把常用的弱招放前面（一对最容易掷出），把重招放在三条、顺子。内力用来在骰子不理想时多重掷一次。骰面还能刻印，见「骰子」页。</p>
+  <section class="box"><h3>武学 <small>最多修习 4 门。武学都是被动：掷出对应骰型时触发，大骰型会同时触发它包含的小骰型</small></h3>
+   <div class="skills">${[0,1,2,3].map(i=>{const key=lo[i],k=key&&skillOf(key);if(!k)return '<div class="skill locked"><div class="sk-h"><b>空位</b></div><p>从下面挑一门武学修习</p></div>';
+     const p=passiveOf(k,[SK_ON[+key.split(':')[1]]]);
+     return `<div class="skill on"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>掷出 <b class="q4">${onTxt(p.on)}</b> 时</span></div><p>${passiveTxt(p)}</p>
+       <div class="row"><button class="btn sm" data-a="skUn" data-v="${key}">不再修习</button></div></div>`}).join('')}
+    <div class="skill secret"><div class="sk-h"><b class="q4">${S.secret?`${s.secret.n} · ${CN[S.secret]}重`:'秘传绝学'}</b><span>掷出 <b class="q4">四条、豹子</b> 时</span></div><p>${S.secret&&secretOpen()?passiveTxt(passiveOf(secretSkill(),[6,7],1.5)):'还没学。去师门求学秘传绝学，掷出四条、豹子时会额外发动。'}</p></div></div>
+   <p class="note">包含关系：两对含一对；三条含一对；葫芦、四条、豹子都含一对、两对、三条。顺子只触发顺子的武学。所以「一对」武学最常发动，「顺子」武学最难但最独特。</p>
    <h3 style="font-size:14px;color:var(--muted);letter-spacing:1px">已会的武学（${known.length}）</h3>
-   <div class="skills">${known.map(key=>{const k=skillOf(key),on=lo.includes(key),ok=k.lv<=S.lv;
-     return `<div class="skill ${ok?'':'locked'} ${on?'on':''}"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>${ok?`威力 ${skPow(k).toFixed(1)}`:`${k.lv} 级可用`}</span></div><p>${k.d}</p>
-       ${ok?`<div class="row">${on?'<span class="note">已上阵</span>':`<button class="btn sm pri" data-a="skEq" data-v="${key}" ${lo.length>=4?'disabled':''}>${lo.length>=4?'先卸下一招':'装上'}</button>`}</div>`:''}</div>`}).join('')}</div></section>
+   <div class="skills">${known.map(key=>{const k=skillOf(key),on=lo.includes(key),ok=k.lv<=S.lv,p=passiveOf(k,[SK_ON[+key.split(':')[1]]]);
+     return `<div class="skill ${ok?'':'locked'} ${on?'on':''}"><div class="sk-h"><b>${k.n}${k.from!==S.sect?`<span class="from">${SECTS[k.from].n}</span>`:''}</b><span>${ok?`掷出${onTxt(p.on)}时`:`${k.lv} 级可用`}</span></div><p>${passiveTxt(p)}</p>
+       ${ok?`<div class="row">${on?'<span class="note">修习中</span>':`<button class="btn sm pri" data-a="skEq" data-v="${key}" ${lo.length>=4?'disabled':''}>${lo.length>=4?'先停一门':'修习'}</button>`}</div>`:''}</div>`}).join('')}</div></section>
   <section class="box"><h3>称号 <small>已获得 ${S.titles.length} / ${ACHS.length}，佩戴一个称号即获得它的属性</small></h3>
-   <div class="achs">${ACHS.map(a=>{const on=S.titles.includes(a.id),w=S.title===a.id;return `<div class="ach ${on?'':'off'} ${w?'worn':''}"><b>${a.n}</b><span>${a.d}</span><span>${stList(a.b)}</span>${on?`<button class="btn sm ${w?'':'pri'}" data-a="wearTitle" data-v="${a.id}" ${w?'disabled':''}>${w?'佩戴中':'佩戴'}</button>`:''}</div>`}).join('')}</div></section>
+   <div class="achs">${ACHS.filter(a=>a.id!=='zhuansheng'||S.titles.includes(a.id)).map(a=>{const on=S.titles.includes(a.id),w=S.title===a.id;return `<div class="ach ${on?'':'off'} ${w?'worn':''}"><b>${a.n}</b><span>${a.d}</span><span>${stList(a.b)}</span>${on?`<button class="btn sm ${w?'':'pri'}" data-a="wearTitle" data-v="${a.id}" ${w?'disabled':''}>${w?'佩戴中':'佩戴'}</button>`:''}</div>`}).join('')}</div></section>
   <section class="box"><h3>存档</h3><p class="note">进度保存在当前浏览器中，清除浏览器数据会丢失。换设备时先导出存档码，再到新设备上导入。</p>
    <textarea id="savebox" placeholder="导出的存档码会出现在这里；也可以粘贴存档码后点导入"></textarea>
    <div class="row"><button class="btn" data-a="exportSave">导出存档码</button><button class="btn" data-a="importSave">导入存档码</button><span style="flex:1"></span><button class="btn red" data-a="reset">${resetArm?'再点一次，删除当前角色':'删号重来'}</button></div></section>`;
@@ -2000,17 +2034,18 @@ tianji(){
    <section class="box"><h3>最近抽到</h3>${G.log.length?`<ul class="qlog">${G.log.map(l=>`<li><b class="${G_TIER[l.t].c}">${G_TIER[l.t].n}</b>${l.r}</li>`).join('')}</ul>`:'<p class="empty">还没抽过。</p>'}</section>`;
 },
 touzi(){
-  const A=mkPlayer(),how=['没有任何组合','两颗相同','两组两颗相同','三颗相同','五颗连号（1~5 或 2~6）','三颗相同加一对','四颗相同','五颗相同'];
-  return `<section class="box"><h3>骰型与招式 <small>每回合掷 5 颗骰子，免费重掷 2 次，之后每次耗 25% 内力</small></h3>
-   <div class="combos">${COMBO.map((c,i)=>{const p=skillForTier(A,i);return `<div><b>${c.n}</b>${how[i]}<br>出招：${p.s?`「${p.s.n}」`:'普通攻击'} · ×${c.b}</div>`}).join('')}</div>
-   <p class="note">点数越大伤害越高。手动出招时由你锁骰重掷；自动战斗时电脑会尽量凑葫芦以上。招式顺序在「人物」页的武学搭配里调整。</p></section>
-  <section class="box"><h3>骰面刻印 <small>把武学残页刻在骰子的某一面，掷出那一面就触发；同种印记可以叠加</small></h3>
+  const D=SECT_DICE[S.sect],how=['没有组合','两颗相同','两组两颗相同','三颗相同','五颗连号（1~5 或 2~6）','三颗相同加一对','四颗相同','五颗相同'];
+  return `<section class="box"><h3>骰型倍率 <small>伤害 = 攻击 × 骰型倍率。每回合免费重掷 1 次，之后每次耗 25% 内力</small></h3>
+   <div class="combos">${COMBO.map((c,i)=>`<div><b>${c.n} ×${c.m}</b>${how[i]}<br>「${c.mv}」</div>`).join('')}</div></section>
+  <section class="box"><h3>七派骰子 <small>每个门派的骰子都不一样，你用的是${D.n}</small></h3>
+   <div class="cards">${SECT_KEYS.map(k=>{const d=SECT_DICE[k];return `<div class="cardx ${k===S.sect?'on':''}"><div class="sh"><b>${d.n}</b><span class="note">${SECTS[k].n}</span></div>
+     <div class="tray" style="justify-content:flex-start;gap:4px">${d.faces.map((v,i)=>`<span class="die mini">${dieFace(v,null,d.inn[i])}</span>`).join('')}</div><span class="fl">${d.d}</span></div>`}).join('')}</div></section>
+  <section class="box"><h3>骰面刻印 <small>把武学残页刻在骰子的某一面，掷出那一面就触发；同种印记可以叠加，也能和门派自带的印记叠加</small></h3>
    <div class="row"><span class="note">残页</span><div class="slotpick">${PAGE_K.map(k=>`<button aria-pressed="${PSEL===k}" data-a="psel" data-v="${k}" ${S.pages[k]>0||PSEL===k?'':'disabled'}>${PAGES[k].n} ×${S.pages[k]||0}</button>`).join('')}<button aria-pressed="${PSEL==='erase'}" data-a="psel" data-v="erase">擦除</button></div></div>
-   <p class="note">${PSEL&&PSEL!=='erase'?`「${PAGES[PSEL].n}」：${PAGES[PSEL].d}。点下面任意一面刻上去，原来的印记会退回。`:PSEL==='erase'?'点有印记的一面把它擦掉，残页会退回。':'先选一种残页，再点骰面。'}</p>
-   <div class="dice-edit">${S.dice.map((faces,i)=>`<div class="drow"><span>第 ${i+1} 颗</span>${faces.map((m,f)=>`<button class="die" data-a="inscribe" data-v="${i},${f}" aria-label="第 ${i+1} 颗 ${f+1} 点${m?'，'+PAGES[m].n+'印':''}"><b>${f+1}</b>${m?`<i>${PAGES[m].c}</i>`:''}</button>`).join('')}</div>`).join('')}</div>
+   <p class="note">${PSEL&&PSEL!=='erase'?`「${PAGES[PSEL].n}」：${PAGES[PSEL].d}。点下面任意一面刻上去，原来刻的会退回。`:PSEL==='erase'?'点刻过印记的一面把它擦掉，残页会退回。':'先选一种残页，再点骰面。左上角绿字是门派骰子自带的印记，擦不掉。'}</p>
+   <div class="dice-edit">${S.dice.map((faces,i)=>`<div class="drow"><span>第 ${i+1} 颗</span>${faces.map((m,f)=>`<button class="die" data-a="inscribe" data-v="${i},${f}" aria-label="第 ${i+1} 颗第 ${f+1} 面，${D.faces[f]} 点${m?'，'+PAGES[m].n+'印':''}">${dieFace(D.faces[f],m,D.inn[f])}</button>`).join('')}</div>`).join('')}</div>
    <p class="note">印记效果：${PAGE_K.map(k=>`${PAGES[k].n}（${PAGES[k].d}）`).join('；')}。</p>
-   <p class="note">小窍门：电脑和高手都爱凑成对的点数，所以把同一种印记刻在五颗骰子的同一个点数上，凑出葫芦、四条时能一次触发好几个。</p>
-   <p class="note">残页来源：江湖首领、通天塔塔主、秘境守护者、悬赏要犯、武林大会每一轮、世界首领、奇遇，以及师门商店和论剑商店。</p></section>`;
+   <p class="note">残页来源：江湖首领、通天塔塔主、秘境守护者、悬赏要犯、武林大会每一轮、世界首领、奇遇、天机阁，以及师门商店和论剑商店。</p></section>`;
 },
 xuanshang(st){
   return `<section class="box"><h3>悬赏通缉令 <small>每天张贴三名要犯。先按线索猜他藏在哪，猜对才能交手；每人只有两次机会，猜错两次他就跑了</small></h3>
@@ -2343,6 +2378,7 @@ const ACT={
   dHold(i){if(!BT||!BT.manual||BT.done||!BT.A.dice)return;BT.A.held[+i]=!BT.A.held[+i];showChoices()},
   dRoll(){if(!BT||!BT.manual||BT.done)return;BT.rolled=BT.A.held.map(h=>!h);manualRun(BT.gen.next({reroll:true}))},
   dGo(){if(!BT||!BT.manual||BT.done)return;manualRun(BT.gen.next({go:true}))},
+  dBest(){if(!BT||!BT.manual||BT.done||!BT.A.dice)return;aiHold(BT.A);showChoices()},
   pickSect(v){window._cname=$('#cname').value;CS=v;render()},
   randName(){window._cname=randName();render()},
   create(){const n=($('#cname').value||'').trim().slice(0,8)||randName();S=newGame(n,CS);
@@ -2429,7 +2465,7 @@ const ACT={
   /* 一键 */
   sweep(v){if(BT||SV)return;const [zi,i]=v.split(',').map(Number);if(i>=S.prog[zi])return;
     const z=ZONES[zi],boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]],a=snap();let w=0,l=0;
-    for(let k=0;k<10;k++){const m=mkMonster(name,lv,boss,false);if(boss)m.skills[0].n=z.bs;if(quickBattle(m,{type:'stage',zi,i}).win)w++;else{l++;break}}
+    for(let k=0;k<10;k++){const m=mkMonster(name,lv,boss,false);if(boss)m.passives[0].n=z.bs;if(quickBattle(m,{type:'stage',zi,i}).win)w++;else{l++;break}}
     save();render();toast(`扫荡${name}：胜 ${w} 场${l?'，落败一场，已停止':''}。${diffTxt(a)}`)},
   towerQuick(){const run=S.tower.run;if(!run||run.picks||BT)return;const f0=run.floor,a=snap();let n=0;
     while(S.tower.run&&!S.tower.run.picks){const r=S.tower.run;if(quickBattle(towerEnemy(r.floor),{type:'tower',prep:towerPrep(r)}).win)n++}
