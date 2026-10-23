@@ -354,6 +354,20 @@ button.gem{cursor:pointer}
 
 @media (max-width:520px){.bracket{grid-template-columns:repeat(2,1fr)}.groups button{font-size:17px;padding:3px 12px}}
 
+/* 装备标签与天机阁 */
+.st.ex{color:var(--muted);line-height:1.8}
+.wtag,.stag,.ftag{display:inline-block;font-size:11px;padding:0 6px;border-radius:3px;margin-right:4px;line-height:1.6}
+.wtag{background:#203247;color:#8fc0ff}
+.stag{background:#3a2a14;color:var(--q4)}
+.ftag{background:#2d2140;color:var(--q3)}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid var(--line2);border-radius:10px;padding:10px;background:var(--panel2);display:flex;flex-direction:column;gap:4px;font-size:13px;animation:gflip .45s ease-out both}
+.gcard b{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1}
+.gcard.t3{border-color:var(--q3);box-shadow:0 0 12px rgba(185,128,255,.25)}
+.gcard.t4{border-color:var(--q4);box-shadow:0 0 16px rgba(255,160,64,.4);background:linear-gradient(180deg,#2e2312,var(--panel2))}
+@keyframes gflip{from{opacity:0;transform:rotateY(80deg) scale(.9)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.gcard{animation:none}}
+
 /* 掷骰 */
 .tray{display:flex;gap:8px;justify-content:center;flex:1 1 100%;flex-wrap:wrap}
 .die{position:relative;width:54px;height:54px;border-radius:11px;border:2px solid #c9bc98;background:#f3ebd7;color:#1b1407;cursor:pointer;display:grid;place-items:center;box-shadow:0 3px 0 #b3a47e;transition:transform .12s}
@@ -648,6 +662,48 @@ const SOCK=[0,1,1,2,3];
 const TIER=['粗制','精铁','百炼','玄铁','寒玉','赤霄'];
 const NOUN={arm:['布衣','劲装','软甲','锁子甲','护心甲'],acc:['玉佩','护身符','手镯','璎珞'],boot:['布鞋','快靴','云履','踏雪靴']};
 const EN_RATE=[1,1,1,1,1,.8,.7,.6,.5,.4,.35,.3,.25,.2,.15];
+
+/* ============ 兵器类型、特效词条、套装、升星 ============ */
+// 兵器类型各配合一种骰型，和《六六英雄》的武器流派一个思路
+const WTYPES={
+ jian:{n:'剑',d:'顺子伤害 +40%',w:['长剑','青锋剑','松纹剑','七星剑']},
+ dao:{n:'刀',d:'一对、两对伤害 +25%',w:['钢刀','弯刀','柳叶刀','雁翎刀']},
+ gun:{n:'棍',d:'葫芦、四条、豹子伤害 +30%',w:['齐眉棍','伏虎棍','降魔杖','青竹杖']},
+ zhang:{n:'掌',d:'三条伤害 +35%，并有 15% 几率震晕',w:['铁掌套','金丝手套','冰蚕掌套']},
+ shan:{n:'扇',d:'点数带来的伤害加成翻倍',w:['铁骨扇','玉箫','判官笔']},
+ anqi:{n:'暗器',d:'散招变成三连发；多段攻击每段伤害 +10%',w:['袖箭匣','飞蝗石囊','机关匣','梅花针']},
+};
+const WT_K=Object.keys(WTYPES);
+function guessWt(name){
+  for(const k of WT_K)if(WTYPES[k].w.some(w=>name.includes(w)))return k;
+  return /刀/.test(name)?'dao':/棍|杖|棒|钵|枪/.test(name)?'gun':/掌|手套/.test(name)?'zhang':/扇|箫|笔/.test(name)?'shan':/箭|针|石囊|匣|镖|令/.test(name)?'anqi':'jian';
+}
+const LEG_WT={yuchang:'jian',yitian:'jian',tulong:'dao',bawang:'gun',biyu:'shan',xuantie:'jian',bingpo:'anqi',junzi:'jian',xuedao:'dao'};
+const itemWt=it=>it&&it.slot==='wpn'?(it.wt||(it.lg?LEG_WT[it.lg]:guessWt(it.name))):null;
+// 珍品带 1 条、神品带 2 条特效词条
+const AFFIX={
+ reroll:{n:'灵动',d:'每回合多 1 次免费重掷'},
+ one6:{n:'化腐朽',d:'掷出的 1 点当作 6 点'},
+ pairCrit:{n:'双刃',d:'一对、两对时暴击率 +30%'},
+ lianhuan:{n:'连环',d:'顺子伤害 +35%'},
+ yuanman:{n:'圆满',d:'葫芦以上回复 8% 气血'},
+ qianjun:{n:'千钧',d:'点数总和 22 以上伤害 +25%'},
+ xiaobo:{n:'以小博大',d:'点数总和 12 以下伤害 +40%'},
+ taishan:{n:'稳如泰山',d:'受到的伤害 -8%'},
+ xiansheng:{n:'先声夺人',d:'第一回合伤害 +50%'},
+ qihai:{n:'气海',d:'每回合多回复 5% 内力'},
+};
+const AFX_K=Object.keys(AFFIX);
+const SETS={
+ zhenwu:{n:'真武',b2:{def:.1},d2:'防御 +10%',d4:'每回合多 1 次免费重掷'},
+ xueyi:{n:'血衣',b2:{atk:.08},d2:'攻击 +8%',d4:'所有攻击吸血 10%'},
+ lieyang:{n:'烈阳',b2:{crit:5},d2:'暴击 +5%',d4:'葫芦、四条、豹子伤害 +30%'},
+ fengyun:{n:'风云',b2:{spd:.1},d2:'速度 +10%',d4:'每掷出一颗 6 点，伤害 +6%'},
+};
+const SET_K=Object.keys(SETS);
+const STAR_MAX=5;
+const sandOf=it=>[0,1,2,4,8][it.q]+(it.set?2:0)+(it.star||0)*3; // 分解得到的星辰砂
+const starCost=it=>({sand:((it.star||0)+1)*4*(it.q>=4?2:1),silver:((it.star||0)+1)*it.ilv*50});
 const GEMS={atk:{n:'赤玉',v:[6,14,26,42,64]},def:{n:'青金',v:[5,12,22,36,55]},hp:{n:'碧玺',v:[40,95,175,290,440]},crit:{n:'紫晶',v:[1,2,3.5,5,7]},spd:{n:'墨玉',v:[2,4.5,8,12,17]}};
 const GEMK=Object.keys(GEMS);
 
@@ -719,6 +775,7 @@ const SM_SHOP=[
  {k:'tok',n:'奇遇令',p:120,d:'多一次游历江湖的机会'},
  {k:'steal',n:'偷师令',p:600,d:'随机学会一招其他门派的武功'},
  {k:'page',n:'武学残页',p:200,d:'随机一张骰面残页'},
+ {k:'ticket',n:'天机令',p:250,d:'天机阁抽奖用'},
 ];
 
 /* ============ 论剑 ============ */
@@ -730,6 +787,7 @@ const SHOP=[
  {k:'tok',n:'奇遇令',p:100,d:'多一次游历江湖的机会'},
  {k:'box',n:'珍品装备匣',p:400,d:'获得一件当前等级的珍品装备'},
  {k:'page',n:'武学残页',p:150,d:'随机一张骰面残页'},
+ {k:'ticket',n:'天机令',p:200,d:'天机阁抽奖用'},
 ];
 
 /* ============ 称号 ============ */
@@ -896,7 +954,7 @@ let resetArm=false, rbArm=false, sellAllArm=false;
 let BT=null, SV=null, gemPick=null;
 
 function newGame(name,sect){
-  return {v:3,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,learned:[],loadout:null,bounty:{day:'',list:[]},unlocked:{},dice:blankDice(),pages:{jianqi:2,du:1},
+  return {v:3,name,sect,lv:1,exp:0,silver:100,xw:0,jade:0,gx:0,fruit:0,rb:0,learned:[],loadout:null,bounty:{day:'',list:[]},unlocked:{},dice:blankDice(),pages:{jianqi:2,du:1},sand:0,gacha:{tickets:3,pity:0,free:'',total:0,log:[]},
     train:{hp:0,mp:0,atk:0,def:0},bonus:{hp:0,mp:0,atk:0,def:0,spd:0,crit:0,dodge:0},
     mer:{ren:0,du:0},equip:{wpn:null,arm:null,acc:null,boot:null},bag:[],gems:{},reforge:null,
     souls:[],soulSlots:[null,null,null],pets:[],pet:null,secret:0,
@@ -963,6 +1021,7 @@ function calcStats(){
   const kt=karmaTier();if(kt.b)for(const k in kt.b){if(k in pct)pct[k]+=kt.b[k];else st[k]+=kt.b[k]}
   for(const id in COMPS)if(S.comps[id]>=100)for(const k in COMPS[id].pas){if(k in pct)pct[k]+=COMPS[id].pas[k];else st[k]+=COMPS[id].pas[k]}
   S.soulSlots.forEach((u,i)=>{if(!u||!soulSlotOpen(i))return;const so=S.souls.find(x=>x.uid===u);if(!so)return;const b=soulBonus(so);for(const k in b){if(k in pct)pct[k]+=b[k];else st[k]+=b[k]}});
+  const sc=setCounts();for(const k in sc)if(sc[k]>=2)for(const b in SETS[k].b2){if(b in pct)pct[b]+=SETS[k].b2[b];else st[b]+=SETS[k].b2[b]} // 套装 2 件加成
   for(const k in pct)st[k]*=1+pct[k];
   for(const k of ['hp','mp','atk','def'])st[k]=Math.round(st[k]);
   st.spd=Math.round(st.spd*10)/10;st.crit=Math.min(60,Math.round(st.crit*10)/10);st.dodge=Math.min(40,Math.round(st.dodge*10)/10);
@@ -982,25 +1041,60 @@ function mainStats(slot,q,ilv){
   return st;
 }
 function rollExtras(st,q,ilv){const ex=[['atk',.9],['def',.8],['hp',6],['mp',3],['spd',.25]];for(let i=0;i<q-1;i++){const [k,f]=pick(ex);st[k]=(st[k]||0)+Math.max(1,Math.round((2+ilv*f)*R(.6,1.2)))}return st}
-function mkItem(ilv,q,slot){
+function mkItem(ilv,q,slot,opt={}){
   slot=slot||pick(SLOTS);
-  const name=TIER[Math.min(5,Math.floor(ilv/10))]+(slot==='wpn'?pick(SECTS[S.sect].wpn):pick(NOUN[slot]));
-  return {uid:uid(),slot,q,ilv,name,st:rollExtras(mainStats(slot,q,ilv),q,ilv),en:0,gm:Array(SOCK[q]).fill(null)};
+  let wt=null,noun;
+  if(slot==='wpn'){if(opt.wt){wt=opt.wt;noun=pick(WTYPES[wt].w)}else if(Math.random()<.5){noun=pick(SECTS[S.sect].wpn);wt=guessWt(noun)}else{wt=pick(WT_K);noun=pick(WTYPES[wt].w)}}
+  else noun=pick(NOUN[slot]);
+  const set=opt.set!==undefined?opt.set:(q>=3&&Math.random()<.2?pick(SET_K):null);
+  const name=set?`${SETS[set].n}·${noun}`:TIER[Math.min(5,Math.floor(ilv/10))]+noun;
+  return {uid:uid(),slot,q,ilv,name,st:rollExtras(mainStats(slot,q,ilv),q,ilv),en:0,star:0,gm:Array(SOCK[q]).fill(null),wt,set,fx:q>=3?shuffle(AFX_K).slice(0,q-2):[]};
 }
 const sockets=it=>{if(!it.gm)it.gm=Array(SOCK[it.q]).fill(null);return it.gm};
 function itemStats(it){
-  const o={},en=it.en||0,m=1+.08*en;
-  for(const k in it.st)o[k]=isPct(k)?+(it.st[k]+.2*en).toFixed(1):Math.round(it.st[k]*m);
+  const o={},en=it.en||0,star=it.star||0,m=(1+.08*en)*(1+.1*star); // 强化每级 +8%，每颗星 +10%
+  for(const k in it.st)o[k]=isPct(k)?+(it.st[k]+.2*en+.5*star).toFixed(1):Math.round(it.st[k]*m);
   for(const g of (it.gm||[]))if(g){const k=g.slice(0,-1),l=+g.slice(-1);o[k]=(o[k]||0)+GEMS[k].v[l-1]}
   return o;
 }
 function itemPower(it){return it?powerOf(itemStats(it)):0}
 function rollQ(boss){const r=Math.random()*100;if(boss)return r<5?4:r<30?3:r<70?2:1;return r<.6?4:r<5?3:r<20?2:r<50?1:0}
 const sellPrice=it=>Math.round((5+it.ilv*3)*(1+it.q*it.q*.8)*(1+(it.en||0)*.3));
-const itemName=it=>esc(it.name)+(it.en?` +${it.en}`:'');
+const itemName=it=>esc(it.name)+(it.en?` +${it.en}`:'')+(it.star?` ${'★'.repeat(it.star)}`:'');
 const itemTag=it=>`<b class="q${it.q}">${itemName(it)}</b>`;
-function dropItem(ilv,q,slot){
-  const it=mkItem(clamp(ilv,1,80),q,slot);
+// 物品的类型、套装、词条说明，一行
+function itemExtra(it){const o=[];const wt=itemWt(it);if(wt)o.push(`<span class="wtag">${WTYPES[wt].n}</span>${WTYPES[wt].d}`);
+  if(it.set)o.push(`<span class="stag">${SETS[it.set].n}套</span>`);for(const k of it.fx||[])o.push(`<span class="ftag">${AFFIX[k].n}</span>${AFFIX[k].d}`);return o.join('　')}
+function setCounts(){const c={};for(const sl of SLOTS){const it=S.equip[sl];if(it&&it.set)c[it.set]=(c[it.set]||0)+1}return c}
+
+/* ============ 天机阁抽奖 ============
+   单抽 1 枚天机令，十连 10 枚且保底一件珍品；第 50 抽必出神品（抽到神品后重新计数）。每天免费一抽。 */
+const G_RATE=[[4,.02],[3,.10],[2,.30],[1,.58]];
+const G_TIER={4:{n:'神',c:'q4'},3:{n:'珍',c:'q3'},2:{n:'良',c:'q2'},1:{n:'凡',c:'q0'}};
+const G_PITY=50;
+const GACHA={
+ 4:[['神品套装装备',()=>dropItem(S.lv,4,null,{set:pick(SET_K)})],['圣品以上武魂',()=>`武魂 ${soulTag(randomSoul(3))}`],['3 级宝石 ×2',()=>addGem(pick(GEMK),3,2)],['星辰砂 ×40',()=>{S.sand+=40;return '星辰砂 ×40'}]],
+ 3:[['珍品装备',()=>dropItem(S.lv,3)],['灵品以上武魂',()=>`武魂 ${soulTag(randomSoul(2))}`],['2 级宝石',()=>addGem(pick(GEMK),2)],['武学残页 ×3',()=>addPage(null,3)],['星辰砂 ×15',()=>{S.sand+=15;return '星辰砂 ×15'}]],
+ 2:[['精品装备',()=>dropItem(S.lv,2)],['1 级宝石',()=>addGem(pick(GEMK),1)],['武学残页',()=>addPage()],['灵果 ×3',()=>{S.fruit+=3;return '灵果 ×3'}],['星辰砂 ×5',()=>{S.sand+=5;return '星辰砂 ×5'}],['一件礼物',()=>`礼物${addGift(randomGift())}`]],
+ 1:[['银两',()=>{const g=S.lv*60;S.silver+=g;return `银两 ${fmt(g)}`}],['魂玉 ×15',()=>{S.jade+=15;return '魂玉 ×15'}],['灵果',()=>{S.fruit+=1;return '灵果 ×1'}],['星辰砂 ×2',()=>{S.sand+=2;return '星辰砂 ×2'}],['奇遇令',()=>{S.qiyu.tok=Math.min(11,S.qiyu.tok+1);return '奇遇令 ×1'}]],
+};
+let GLAST=null;
+function gachaTier(forceHigh){
+  const G=S.gacha;G.pity++;
+  let t=1;if(G.pity>=G_PITY)t=4;else{let r=Math.random();for(const [tt,p] of G_RATE){if(r<p){t=tt;break}r-=p}}
+  if(forceHigh&&t<3)t=3;if(t===4)G.pity=0;return t;
+}
+function gachaPull(n){
+  const out=[];for(let i=0;i<n;i++){const force=n===10&&i===9&&!out.some(x=>x.t>=3);const t=gachaTier(force);const [name,fn]=pick(GACHA[t]);out.push({t,name,r:fn()})}
+  S.gacha.total+=n;S.gacha.log=[...out.map(x=>({t:x.t,r:x.r.replace(/<[^>]+>/g,'')})),...S.gacha.log].slice(0,20);
+  if(out.some(x=>x.t===4))newsPush(`【${esc(S.name)}】在天机阁抽到了神品！`);
+  return out;
+}
+const ticketPrice=()=>3000+S.lv*100;
+const addTicket=(n=1)=>{S.gacha.tickets+=n;return `<span class="q3">天机令 ×${n}</span>`};
+
+function dropItem(ilv,q,slot,opt){
+  const it=mkItem(clamp(ilv,1,80),q,slot,opt);
   if(S.bag.length>=40){const p=sellPrice(it);S.silver+=p;return `${itemTag(it)}（行囊已满，自动换得银两 ${p}）`}
   S.bag.push(it);return `获得 ${itemTag(it)}`;
 }
@@ -1089,6 +1183,9 @@ function mkPlayer(){
   if(lg.has('xuantie'))A.spd*=.85;
   if(S.pills.kb>0)A.atk*=1.25;
   if(S.pills.hx>0)A.def*=1.3;
+  const eq=SLOTS.map(x=>S.equip[x]).filter(Boolean),sc=setCounts();
+  A.efx={};eq.forEach(it=>(it.fx||[]).forEach(k=>A.efx[k]=(A.efx[k]||0)+1));
+  A.set4=new Set(Object.keys(sc).filter(k=>sc[k]>=4));A.wt=itemWt(S.equip.wpn);
   return A;
 }
 function usePills(){if(S.pills.kb>0)S.pills.kb--;if(S.pills.hx>0)S.pills.hx--}
@@ -1107,6 +1204,8 @@ function chooseSkill(a){
 }
 const tagsOf=f=>{const t=f.buffs.map(b=>b.src);if(f.mech)t.unshift(MECH[f.mech].n);if(f.rage)t.push('狂暴');f.dots.forEach(d=>t.push(d.l));if(f.stun)t.push('晕眩');return t};
 const hasRl=(f,id)=>!!(f.rl&&f.rl.has(id));
+const afx=(f,k)=>(f.efx&&f.efx[k])||0;           // 身上装备某个特效词条的条数
+const hasSet4=(f,k)=>!!(f.set4&&f.set4.has(k));  // 是否穿齐某套装 4 件
 
 /* ============ 掷骰出招 ============
    每回合掷 5 颗骰子，可锁定一部分重掷（免费 2 次，之后每次耗 25% 内力）。
@@ -1160,26 +1259,33 @@ function* battleGen(A,B,opt,log){
     if(a.mech==='regen'&&round%3===0){const h=Math.round(a.maxhp*.1);a.hp=Math.min(a.maxhp,a.hp+h);push(`${nm(a)} 运起水遁回春，回复 <b class="h">${h}</b> 气血`,a.side,[{on:a.side,v:'+'+h,k:'heal'}])}
     if(a.mech==='berserk'&&!a.rage&&a.hp<a.maxhp*.5){a.rage=true;a.atk*=1.8;a.spd*=1.3;push(`${nm(a)} 气血翻涌，陷入狂暴！`,a.side)}
     // 掷骰：手动时把骰子交给玩家锁定、重掷，直到出招；否则电脑按策略掷
-    a.dice=[d6(),d6(),d6(),d6(),d6()];a.held=[false,false,false,false,false];a.rr=2;
+    a.dice=[d6(),d6(),d6(),d6(),d6()];a.held=[false,false,false,false,false];a.rr=2+Math.min(2,afx(a,'reroll'))+(hasSet4(a,'zhenwu')?1:0);
     if(a.manual){for(;;){const c=yield a;if(c==='auto'){a.manual=false;break}if(!c||c.go)break;if(c.reroll)doReroll(a)}}
     if(!a.manual)aiDice(a);
-    const cb=evalDice(a.dice),pk=skillForTier(a,cb.t),sk=pk.s,mk=markCount(a);
+    const dv=afx(a,'one6')?a.dice.map(v=>v===1?6:v):a.dice; // 化腐朽：1 点当 6 点
+    const cb=evalDice(dv),pk=skillForTier(a,cb.t),mk=markCount(a),wt=a.wt;
+    const sk=wt==='anqi'&&cb.t===0?{n:'暗器连发',mult:.5,hits:3}:pk.s; // 暗器：散招变三连发
     const LA=a.lg||NOLG,LT=t.lg||NOLG;
     const s=sk?(sk.mult?sk:{...sk,mult:1}):{n:'',mult:1}; // 纯增益/疗伤招式顺带打一下
     const mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
     let txt=`${nm(a)} 掷出 <span class="dc">${a.dice.map(v=>DIE[v-1]).join('')}</span>（${cb.n}${mkTxt?`，${mkTxt}`:''}），`+(sk?`施展「<em>${s.n}</em>」`:'出招攻击');const fx=[];
-    const M=pk.b*(.85+cb.sum/60)*(1+.12*(mk.jianqi||0)); // 骰型倍率 × 点数加成 × 剑气印
+    // 骰型倍率 × 点数加成（扇翻倍）× 剑气印 × 兵器类型 × 装备词条 × 套装
+    let M=pk.b*(wt==='shan'?.7+cb.sum/30:.85+cb.sum/60)*(1+.12*(mk.jianqi||0));
+    if(wt==='jian'&&cb.t===4)M*=1.4;if(wt==='dao'&&(cb.t===1||cb.t===2))M*=1.25;if(wt==='gun'&&cb.t>=5)M*=1.3;if(wt==='zhang'&&cb.t===3)M*=1.35;
+    if(cb.t===4)M*=1+.35*afx(a,'lianhuan');if(cb.sum>=22)M*=1+.25*afx(a,'qianjun');if(cb.sum<=12)M*=1+.4*afx(a,'xiaobo');if(round===1)M*=1+.5*afx(a,'xiansheng');
+    if(hasSet4(a,'lieyang')&&cb.t>=5)M*=1.3;if(hasSet4(a,'fengyun'))M*=1+.06*a.dice.filter(v=>v===6).length;
+    M*=Math.pow(.92,afx(t,'taishan'));
     if(s.mult){
       const hits=s.hits||1,K=50+5*a.lv;let total=0,landed=0,crits=0;
       a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
-      let mul=M;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
+      let mul=M;if(hits>1&&wt==='anqi')mul*=1.1;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
       if(t.mech==='shield'&&round<=3)mul*=.5;if(hasRl(t,'jingang'))mul*=.85;if(hits>1&&hasRl(a,'lianji'))mul*=1.2;
       const defF=LA.has('yitian')?.7:1;
       const dg=Math.min(t.mech==='sand'?60:40,eff(t,'dodge'))*(t.mech==='sand'&&hits>1?.5:1)-(hasRl(a,'mingzhong')?20:0);
       for(let i=0;i<hits;i++){
         if(Math.random()*100<dg)continue;
         let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08);
-        if((forceCrit&&!crits)||Math.random()*100<Math.min(70,a.crit+(s.crit||0)+12*(mk.bao||0))){d*=1.6;crits++}
+        if((forceCrit&&!crits)||Math.random()*100<Math.min(80,a.crit+(s.crit||0)+12*(mk.bao||0)+(cb.t===1||cb.t===2?30*afx(a,'pairCrit'):0))){d*=1.6;crits++}
         total+=Math.max(1,Math.round(d));landed++;
       }
       if(!landed){txt+=`，被 ${nm(t)} 闪身避过`;fx.push({on:t.side,v:'闪避',k:'miss'})}
@@ -1187,7 +1293,8 @@ function* battleGen(A,B,opt,log){
         t.hp=Math.max(0,t.hp-total);
         txt+=(hits>1?`，${landed}/${hits} 段命中`:'')+`，造成 <b class="d">${total}</b> 点伤害`+(crits?'<span class="cr">（暴击）</span>':'');
         fx.push({on:t.side,v:'-'+total,k:crits?'crit':'dmg'});
-        const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0)+.06*(mk.xi||0);
+        const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0)+.06*(mk.xi||0)+(hasSet4(a,'xueyi')?.1:0);
+        if(wt==='zhang'&&cb.t===3&&t.hp>0&&!t.stun&&Math.random()<.15*(t.boss?.5:1)){t.stun=true;txt+=`，掌力透体，${nm(t)} 被震晕`}
         if(stl){const h=Math.round(total*stl);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，吸取 <b class="h">${h}</b> 气血`}
         if(s.dot&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def')))),s.dot.t,s.dot.l);txt+=`，${nm(t)} 身中${s.dot.l}`}
         if(a.mech==='venom'&&t.hp>0){addDot(t,Math.max(1,Math.round(t.maxhp*.03)),3,'五毒');txt+=`，${nm(t)} 中了五毒`}
@@ -1204,9 +1311,10 @@ function* battleGen(A,B,opt,log){
     if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
     if(LA.has('junzi')&&a.hp>0)a.hp=Math.min(a.maxhp,a.hp+Math.round(a.maxhp*.03));
     if(mk.chun&&a.hp>0){const h=Math.round(a.maxhp*.03*mk.chun);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回春印回复 <b class="h">${h}</b> 气血`}
+    if(afx(a,'yuanman')&&cb.t>=5&&a.hp>0){const h=Math.round(a.maxhp*.08*afx(a,'yuanman'));a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，圆满回复 <b class="h">${h}</b> 气血`}
     if(mk.jin){a.buffs=a.buffs.filter(b=>b.src!=='金刚印');a.buffs.push({def:.12*mk.jin,src:'金刚印',left:2})}
     if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.n);a.buffs.push({...s.buff,src:s.n,left:s.buff.t+1});txt+=`，${s.d.split('，').filter(x=>/提升|\+/.test(x)).join('，')||'气势大涨'}`}
-    a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*.06));
+    a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*(.06+.05*afx(a,'qihai'))));
     tick(a);push(txt,a.side,fx);
   };
   const petAct=(f,t)=>{
@@ -1298,6 +1406,7 @@ function applyResult(win,ctx,enemy,A){
         if(ctx.zi>=5&&Math.random()<.03){const t=grantLegend('yitian');if(t)rw.push(t)}}
       if(Math.random()<.04){S.qiyu.tok=Math.min(9,S.qiyu.tok+1);rw.push('奇遇令 +1')}
       if(boss&&(first||Math.random()<.25))rw.push(addPage());
+      if(boss&&first)rw.push(addTicket());
       if(first){S.prog[ctx.zi]++;rw.push('<span class="q4">首次通关</span>');
         if(boss&&ctx.zi<ZONES.length-1)rw.push(`<span class="q4">新区域开启：${ZONES[ctx.zi+1].n}</span>`);
         if(boss&&!S.story.seen[ctx.zi+'c'])S.story.pend=ctx.zi;}
@@ -1323,7 +1432,7 @@ function applyResult(win,ctx,enemy,A){
         gainExp(12+enemy.lv*6).forEach(m=>rw.push(`<span class="q4">${m}</span>`));
         if(f%5===0){const j=10+f;S.jade+=j;rw.push(`魂玉 +${j}`)}
         if(f===50){const t=grantLegend('xuantie');if(t)rw.push(t)}
-        if(f%10===0){rw.push(addPage());rw.push(addGem(pick(GEMK),Math.min(5,1+Math.floor(f/20))));S.fruit+=2;rw.push('灵果 +2');const so=randomSoul(f>=40?3:2);rw.push(`获得武魂 ${soulTag(so)}`);
+        if(f%10===0){rw.push(addPage(),addTicket());rw.push(addGem(pick(GEMK),Math.min(5,1+Math.floor(f/20))));S.fruit+=2;rw.push('灵果 +2');const so=randomSoul(f>=40?3:2);rw.push(`获得武魂 ${soulTag(so)}`);
           newsPush(`【${esc(S.name)}】击败${enemy.name}，登上通天塔第 ${f} 层！`)}
       }else rw.push(`闯过第 ${f} 层`);
       run.hp=Math.min(1,A.hp/A.maxhp+.15+run.b.regen);run.floor++;run.n++;
@@ -1352,7 +1461,7 @@ function applyResult(win,ctx,enemy,A){
   }else if(ctx.type==='dahui'){
     const D=S.dh,r=D.r;
     if(win){const g=S.lv*80*(r+1),p=25*(r+1);S.silver+=g;S.arena.rep+=p;D.r++;rw.push(addPage());rw.push(r<3?`晋级${DH_ROUND[r+1]}`:'<span class="q4">武林大会夺魁！</span>',`银两 +${fmt(g)}`,`声望 +${p}`);
-      if(D.r>=4){S.stat.champ++;const t=grantLegend('bawang');if(t)rw.push(t);else rw.push(`获得武魂 ${soulTag(randomSoul(3))}`,addGem(pick(GEMK),3));
+      if(D.r>=4){S.stat.champ++;rw.push(addTicket(3));const t=grantLegend('bawang');if(t)rw.push(t);else rw.push(`获得武魂 ${soulTag(randomSoul(3))}`,addGem(pick(GEMK),3));
         const l=learnSkill(DH_NPC[D.opp[3]][1]);if(l)rw.push(l+'（与决赛对手过招时偷师）');
         newsPush(`【${esc(S.name)}】在本届武林大会夺魁，号令群雄！`)}}
     else{D.out=true;rw.push(`止步${DH_ROUND[r]}。下周再来。`)}
@@ -1461,9 +1570,9 @@ function diffTxt(a){
 }
 const soulRank=so=>SOULDEF[so.id].r*100+so.lv;
 const gemPow=key=>{const k=key.slice(0,-1),l=+key.slice(-1);return GEMS[k].v[l-1]*PW[k]};
-function doSign(){if(S.sign.last===today())return '';const r=SIGN[S.sign.total%7]();S.sign.total++;S.sign.last=today();return `签到第 ${S.sign.total} 天：${r}`}
+function doSign(){if(S.sign.last===today())return '';const r=SIGN[S.sign.total%7]()+'，'+addTicket().replace(/<[^>]+>/g,'');S.sign.total++;S.sign.last=today();return `签到第 ${S.sign.total} 天：${r}`}
 function doOnline(){if(!onlineReady())return '';S.online.got++;const r=Math.random();
-  if(r<.4){const g=S.lv*40;S.silver+=g;return `银两 +${fmt(g)}`}if(r<.65){S.jade+=15;return '魂玉 +15'}if(r<.85){S.fruit+=1;return '灵果 +1'}if(r<.95)return addGem(pick(GEMK),1);
+  if(r<.1){addTicket();return '天机令 +1'}if(r<.4){const g=S.lv*40;S.silver+=g;return `银两 +${fmt(g)}`}if(r<.65){S.jade+=15;return '魂玉 +15'}if(r<.85){S.fruit+=1;return '灵果 +1'}if(r<.95)return addGem(pick(GEMK),1);
   S.qiyu.tok=Math.min(9,S.qiyu.tok+1);return '奇遇令 +1'}
 function doSmClaims(){let n=0;for(const x of S.sm.tasks)if(!x.got&&x.cur>=x.need){x.got=true;S.gx+=fy('shimen')?100:50;S.silver+=S.lv*40;n++}
   let t='';if(!S.sm.bonus&&S.sm.tasks.length&&S.sm.tasks.every(x=>x.got)){S.sm.bonus=true;S.gx+=100;t=addGem(pick(GEMK),1)}return {n,t}}
@@ -1500,7 +1609,7 @@ function updTudi(){const now=Date.now();
 function legendStats(slot,lv){const st=mainStats(slot,4,lv);for(const k in st)if(!isPct(k))st[k]=Math.round(st[k]*1.15);if(slot==='wpn')st.crit=3;else st.hp=(st.hp||0)+lv*8;return st}
 function grantLegend(id){
   if(S.legends.includes(id))return '';const L=LEGENDS.find(x=>x.id===id),lv=Math.max(S.lv,10);
-  S.legends.push(id);S.bag.push({uid:uid(),slot:L.slot,q:4,ilv:lv,name:L.n,st:legendStats(L.slot,lv),en:0,gm:[null,null,null],lg:id});
+  S.legends.push(id);S.bag.push({uid:uid(),slot:L.slot,q:4,ilv:lv,name:L.n,st:legendStats(L.slot,lv),en:0,star:0,gm:[null,null,null],lg:id,wt:LEG_WT[id]||null,fx:[]});
   newsPush(`【${esc(S.name)}】得到兵器谱名器「${L.n}」！`);
   return `<span class="q4">获得兵器谱名器「${L.n}」！</span>`;
 }
@@ -1748,9 +1857,9 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.in
 
 /* ============ 渲染 ============ */
 const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shimen','师门'],['huodong','活动'],['fuli','福利'],['xiulian','修炼'],['jingmai','经脉'],['wuhun','武魂'],['lingshou','灵兽'],['qiyu','奇遇'],['lunjian','论剑'],['zhuangbei','装备'],
-  ['renqing','人情'],['bingqipu','兵器谱'],['dahui','武林大会'],['mijing','秘境'],['shenghuo','生活'],['dufang','赌坊'],['xuanshang','悬赏'],['touzi','骰子']];
+  ['renqing','人情'],['bingqipu','兵器谱'],['dahui','武林大会'],['mijing','秘境'],['shenghuo','生活'],['dufang','赌坊'],['xuanshang','悬赏'],['touzi','骰子'],['tianji','天机阁']];
 const TABN=Object.fromEntries(TABS);
-const GROUPS=[['角色',['renwu','touzi','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','xuanshang','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','dufang','fuli']]];
+const GROUPS=[['角色',['renwu','touzi','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','xuanshang','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','tianji','dufang','fuli']]];
 const groupOf=t=>Math.max(0,GROUPS.findIndex(g=>g[1].includes(t)));
 const brand=()=>`<header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
   ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="btn sm" data-a="dailyAll">一键日常</button><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
@@ -1788,7 +1897,7 @@ function render(){
       <div class="lvline"><span>${S.rb?`<span class="rb">${CN[S.rb]}转</span> `:''}<b>${S.lv}</b> 级</span><span>${S.lv>=60?'已臻化境':`经验 ${fmt(S.exp)} / ${fmt(need)}`}</span></div>
       <div class="bar exp"><i style="width:${S.lv>=60?100:S.exp/need*100}%"></i></div></div>
     <div class="power"><span class="lbl">战力</span><b>${fmt(st.power)}</b></div>
-    <ul class="res"><li><span>银两</span>${fmt(S.silver)}</li><li><span>修为</span>${fmt(S.xw)}</li><li><span>魂玉</span>${fmt(S.jade)}</li><li><span>声望</span>${fmt(S.arena.rep)}</li><li><span>贡献</span>${fmt(S.gx)}</li><li><span>灵果</span>${S.fruit}</li><li><span>奇遇令</span>${S.qiyu.tok}</li></ul>
+    <ul class="res"><li><span>银两</span>${fmt(S.silver)}</li><li><span>修为</span>${fmt(S.xw)}</li><li><span>魂玉</span>${fmt(S.jade)}</li><li><span>声望</span>${fmt(S.arena.rep)}</li><li><span>贡献</span>${fmt(S.gx)}</li><li><span>灵果</span>${S.fruit}</li><li><span>奇遇令</span>${S.qiyu.tok}</li><li><span>天机令</span>${S.gacha.tickets}</li><li><span>星辰砂</span>${S.sand}</li></ul>
   </section>
   <section class="fy" aria-label="今日江湖风云"><b>今日江湖风云</b>${todayFY().map(id=>{const f=FY.find(x=>x.id===id);return `<span><em>${f.n}</em>${f.d}</span>`}).join('')}</section>
   <nav class="groups" aria-label="分类">${GROUPS.map(([n,ts],i)=>`<button aria-pressed="${i===groupOf(S.tab)}" data-a="group" data-v="${i}">${n}${ts.some(t=>badge(t))?'<span class="dot"></span>':''}</button>`).join('')}</nav>
@@ -1874,6 +1983,21 @@ jianghu(st){
         <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}<button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></span></li>`}).join('')}</ol>
     <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label><label><input type="checkbox" id="opt-manual" data-a="manualT" ${S.manual?'checked':''}> 手动掷骰（所有战斗都由你锁骰重掷；开着连续挑战时小怪仍自动打）</label></div>
    </section></div>`;
+},
+tianji(){
+  const G=S.gacha,free=G.free!==today(),left=G_PITY-G.pity,tp=ticketPrice();
+  return `<section class="box"><h3>天机阁 <small>天机令 ${G.tickets} 枚 · 再抽 ${left} 次内必出神品 · 累计 ${G.total} 抽</small></h3>
+    <div class="row"><button class="btn pri" data-a="gacha" data-v="free" ${free?'':'disabled'}>${free?'每日免费一抽':'今日免费已用'}</button>
+     <button class="btn pri" data-a="gacha" data-v="1" ${G.tickets<1?'disabled':''}>单抽（1 枚）</button>
+     <button class="btn pri" data-a="gacha" data-v="10" ${G.tickets<10?'disabled':''}>十连（10 枚，保底一件珍品）</button></div>
+    ${GLAST?`<div class="gcards">${GLAST.map((x,i)=>`<div class="gcard t${x.t}" style="animation-delay:${i*.06}s"><b class="${G_TIER[x.t].c}">${G_TIER[x.t].n}</b><span>${x.r}</span></div>`).join('')}</div>`:'<p class="empty">天机不可泄露。抽一次看看。</p>'}</section>
+   <section class="box"><h3>兑换天机令</h3>
+    <div class="row"><button class="btn" data-a="buyTicket" data-v="1" ${S.silver<tp?'disabled':''}>银两 ${fmt(tp)} 换 1 枚</button><button class="btn" data-a="buyTicket" data-v="10" ${S.silver<tp*10?'disabled':''}>银两 ${fmt(tp*10)} 换 10 枚</button></div>
+    <p class="note">另外每天签到送 1 枚，在线宝箱、首次击败江湖首领、通天塔塔主、武林大会夺魁也会给；论剑商店（声望 200）和师门商店（贡献 250）可以兑换。</p></section>
+   <section class="box"><h3>概率公示</h3>
+    <div class="combos">${G_RATE.map(([t,p])=>`<div><b class="${G_TIER[t].c}">${G_TIER[t].n}品 · ${(p*100).toFixed(0)}%</b>${GACHA[t].map(x=>x[0]).join('、')}</div>`).join('')}</div>
+    <p class="note">同一档里的奖励等概率抽取。十连的最后一抽，如果前九抽都没有珍品以上，必定是珍品；连续 ${G_PITY} 抽没出神品，第 ${G_PITY} 抽必定是神品。只用游戏内的天机令，没有充值。</p></section>
+   <section class="box"><h3>最近抽到</h3>${G.log.length?`<ul class="qlog">${G.log.map(l=>`<li><b class="${G_TIER[l.t].c}">${G_TIER[l.t].n}</b>${l.r}</li>`).join('')}</ul>`:'<p class="empty">还没抽过。</p>'}</section>`;
 },
 touzi(){
   const A=mkPlayer(),how=['没有任何组合','两颗相同','两组两颗相同','三颗相同','五颗连号（1~5 或 2~6）','三颗相同加一对','四颗相同','五颗相同'];
@@ -2162,15 +2286,20 @@ zhuangbei(){
     const en=it.en||0,cost=enCost(it),rate=EN_RATE[en],gm=sockets(it),rf=S.reforge&&S.reforge.uid===it.uid;
     return `<div class="forge"><div class="fh"><span>${itemTag(it)} <span class="note">${QN[it.q]} · ${it.ilv} 级</span></span><span class="slot-n">${SLOT_N[sl]}</span></div>
       <span class="st">${stList(itemStats(it))}</span>
+      ${itemExtra(it)?`<span class="st ex">${itemExtra(it)}</span>`:''}
       <div class="sock">${gm.length?gm.map((g,i)=>g?`<button class="gem g-${g.slice(0,-1)}" data-a="gemOut" data-v="${sl},${i}" title="点击取下">${+g.slice(-1)}级${GEMS[g.slice(0,-1)].n} ✕</button>`:`<button class="es" data-a="gemSlot" data-v="${sl},${i}">＋ 镶嵌</button>`).join(''):'<span class="note">良品以上才有宝石孔</span>'}</div>
       ${gemPick&&gemPick.sl===sl?`<div class="gempick">${gemKeys.length?gemKeys.map(k=>`<button class="gem g-${k.slice(0,-1)}" data-a="gemPut" data-v="${k}">${+k.slice(-1)}级${GEMS[k.slice(0,-1)].n} ×${S.gems[k]}</button>`).join(''):'<span class="note">没有宝石</span>'}<button class="btn sm" data-a="gemCancel">取消</button></div>`:''}
       ${rf?`<div class="reforge"><span>洗练结果：${stList(S.reforge.st)}</span><span class="${powerOf(S.reforge.st)>=powerOf(it.st)?'cmp up':'cmp down'}">基础战力 ${fmt(powerOf(it.st))} → ${fmt(powerOf(S.reforge.st))}</span><div class="row"><button class="btn sm pri" data-a="rfKeep" data-v="new">换成新属性</button><button class="btn sm" data-a="rfKeep" data-v="old">保留原属性</button></div></div>`:''}
       <div class="row">${en>=15?'<span class="q4">已强化至 +15</span>':`<button class="btn sm pri" data-a="enhance" data-v="${sl}" ${S.silver<cost?'disabled':''}>强化 +${en+1}（${Math.round(rate*100)}% · 银两 ${fmt(cost)}）</button><button class="btn sm" data-a="enhanceTo" data-v="${sl}" ${S.silver<cost?'disabled':''}>一键强化至 +${en<10?10:15}</button>`}
         ${it.q>=2&&!it.toy&&!it.lg?`<button class="btn sm" data-a="reforge" data-v="${sl}" ${S.silver<reforgeCost(it)||rf?'disabled':''}>洗练（银两 ${fmt(reforgeCost(it))}）</button>`:''}
+        ${(it.star||0)<STAR_MAX?(c=>`<button class="btn sm" data-a="starUp" data-v="${sl}" ${S.sand<c.sand||S.silver<c.silver?'disabled':''}>升星 ${'★'.repeat((it.star||0)+1)}（星辰砂 ${c.sand}，银两 ${fmt(c.silver)}）</button>`)(starCost(it)):'<span class="q4">已满五星</span>'}
         <button class="btn sm" data-a="unequip" data-v="${sl}">卸下</button></div>
       ${en>=6&&en<15?'<span class="note">+7 起强化失败会掉一级</span>':''}</div>`;
   };
-  return `<section class="box"><h3>身上装备 <small>强化每级主属性 +8%；宝石随装备走，换装不会丢</small></h3>
+  const sc=setCounts(),wt=itemWt(S.equip.wpn);
+  const setTxt=Object.keys(sc).map(k=>`<span class="stag">${SETS[k].n}套 ${sc[k]}/4</span>2 件：${SETS[k].d2}${sc[k]>=2?'（已生效）':''}；4 件：${SETS[k].d4}${sc[k]>=4?'（已生效）':''}`).join('<br>');
+  return `<section class="box"><h3>身上装备 <small>强化每级主属性 +8%，每颗星 +10%；宝石随装备走，换装不会丢</small></h3>
+    <p class="note">${wt?`兵器类型：<span class="wtag">${WTYPES[wt].n}</span>${WTYPES[wt].d}`:'还没装备兵器'}${setTxt?`<br>${setTxt}`:''}</p>
     <div class="row"><button class="btn pri" data-a="equipBest">一键换上更好的装备</button><button class="btn" data-a="gemAuto" ${gemKeys.length?'':'disabled'}>一键镶嵌宝石</button><span class="note">镶嵌会优先用最值钱的宝石，并替换掉孔里更差的</span></div>
     <div class="forges">${SLOTS.map(forge).join('')}</div></section>
    <section class="box"><h3>宝石 <small>三颗同级同种合成一颗高一级的，最高 5 级</small></h3>
@@ -2183,9 +2312,9 @@ zhuangbei(){
      :`<button class="btn red" data-a="sellAll" ${sb.length?'':'disabled'}>全部出售（${sb.length} 件）</button>`}</div>
    ${sellAllArm&&sb.length?`<p class="note" style="color:var(--cinnabar)">身上穿着的装备和兵器谱名器不会被卖。${(w=>`行囊里${w?`包括${w}在内的`:'的'}其他装备都会卖掉`)([sb.some(i=>i.q>=3)?'珍品、神品':'',sb.some(i=>i.en)?'强化过的装备':''].filter(Boolean).join('和'))}，卖掉就找不回来了；镶嵌的宝石会自动取回。</p>`:''}
    ${list.length?`<div class="items">${list.map(it=>{const cur=S.equip[it.slot],d=itemPower(it)-itemPower(cur);
-     return `<div class="item">${itemTag(it)}<span class="meta">${QN[it.q]} · ${SLOT_FULL[it.slot]} · ${it.ilv} 级${(it.gm||[]).some(Boolean)?' · 已镶嵌':''}</span><span class="st">${stList(itemStats(it))}</span>
+     return `<div class="item">${itemTag(it)}<span class="meta">${QN[it.q]} · ${SLOT_FULL[it.slot]} · ${it.ilv} 级${(it.gm||[]).some(Boolean)?' · 已镶嵌':''}</span><span class="st">${stList(itemStats(it))}</span>${itemExtra(it)?`<span class="st ex">${itemExtra(it)}</span>`:''}
        <span class="cmp ${d>0?'up':d<0?'down':''}">${cur?(d>0?`比当前装备强 ${fmt(d)} 战力`:d<0?`比当前装备弱 ${fmt(-d)} 战力`:'与当前装备相当'):`该部位未装备，+${fmt(d)} 战力`}</span>
-       <div class="row"><button class="btn sm ${d>0?'pri':''}" data-a="equip" data-v="${it.uid}">装备</button>${it.lg?'<span class="note q4">名器，不可出售</span>':`<button class="btn sm" data-a="sell" data-v="${it.uid}">出售 ${fmt(sellPrice(it))}</button>`}</div></div>`}).join('')}</div>`
+       <div class="row"><button class="btn sm ${d>0?'pri':''}" data-a="equip" data-v="${it.uid}">装备</button>${it.lg?'<span class="note q4">名器，不可出售</span>':`<button class="btn sm" data-a="sell" data-v="${it.uid}">出售 ${fmt(sellPrice(it))}</button>${it.q>=1?`<button class="btn sm" data-a="dismantle" data-v="${it.uid}">分解 · 星辰砂 ${sandOf(it)}</button>`:''}`}</div></div>`}).join('')}</div>`
    :'<p class="empty">行囊空空。击败对手有几率掉落装备，首领必掉。</p>'}</section>`;
 },
 };
@@ -2263,7 +2392,7 @@ const ACT={
     if(k==='jade'){S.jade+=60;m='魂玉 +60'}
     if(k==='tok'){S.qiyu.tok++;m='奇遇令 +1'}
     if(k==='box')m=dropItem(S.lv,3);
-    if(k==='page')m=addPage();
+    if(k==='page')m=addPage();if(k==='ticket')m=addTicket();
     save();render();toast(m)},
   /* 通天塔 */
   towerStart(v){if(S.tower.run)return;const f=+v;if(f!==1&&f!==towerCP())return;
@@ -2280,7 +2409,7 @@ const ACT={
     toast(S.secret===1?`习得秘传「${SECTS[S.sect].secret.n}」`:`「${SECTS[S.sect].secret.n}」修至第${CN[S.secret]}重`)},
   smShop(k){const w=SM_SHOP.find(x=>x.k===k);if(!w||S.gx<w.p)return;S.gx-=w.p;let m='';
     if(k==='gem')m=addGem(pick(GEMK),1);if(k==='gem2')m=addGem(pick(GEMK),2);if(k==='fruit'){S.fruit+=5;m='灵果 +5'}if(k==='tok'){S.qiyu.tok++;m='奇遇令 +1'}
-    if(k==='page')m=addPage();
+    if(k==='page')m=addPage();if(k==='ticket')m=addTicket();
     if(k==='steal'){m=learnSkill();if(!m){S.gx+=w.p;m='天下武功你都已学会，贡献已退还'}}
     save();render();toast(m)},
   /* 活动 */
@@ -2484,6 +2613,15 @@ const ACT={
     else if(me&&him)HQ=`你们俩都喊中了 ${sum}，各自干了一碗，不分输赢。`;
     else{gamble(false,b,0);S.gamble.drunk++;HQ=`你喊「${HQ_CALL[call]}」，可两人一共出了 ${sum}${him?'，被酒客喊中了':''}。输了 ${fmt(b)} 两，罚酒一碗。${S.gamble.drunk%10===0?'你已经开始看见两个酒客了。':''}`}
     save();render()},
+  /* 天机阁与升星 */
+  gacha(v){const G=S.gacha;let n;
+    if(v==='free'){if(G.free===today())return;G.free=today();n=1}else{n=+v;if(!(n===1||n===10)||G.tickets<n)return;G.tickets-=n}
+    GLAST=gachaPull(n);save();render();const best=Math.max(...GLAST.map(x=>x.t));if(best>=3)toast(`抽到${G_TIER[best].n}品！`)},
+  buyTicket(v){const n=+v,c=ticketPrice()*n;if(!(n===1||n===10)||S.silver<c)return;S.silver-=c;S.gacha.tickets+=n;save();render();toast(`天机令 +${n}`)},
+  starUp(sl){const it=S.equip[sl];if(!it||(it.star||0)>=STAR_MAX)return;const c=starCost(it);if(S.sand<c.sand||S.silver<c.silver)return;
+    S.sand-=c.sand;S.silver-=c.silver;it.star=(it.star||0)+1;save();render();toast(`${itemTag(it)} 升到 ${it.star} 星`);
+    if(it.star===STAR_MAX)newsPush(`【${esc(S.name)}】将${esc(it.name)}升至五星！`)},
+  dismantle(u){const it=S.bag.find(x=>x.uid===u);if(!it||it.lg)return;stripGems(it);const n=sandOf(it);S.sand+=n;S.bag=S.bag.filter(x=>x!==it);save();render();toast(`分解得到星辰砂 ×${n}`)},
   /* 存档 */
   reset(){if(!resetArm){resetArm=true;render();return}resetArm=false;try{localStorage.removeItem(SAVE_KEY)}catch(e){}S=null;window._cname=null;render()},
   exportSave(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));const box=$('#savebox');box.value=code;box.select();
