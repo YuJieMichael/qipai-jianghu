@@ -307,6 +307,51 @@ button.gem{cursor:pointer}
 .blog .a{color:var(--gold)} .blog .b{color:#e78b7c}
 .blog em{font-style:normal;color:var(--fg);font-weight:600}
 .blog b.d{color:#ff8a78} .blog b.h{color:#7ee2b4} .blog .cr{color:#ffcf5a}
+/* 走路战斗：横版场景，像素小人站在路上对打。--u 是一个像素点的大小 */
+.bt.walkm .blog{height:150px}
+.scene{--u:3px;position:relative;height:calc(var(--u)*82);border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:linear-gradient(180deg,var(--sk1),var(--sk2))}
+.scene .ly{position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*64);background-repeat:repeat-x;background-size:calc(var(--u)*160) 100%;image-rendering:pixelated;animation:scroll linear infinite paused}
+.scene .ly.far{animation-duration:16s}
+.scene .ly.near{animation-duration:3.2s}
+.scene.walk .ly{animation-play-state:running}
+@keyframes scroll{to{background-position-x:calc(var(--u)*-160)}}
+.sc-road{position:absolute;top:calc(var(--u)*2);left:50%;transform:translateX(-50%);display:flex;gap:7px;align-items:center;background:rgba(10,14,15,.6);padding:3px 10px;border-radius:10px}
+.sc-road i{display:block;width:7px;height:7px;border-radius:50%;background:#3a4c4c}
+.sc-road i.done{background:var(--gold-d)}
+.sc-road i.cur{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.sc-road i.bs{width:auto;height:auto;background:none;box-shadow:none;font-style:normal;font-family:var(--f-display);font-size:13px;line-height:1;color:var(--cinnabar)}
+.sc-road i.bs.cur{color:var(--gold);text-shadow:0 0 6px var(--gold)}
+.unit{position:absolute;bottom:calc(var(--u)*9);width:calc(var(--u)*50);display:flex;flex-direction:column;align-items:center;gap:var(--u)}
+.unit.ua{left:max(2px,calc(27% - var(--u)*25))}
+.unit.ub{right:max(2px,calc(27% - var(--u)*25))}
+.uhud{width:100%;background:rgba(10,14,15,.74);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:3px 6px;display:flex;flex-direction:column;gap:2px}
+.uhud .f-name{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 4px;align-items:baseline;min-width:0}
+.uhud .f-name b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uhud .tag{font-size:10px;letter-spacing:0;white-space:nowrap}
+.uhud .bar{height:7px} .uhud .bar.mp{height:4px}
+.uhud .bar-n{font-size:10px;line-height:1.2}
+.uhud .fx-tags{min-height:0}
+.unit .pop{left:0;right:0;top:auto;bottom:calc(var(--u)*24);text-align:center;z-index:2}
+.spr{--fw:calc(var(--su,var(--u))*32);width:var(--fw);height:calc(var(--su,var(--u))*26);background-size:calc(var(--fw)*4) 100%;background-repeat:no-repeat;image-rendering:pixelated;transform-origin:50% 100%;animation:breathe 1.6s ease-in-out infinite}
+.bossu .spr{--su:calc(var(--u)*1.3);filter:drop-shadow(0 0 5px rgba(207,74,58,.75))}
+@keyframes breathe{50%{transform:translateY(calc(var(--u)*-.5))}}
+.walk .ua .spr,.ub.in .spr{animation:walkf .36s steps(2) infinite}
+@keyframes walkf{from{background-position-x:calc(var(--fw)*-1)}to{background-position-x:calc(var(--fw)*-3)}}
+.spr.atk{background-position-x:calc(var(--fw)*-3)}
+.ua .spr.atk{animation:lungeA var(--sp,.3s) ease-out}
+.ub .spr.atk{animation:lungeB var(--sp,.3s) ease-out}
+@keyframes lungeA{40%,70%{transform:translateX(var(--lx))}}
+@keyframes lungeB{40%,70%{transform:translateX(calc(var(--lx)*-1))}}
+.spr.hit{animation:hit .3s}
+@keyframes hit{25%{transform:translateX(-3px);filter:brightness(2) sepia(1) saturate(5) hue-rotate(-40deg)}60%{transform:translateX(3px)}}
+.spr.dodge{animation:dodge .3s}
+.ub .spr.dodge{--dx:14px}
+@keyframes dodge{50%{transform:translate(var(--dx,-14px),-6px);opacity:.6}}
+.spr.heal{animation:heal .5s}
+@keyframes heal{50%{filter:drop-shadow(0 0 6px #7ee2b4) brightness(1.3)}}
+.spr.dead{animation:none;transition:transform .6s ease-in,opacity .6s;opacity:.4}
+.ua .spr.dead{transform:rotate(-80deg)}
+.ub .spr.dead{transform:rotate(80deg)}
 .result{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;border:1px solid var(--line2)}
 .result.win{border-color:var(--gold-d);background:#211e14}
 .result.lose{border-color:#5a2a24;background:#1f1514}
@@ -436,6 +481,9 @@ span.die{cursor:default}
   .duel{grid-template-columns:1fr;gap:6px}
   .vs{text-align:center;font-size:20px}
   .blog{height:190px}
+  .bt.walkm .blog{height:120px}
+  .scene{--u:2.4px;height:calc(var(--u)*88)}
+  .uhud .bar-n{display:none}
   .story{margin-top:8vh;padding:18px}
   .sday{font-size:11px}
 }
@@ -443,6 +491,7 @@ span.die{cursor:default}
   .taiji,.acu li.next .pt,.sc-btn{animation:none}
   .news span{animation:none;padding-left:12px}
   .pop,.toast{animation-duration:.01s}
+  .scene .ly,.spr{animation:none}
   .bar i{transition:none}
 }
 </style>
@@ -1401,11 +1450,11 @@ function fight(zi,i){
   const z=ZONES[zi],st=STORY[zi];
   if(i===0&&!S.story.seen[zi+'a']){S.story.seen[zi+'a']=1;save();showStory(st.pre,null,()=>fight(zi,i));return}
   if(i===5&&!S.story.seen[zi+'b']){S.story.seen[zi+'b']=1;save();showStory(st.boss,null,()=>fight(zi,i));return}
-  if(S.karma<=-150&&Math.random()<.1){startBattle(mkNPC('名门弟子',pick(['shaolin','wudang','emei']),S.lv,1,'追杀'),{type:'hunt',zi,i,title:'通缉 · 名门弟子追杀'});return}
-  if(fy('xueyi')&&Math.random()<.08){startBattle(mkNPC('血衣楼杀手',pick(SECT_KEYS),S.lv,.95,'血衣楼'),{type:'xueyi',zi,i,title:'血衣楼杀手伏击'});return}
+  if(S.karma<=-150&&Math.random()<.1){const sc=pick(['shaolin','wudang','emei']);startBattle(mkNPC('名门弟子',sc,S.lv,1,'追杀'),{type:'hunt',zi,i,walk:true,foeSect:sc,title:'通缉 · 名门弟子追杀'});return}
+  if(fy('xueyi')&&Math.random()<.08){const sc=pick(SECT_KEYS);startBattle(mkNPC('血衣楼杀手',sc,S.lv,.95,'血衣楼'),{type:'xueyi',zi,i,walk:true,foeSect:sc,title:'血衣楼杀手伏击'});return}
   const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
   const m=applyMech(mkMonster(name,lv,boss,false),boss?ZONE_MECH[zi]:null);if(boss)m.passives[0].n=z.bs;
-  startBattle(m,{type:'stage',zi,i,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
+  startBattle(m,{type:'stage',zi,i,walk:true,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
 }
 function startBattle(enemy,ctx){
   const A=mkPlayer();A.side='a';enemy.side='b';usePills();
@@ -1414,12 +1463,12 @@ function startBattle(enemy,ctx){
   if(S.manual&&!(ctx.manualOK===false&&(S.auto||S.tAuto))){ // 勾了手动掷骰就全部手动；开着连续挑战或自动连闯时，小怪仍自动打
     A.manual=true;const log=[];
     BT={manual:true,gen:battleGen(A,enemy,ctx.sim||{},log),log,A,enemy,info,i:-1,timer:null,autoT:null,ctx,done:false};
-    showBattle();manualRun(BT.gen.next());return;
+    showBattle();return; // 开局后由 showBattle 接着走 manualRun
   }
   const res=simulate(A,enemy,ctx.sim||{});
   const reward=applyResult(res.win,ctx,enemy,A);
   save();
-  BT={res,info,i:0,timer:null,autoT:null,ctx,reward,done:false};
+  BT={res,info,enemy,i:0,timer:null,autoT:null,ctx,reward,done:false};
   showBattle();
 }
 function applyResult(win,ctx,enemy,A){
@@ -1515,22 +1564,218 @@ function applyResult(win,ctx,enemy,A){
   }
   return rw;
 }
+/* ============ 走路战斗：横版场景与像素小人 ============ */
+// 江湖关卡的战斗放在横版场景里演：主角一路往右走，对手迎面走来，停下就地开打，打赢了接着走
+// 小人和背景都用 canvas 一个点一个点画好，转成图片当 CSS 背景；小人一张图四帧：站、迈左脚、迈右脚、出招
+const shade=(h,f)=>{const n=parseInt(h.slice(1),16);return '#'+[n>>16,n>>8&255,n&255].map(v=>Math.round(f<0?v*(1+f):v+(255-v)*f).toString(16).padStart(2,'0')).join('')};
+const SCOL={shaolin:'#c98a2e',wudang:'#6c9bd2',emei:'#d68fb0',gaibang:'#93a955',mingjiao:'#d65e40',tangmen:'#5fb7a1',tianshan:'#9cc7ea'};
+const SECT_LOOK={shaolin:{hair:'bald',wpn:'staff',b:'#a02a20'},wudang:{hair:'bun',wpn:'sword',b:'#2a3a5a'},emei:{hair:'long',wpn:'sword',b:'#f0e0e8'},
+  gaibang:{hair:'messy',wpn:'staff',b:'#6a4a2a',patch:1},mingjiao:{hair:'band',wpn:'saber',b:'#2a1a1a'},tangmen:{hair:'hat',wpn:'dart',b:'#2a3a36'},tianshan:{hair:'long',wpn:'sword',b:'#e8f0f8'}};
+const WT_LOOK={jian:'sword',dao:'saber',gun:'staff',zhang:'fist',shan:'fan',anqi:'dart'};
+// 关卡怪物的样子：k 是体型（默认人形），r 衣服或皮毛，b 腰带或头巾，h 发色，s 肤色
+const MON_SPR={
+ 饿狼:{k:'wolf',r:'#7d7f80'},沙狼:{k:'wolf',r:'#b08a58'},雪狐:{k:'wolf',r:'#e6ecef',fox:1},
+ 山魈:{k:'ape',r:'#5a4a3e',s:'#c8503c',wpn:'fist'},铁臂猿:{k:'ape',r:'#77736a',s:'#b89a80',wpn:'fist'},青竹蛇:{k:'snake',r:'#5fae4a'},
+ 剪径毛贼:{r:'#6b5a44',b:'#3a3a3a',hair:'scarf',wpn:'saber'},地痞头目:{r:'#5a4a6a',b:'#c9a050',hair:'messy',wpn:'staff'},黑风寨主:{r:'#2e2e33',b:'#b03a2e',hair:'band',wpn:'axe',beard:'#2a2420'},
+ 拦路强人:{r:'#7a5030',b:'#3a2a20',hair:'scarf',wpn:'saber'},铁掌飞熊:{r:'#6a4a2a',b:'#c9a050',hair:'messy',wpn:'fist',beard:'#2a2420'},
+ 太湖水匪:{r:'#3d6a8a',b:'#d8d0b0',hair:'scarf',wpn:'saber'},鬼面书生:{r:'#d8d4c8',b:'#3a3a3a',hair:'bun',wpn:'fan',mask:1},漕帮恶霸:{r:'#4a5a3a',b:'#b08040',hair:'band',wpn:'staff'},
+ 太湖水龙王:{r:'#2a6a6a',b:'#e0c060',hair:'long',wpn:'staff',beard:'#d8d8d0'},
+ 五毒教徒:{r:'#6a3a7a',b:'#9ad050',hair:'band',wpn:'dart'},竹林刺客:{r:'#262a2a',b:'#6a8a4a',hair:'hat',wpn:'sword'},五毒圣手:{r:'#4a2a5a',b:'#9ad050',hair:'long',wpn:'fist',mask:1},
+ 西域刀客:{r:'#c0a070',b:'#8a2a2a',hair:'scarf',wpn:'saber',beard:'#3a2a20'},响马:{r:'#7a4a2a',b:'#2a2a2a',hair:'hat',wpn:'saber'},金沙狂刀:{r:'#b08a30',b:'#6a1a1a',hair:'band',wpn:'axe',beard:'#3a2a20'},
+ 冰魄剑客:{r:'#a8c8e0',b:'#e8f0f8',hair:'bun',wpn:'sword'},白发魔僧:{r:'#6a3a3a',b:'#d8b040',hair:'bald',wpn:'staff',beard:'#e8e8e8'},冰魄老妖:{r:'#d8e8f0',b:'#5a8ab0',h:'#f0f4f8',hair:'long',wpn:'fist'},
+ 剑宗弃徒:{r:'#5a6a7a',b:'#c0c0c0',hair:'bun',wpn:'sword'},黑衣死士:{r:'#1e2024',b:'#7a1a1a',hair:'hat',wpn:'saber'},血刀门人:{r:'#8a1e1e',b:'#2a1a1a',hair:'band',wpn:'saber'},
+ 独孤剑魔:{r:'#2a2a3a',b:'#9a8a6a',h:'#c8c8c8',hair:'long',wpn:'sword'},
+};
+function drawHuman(P,f,L){
+  const ape=L.k==='ape',r=L.r,d=shade(r,-.35),b=L.b||shade(r,-.55),h=L.h||'#1e1a18',s=L.s||'#e8b890',p=ape?d:shade(r,-.6),k='#14100e',m='#d8dde0';
+  const W=L.wpn,front=W==='staff'||W==='axe';
+  P(5,25,16,1,'rgba(0,0,0,.35)');
+  for(const x of [[9,12],[7,14],[10,11],[6,15]][f]){P(x,20,2,4,p);P(x,24,3,1,k)}
+  if(front&&f<3){if(W==='staff'){P(17,3,1,22,'#8a5a2a');P(17,3,1,2,'#c9a050')}else{P(17,8,1,16,'#6a4a2a');P(18,7,3,6,m);P(21,8,1,4,m)}} // 长兵器竖着拿在身前
+  P(8,12,7,6,r);P(7,17,9,3,r);P(7,12,1,8,d);P(7,19,9,1,d);
+  if(!ape){P(8,16,7,1,b);P(12,12,2,2,shade(r,.35))}
+  if(L.patch){P(9,13,2,2,shade(r,-.25));P(12,18,2,1,'#c9a050')}
+  P(9,4,7,7,s);
+  const H=L.hair;
+  if(ape){P(8,3,8,3,r);P(8,6,4,5,r)}
+  else if(H==='bald'){P(10,3,5,1,s);P(11,4,1,1,'#a0603a');P(13,4,1,1,'#a0603a')}
+  else if(H==='scarf'){P(9,3,7,1,b);P(8,4,8,2,b);P(8,6,3,3,b);P(6,6,2,2,b)}
+  else{
+    P(9,3,7,1,h);P(8,4,8,1,h);P(8,5,4,4,h);
+    if(H==='bun'){P(10,1,3,2,h);P(9,2,1,1,'#c9a050')}
+    if(H==='long')P(7,5,3,9,h);
+    if(H==='band')P(8,5,8,1,'#c0302a');
+    if(H==='messy'){P(9,2,1,1,h);P(11,1,1,2,h);P(13,2,1,1,h);P(15,3,1,2,h)}
+    if(H==='hat'){P(6,4,13,1,'#6a5430');P(9,2,6,2,'#a88a4a');P(11,1,2,1,'#a88a4a')}
+  }
+  if(L.mask){P(12,5,4,6,'#eeeae0');P(14,7,1,1,'#c0302a')}else P(14,7,1,1,k);
+  if(L.beard)P(12,10,4,3,L.beard);
+  if(f===3){ // 出招：手臂伸直，兵器朝前
+    P(14,13,5,2,r);P(19,13,2,2,s);
+    if(W==='sword'){P(21,12,1,4,'#c9a050');P(22,13,8,1,m);P(22,14,7,1,shade(m,-.3));P(30,13,1,1,'#fff')}
+    else if(W==='saber'){P(21,12,1,4,'#8a6a30');P(22,13,7,2,m);P(29,12,2,2,m);P(22,15,6,1,shade(m,-.3))}
+    else if(W==='staff'){P(4,13,27,1,'#8a5a2a');P(29,13,2,1,'#c9a050');P(19,13,2,2,s)}
+    else if(W==='axe'){P(20,13,8,1,'#6a4a2a');P(27,9,3,9,m);P(30,10,1,7,m);P(19,13,2,2,s)}
+    else if(W==='fan'){P(21,9,2,8,'#e8dcc0');P(23,10,1,6,'#e8dcc0');P(24,11,1,4,'#e8dcc0');P(21,12,1,2,'#6a4a2a')}
+    else if(W==='dart'){P(23,13,2,1,m);P(26,11,2,1,m);P(27,15,2,1,m)}
+    else{P(19,12,3,4,s);P(22,13,2,2,'rgba(255,240,200,.6)')}
+  }else if(front){P(14,13,2,2,r);P(15,15,1,1,r);P(16,14,2,2,s)}
+  else{
+    const [ax,hx,hy]=[[13,13,17],[14,15,16],[11,11,17]][f],dy=ape?2:0;
+    P(ax,13,2,hy-13+dy,r);P(hx,hy+dy,2,1,s);
+    if(W==='sword'){P(hx-1,hy+1,4,1,'#c9a050');P(hx+1,hy+2,1,5,m)}
+    else if(W==='saber'){P(hx-1,hy+1,3,1,'#8a6a30');P(hx,hy+2,2,5,m)}
+    else if(W==='fan')P(hx,hy-3,1,4,'#d8c8a0');
+  }
+}
+function drawWolf(P,f,L){
+  const c=L.r,dk=shade(c,-.3),lt=shade(c,.35),k='#14100e',y=f===3?1:0;
+  P(4,25,22,1,'rgba(0,0,0,.35)');
+  for(const x of [[7,10,17,20],[5,11,15,21],[8,9,18,19],[4,8,19,23]][f]){P(x,19,2,5,dk);P(x,24,2,1,k)}
+  P(6,14,15,5,c);P(7,13,12,1,dk);P(9,18,10,1,lt);
+  if(L.fox){P(1,11,5,4,c);P(1,11,2,2,'#ffffff')}else{P(3,13,3,2,c);P(1,11,2,3,c)}
+  P(20,11+y,6,5,c);P(21,9+y,2,2,c);P(24,9+y,2,2,dk);P(24,13+y,1,1,k);
+  if(f===3){P(26,12+y,5,2,c);P(30,12+y,1,1,k);P(26,15+y,4,1,c);P(27,14+y,1,1,'#fff');P(29,14+y,1,1,'#fff')}
+  else{P(26,13,3,3,c);P(28,13,1,1,k);P(26,15,2,1,lt)}
+}
+function drawSnake(P,f,L){
+  const c=L.r,dk=shade(c,-.35),lt=shade(c,.4),k='#14100e',w=[0,1,-1,0][f],a=f===3?4:0;
+  P(5,25,18,1,'rgba(0,0,0,.35)');
+  P(6,21,15,4,c);P(8,20,11,1,c);P(6,24,15,1,dk);P(9,22,8,1,lt);
+  P(15+w,13,3,8,c);P(16+w+a/2,10,3,4,c);P(17+w+a,8,5,4,c);P(17+w+a,11,5,1,lt);P(20+w+a,9,1,1,k);P(22+w+a,10,2+a/2,1,'#d03030');
+}
+const SPR={},SCN={};
+const pxCanvas=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,(x,y,ww,hh,col)=>{g.fillStyle=col;g.fillRect(x,y,ww,hh)});return c.toDataURL()};
+function sprSheet(L,flip){
+  const key=JSON.stringify(L)+(flip?1:0);
+  return SPR[key]||(SPR[key]=pxCanvas(128,26,(g,P)=>{
+    const dr=L.k==='wolf'?drawWolf:L.k==='snake'?drawSnake:drawHuman;
+    for(let f=0;f<4;f++){g.save();g.translate(f*32+(flip?32:0),0);if(flip)g.scale(-1,1);dr(P,f,L);g.restore()}
+  }));
+}
+// 主角按门派和所用兵器画；追杀、伏击的人按对方门派画；其余查怪物表
+function sprLook(side,enemy,ctx){
+  if(side==='a'){const lk=SECT_LOOK[S.sect];return {...lk,r:SCOL[S.sect],wpn:WT_LOOK[itemWt(S.equip.wpn)]||lk.wpn}}
+  if(ctx.foeSect){const lk=SECT_LOOK[ctx.foeSect];return ctx.type==='xueyi'?{...lk,r:'#5a1414',b:'#1a1a1a',hair:'hat'}:{...lk,r:shade(SCOL[ctx.foeSect],-.15)}}
+  return MON_SPR[enemy.name]||{r:'#5a5a5a',b:'#3a3a3a',hair:'scarf',wpn:'saber'};
+}
+// 七个区域的场景：天空渐变、远景剪影、近景道具、地面
+const ZSC=[
+ {sky:['#283149','#c98656'],far:{t:'town',c:'#4b3f52',win:'#e8a850'},near:['willow','rock','willow'],trunk:'#3b2a22',leaf:'#4e7a3a',rock:'#6a5a48',gr:['#7a6040','#5e4a32','#55703a']},
+ {sky:['#1f3242','#87a99c'],far:{t:'peaks',c:'#3d5656'},near:['pine','rock','pine'],trunk:'#3b2a22',leaf:'#2f5a3a',rock:'#6f6e66',gr:['#6f6e66','#55544e','#4a6a3a']},
+ {sky:['#283a50','#a3bcc6'],far:{t:'town2',c:'#c4cbcb',roof:'#2a3036'},near:['reed','willow','reed'],trunk:'#3b2a22',leaf:'#6a8a4a',rock:'#6a7470',gr:['#7c8a8c','#5f6c6e','#3c6a86']},
+ {sky:['#10241a','#55854f'],far:{t:'bamboo',c:'#25462c'},near:['bamboo','bamboo','rock'],trunk:'#2e5a26',leaf:'#4f8a3e',rock:'#4a5a40',gr:['#3e5a2c','#2c4220','#5a8a3a']},
+ {sky:['#3a2a3a','#e3934c'],far:{t:'dunes',c:'#a86a36'},near:['rock'],trunk:'#5a3a22',leaf:'#6a7a3a',rock:'#7a4a2a',gr:['#cf9e5e','#b4864a','#d8b070']},
+ {sky:['#1b2a45','#97b4d4'],far:{t:'peaks',c:'#556b8a',snow:1},near:['snowpine','rock','snowpine'],trunk:'#3b2a22',leaf:'#2c4a50',rock:'#8a9aaa',gr:['#dfe8ef','#b8c8d6','#f4f8fb']},
+ {sky:['#110d20','#553867'],far:{t:'peaks',c:'#2a2240',sharp:1},near:['pine','rock'],trunk:'#2a1e1a',leaf:'#1e3a32',rock:'#4a4450',gr:['#4a4450','#3a3540','#5a5262']},
+];
+const PROP={
+ willow(P,x,z){P(x,28,2,20,z.trunk);P(x-5,20,13,7,z.leaf);P(x-3,18,9,2,z.leaf);for(let i=0;i<6;i++)P(x-4+i*2,27,1,4+(i*3)%5,z.leaf)},
+ pine(P,x,z,snow){P(x,40,2,8,z.trunk);for(let j=0;j<22;j++){const w=2+Math.round((j%8)*1.1+j*.35),l=x+1-Math.floor(w/2);P(l,18+j,w,1,z.leaf);if(snow&&j%8<2)P(l,18+j,Math.ceil(w/2),1,'#eef4f8')}},
+ snowpine(P,x,z){PROP.pine(P,x,z,1)},
+ rock(P,x,z){P(x,43,9,5,z.rock);P(x+1,41,6,2,z.rock);P(x+2,41,3,1,shade(z.rock,.25));P(x,47,9,1,shade(z.rock,-.3))},
+ reed(P,x,z){for(let i=0;i<5;i++){const h=8+(i*7)%6;P(x+i*2,48-h,1,h,z.leaf);P(x+i*2,46-h,1,2,'#9a7a4a')}},
+ bamboo(P,x,z){for(let i=0;i<2;i++){const bx=x+i*5;P(bx,0,2,48,z.leaf);for(let y=3+i*4;y<48;y+=8)P(bx,y,2,1,z.trunk);P(bx+2,10+i*9,4,1,z.leaf);P(bx+4,9+i*9,2,1,z.leaf);P(bx-4,22+i*7,4,1,z.leaf);P(bx-5,21+i*7,2,1,z.leaf)}},
+};
+// 背景两层：远景慢、近景快，宽 160 点首尾相接，可以无限横向平铺
+function sceneLayers(zi){
+  if(SCN[zi])return SCN[zi];
+  const z=ZSC[zi],F=z.far,W=Math.PI*2/160;let n=zi*1000;const rnd=()=>seeded(++n);
+  const far=pxCanvas(160,64,(g,P)=>{
+    if(F.t==='peaks'||F.t==='dunes')for(let x=0;x<160;x++){
+      const tri=(p,o)=>1-Math.abs(((x+o)%p)/p*2-1);
+      const h=F.t==='dunes'?10+5*Math.sin(x*W*2)+3*Math.sin(x*W*5+1):8+20*tri(80,10)**(F.sharp?1.6:1.2)+8*tri(32,4);
+      const top=Math.round(48-h);P(x,top,1,64-top,F.c);
+      if(F.snow&&h>20)P(x,top,1,Math.round((h-20)*.6)+1,'#e8f0f8');
+    }
+    if(F.t==='dunes')for(let y=6;y<40;y++)P(118+Math.round(Math.sin(y*.5)*1.2),y,2,1,`rgba(210,200,190,${(.15+.01*y).toFixed(2)})`); // 大漠孤烟
+    if(F.t==='bamboo')for(let i=0;i<16;i++){const x=i*10+Math.floor(rnd()*6);P(x,0,2,48,F.c);for(let y=4+i%3*2;y<48;y+=9)P(x,y,2,1,shade(F.c,-.3));P(x+2,8+i%4*6,4,1,F.c)}
+    if(F.t==='town'||F.t==='town2'){
+      const wall=F.c,roof=F.roof||F.c;let x=2;
+      while(x<150){
+        const w=Math.min(10+Math.floor(rnd()*12),150-x),h=8+Math.floor(rnd()*10),t=48-h;
+        P(x,t,w,h,wall);P(x-2,t-1,w+4,1,roof);P(x-1,t-2,w+2,1,roof);P(x+1,t-3,w-2,1,roof);
+        if(F.t==='town2')P(x+Math.floor(w/2)-1,43,3,5,roof);else if(rnd()<.6)P(x+3,t+3,2,2,F.win);
+        x+=w+4+Math.floor(rnd()*8);
+      }
+      if(F.t==='town')for(let j=0;j<5;j++){const w=12-2*j,b=48-j*6;P(128-w/2,b-5,w,5,wall);P(126-w/2,b-6,w+4,1,wall)} // 城外的塔
+    }
+  });
+  const near=pxCanvas(160,64,(g,P)=>{
+    const [g0,g1,g2]=z.gr;P(0,48,160,16,g0);P(0,48,160,1,g2);
+    for(let i=0;i<60;i++)P(Math.floor(rnd()*160),49+Math.floor(rnd()*15),1+Math.floor(rnd()*2),1,g1);
+    for(let x=6+Math.floor(rnd()*10);x<148;x+=18+Math.floor(rnd()*30))PROP[z.near[Math.floor(rnd()*z.near.length)]](P,x,z);
+  });
+  return SCN[zi]={far,near};
+}
+function sceneHTML(fh){
+  const c=BT.ctx,[ia,ib]=BT.info,z=ZSC[c.zi],ly=sceneLayers(c.zi);
+  const road=[0,1,2,3,4,5].map(j=>j===5?`<i class="bs${c.i===5?' cur':''}">首</i>`:`<i class="${j<c.i?'done':j===c.i?'cur':''}"></i>`).join('');
+  return `<div class="scene" id="scene" style="--sk1:${z.sky[0]};--sk2:${z.sky[1]}">
+    <div class="ly far" style="background-image:url(${ly.far})"></div><div class="ly near" style="background-image:url(${ly.near})"></div>
+    <div class="sc-road" aria-hidden="true">${road}</div>
+    <div class="unit ua" id="fa"><div class="uhud">${fh(ia,'a')}</div><div class="spr" id="sa" style="background-image:url(${sprSheet(sprLook('a',null,c))})"></div></div>
+    <div class="unit ub${BT.enemy.boss?' bossu':''}" id="fb"><div class="uhud">${fh(ib,'b')}</div><div class="spr" id="sb" style="background-image:url(${sprSheet(sprLook('b',BT.enemy,c),1)})"></div></div></div>`;
+}
+// 一边走一边让对手从右边走进画面，走到位置再开打
+function walkIn(go){
+  const sc=$('#scene'),ub=$('#fb');
+  sc.classList.add('walk');ub.classList.add('in');
+  $('#blog').insertAdjacentHTML('beforeend',`<p class="muted">一路前行，<span class="b">${esc(BT.info[1].name)}</span> 迎面拦住去路。</p>`);
+  ub.style.transition='none';ub.style.transform=`translateX(${sc.clientWidth-ub.offsetLeft}px)`;
+  void ub.offsetWidth;ub.style.transition='transform 1.1s linear';ub.style.transform='';
+  BT.walkT=setTimeout(()=>{sceneStop();go()},1150);
+}
+function sceneStop(){const sc=$('#scene'),ub=$('#fb');if(!sc)return;sc.classList.remove('walk');ub.classList.remove('in');ub.style.transition='none';ub.style.transform=''}
+const sprAnim=(s,c)=>{const el=$('#s'+s);if(!el)return;el.classList.remove('atk','hit','dodge','heal');void el.offsetWidth;el.classList.add(c)};
+// 出手的一方冲上去，被打的一方闪红或闪开；中毒、疗伤这类只作用自己的就在原地闪
+function sceneAct(e){
+  if(!$('#scene'))return;
+  if(e.side&&e.fx.some(f=>f.on!==e.side)){
+    sprAnim(e.side,'atk');
+    setTimeout(()=>{for(const f of e.fx)if(f.on!==e.side)sprAnim(f.on,f.k==='miss'?'dodge':'hit')},(S.auto||S.tAuto)?70:120);
+  }else for(const f of e.fx)sprAnim(f.on,f.k==='heal'?'heal':f.k==='miss'?'dodge':'hit');
+}
+// 打完：输的一方倒地；赢了就接着往前走，倒下的对手随地面一起往后退出画面
+function sceneEnd(win){
+  const sc=$('#scene');if(!sc)return;
+  sceneStop();for(const s of ['a','b'])$('#s'+s).classList.remove('atk','hit','dodge','heal');$(win?'#sb':'#sa').classList.add('dead');
+  if(!win)return;
+  const cur=$('.sc-road .cur');if(cur&&!cur.classList.contains('bs'))cur.className='done';
+  BT.walkT=setTimeout(()=>{
+    if(!$('#scene'))return;
+    const ub=$('#fb'),u=parseFloat(getComputedStyle(sc).getPropertyValue('--u'))||3,dist=ub.offsetLeft+ub.offsetWidth;
+    sc.classList.add('walk');ub.style.transition=`transform ${(dist/(u*50)).toFixed(2)}s linear`;ub.style.transform=`translateX(${-dist}px)`;
+  },500);
+}
 function showBattle(){
-  const [ia,ib]=BT.info;
+  const [ia,ib]=BT.info,walk=!!BT.ctx.walk;
   const ov=document.createElement('div');ov.className='ov';ov.id='ov';
   const fh=(f,s)=>`<div class="f-name"><b>${esc(f.name)}</b><span class="tag">${f.tag} · ${f.lv} 级</span></div>
     <div class="bar hp"><i id="${s}-hp"></i></div><div class="bar-n" id="${s}-hpn"></div><div class="bar mp"><i id="${s}-mp"></i></div><div class="fx-tags" id="${s}-tags"></div>`;
-  ov.innerHTML=`<div class="bt" role="dialog" aria-modal="true" aria-label="战斗">
+  ov.innerHTML=`<div class="bt${walk?' walkm':''}" role="dialog" aria-modal="true" aria-label="战斗">
     <div class="bt-head"><b>${esc(BT.ctx.title)}</b><span id="bt-round">第 1 回合</span></div>
-    <div class="duel"><div class="fighter" id="fa">${fh(ia,'a')}</div><div class="vs">战</div><div class="fighter" id="fb">${fh(ib,'b')}</div></div>
+    ${walk?sceneHTML(fh):`<div class="duel"><div class="fighter" id="fa">${fh(ia,'a')}</div><div class="vs">战</div><div class="fighter" id="fb">${fh(ib,'b')}</div></div>`}
     <div class="blog" id="blog"></div>
     <div id="bt-foot" class="bt-btns"><button class="btn" data-a="btSkip">跳过</button></div></div>`;
   document.body.appendChild(ov);
-  if(BT.manual){$('#bt-foot').innerHTML='';btApply({a:[BT.A.hp,BT.A.mp],b:[BT.enemy.hp,BT.enemy.mp],ta:[],tb:[],fx:[]},false);return}
-  btApply(BT.res.log[0],true);
-  if(S.fast){btSkip();return}
-  const sp=(S.auto||S.tAuto)?170:330;
-  BT.timer=setInterval(()=>{BT.i++;if(BT.i>=BT.res.log.length){btEnd();return}btApply(BT.res.log[BT.i],true)},sp);
+  if(walk){
+    const sc=$('#scene');
+    sc.style.setProperty('--lx',Math.max(0,$('#fb').offsetLeft-$('#fa').offsetLeft-$('#sa').offsetWidth*.7)+'px');
+    sc.style.setProperty('--sp',((S.auto||S.tAuto)?.17:.3)+'s');
+    for(const s of ['a','b'])$('#s'+s).addEventListener('animationend',e=>e.target.classList.remove('atk','hit','dodge','heal'));
+  }
+  if(BT.manual){$('#bt-foot').innerHTML='';btApply({a:[BT.A.hp,BT.A.mp],b:[BT.enemy.hp,BT.enemy.mp],ta:[],tb:[],fx:[]},false)}
+  else{BT.i=walk?-1:0;btApply(BT.res.log[0],!walk)}
+  const go=()=>{
+    if(!BT||BT.done)return;
+    if(BT.manual){manualRun(BT.gen.next());return}
+    if(BT.i<0){BT.i=0;btApply(BT.res.log[0],true)}
+    if(S.fast){btSkip();return}
+    const sp=(S.auto||S.tAuto)?170:330;
+    BT.timer=setInterval(()=>{BT.i++;if(BT.i>=BT.res.log.length){btEnd();return}btApply(BT.res.log[BT.i],true)},sp);
+  };
+  if(walk&&!S.fast)walkIn(go);else go();
 }
 function btApply(e,withLog){
   const set=(s,v,inf,tags)=>{
@@ -1544,6 +1789,7 @@ function btApply(e,withLog){
   if(withLog){
     const lg=$('#blog');const p=document.createElement('p');p.innerHTML=e.text;lg.appendChild(p);lg.scrollTop=lg.scrollHeight;
     for(const f of e.fx){const el=document.createElement('span');el.className='pop '+f.k;el.textContent=f.v;$('#f'+f.on).appendChild(el);setTimeout(()=>el.remove(),900)}
+    if(BT.ctx.walk)sceneAct(e);
   }
 }
 // 手动出招：播放新产生的战报，然后等玩家选招或结算
@@ -1570,7 +1816,7 @@ function showChoices(){
   const b=$('#bt-foot [data-a=dGo]');if(b)b.focus({preventScroll:true});
 }
 function btSkip(){
-  if(!BT||BT.done||BT.manual)return;clearInterval(BT.timer);
+  if(!BT||BT.done||BT.manual)return;clearInterval(BT.timer);clearTimeout(BT.walkT);
   const lg=$('#blog');let html='';for(let i=BT.i+1;i<BT.res.log.length;i++)html+=`<p>${BT.res.log[i].text}</p>`;
   lg.insertAdjacentHTML('beforeend',html);lg.scrollTop=lg.scrollHeight;
   btApply(BT.res.log[BT.res.log.length-1],false);
@@ -1582,6 +1828,7 @@ function btEnd(){
   const win=BT.res.win,c=BT.ctx;
   const autoStage=S.auto&&(c.type==='stage'||c.type==='hunt'||c.type==='xueyi')&&win&&S.story.pend==null;
   const autoTower=S.tAuto&&c.type==='tower'&&win&&S.tower.run&&!S.tower.run.picks;
+  if(c.walk)sceneEnd(win);
   const big=c.type==='wb'?(win?'斩':'伤'):(win?'胜':'败');
   $('#bt-foot').outerHTML=`<div class="result ${win||c.type==='wb'?'win':'lose'}"><span class="res-big">${big}</span><ul class="rw">${BT.reward.map(r=>`<li>${r}</li>`).join('')}</ul></div>
     <div class="bt-btns" id="bt-foot">${autoStage||autoTower?'<span class="muted" style="font-size:12px">自动继续中…</span><button class="btn" data-a="autoStop">停止自动</button>':''}<button class="btn pri" data-a="btClose" id="bt-close">收剑</button></div>`;
@@ -1589,7 +1836,7 @@ function btEnd(){
   if(autoStage)BT.autoT=setTimeout(()=>{closeBattle();if(S.auto)fight(c.zi,c.i)},S.fast?600:1100);
   if(autoTower)BT.autoT=setTimeout(()=>{closeBattle();if(S.tAuto&&S.tower.run&&!S.tower.run.picks)towerFight()},S.fast?600:1100);
 }
-function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.autoT);const o=$('#ov');if(o)o.remove();BT=null;render();storyPending()}
+function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.autoT);clearTimeout(BT.walkT);const o=$('#ov');if(o)o.remove();BT=null;render();storyPending()}
 
 /* ============ 一键操作 ============ */
 // 不弹战斗层，直接结算，用于扫荡和各种"一键"
