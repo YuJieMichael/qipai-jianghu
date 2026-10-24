@@ -307,51 +307,109 @@ button.gem{cursor:pointer}
 .blog .a{color:var(--gold)} .blog .b{color:#e78b7c}
 .blog em{font-style:normal;color:var(--fg);font-weight:600}
 .blog b.d{color:#ff8a78} .blog b.h{color:#7ee2b4} .blog .cr{color:#ffcf5a}
-/* 走路战斗：横版场景，像素小人站在路上对打。--u 是一个像素点的大小 */
-.bt.walkm .blog{height:150px}
-.scene{--u:3px;position:relative;height:calc(var(--u)*82);border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:linear-gradient(180deg,var(--sk1),var(--sk2))}
-.scene .ly{position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*64);background-repeat:repeat-x;background-size:calc(var(--u)*160) 100%;image-rendering:pixelated;animation:scroll linear infinite paused}
-.scene .ly.far{animation-duration:16s}
-.scene .ly.near{animation-duration:3.2s}
-.scene.walk .ly{animation-play-state:running}
-@keyframes scroll{to{background-position-x:calc(var(--u)*-160)}}
-.sc-road{position:absolute;top:calc(var(--u)*2);left:50%;transform:translateX(-50%);display:flex;gap:7px;align-items:center;background:rgba(10,14,15,.6);padding:3px 10px;border-radius:10px}
-.sc-road i{display:block;width:7px;height:7px;border-radius:50%;background:#3a4c4c}
-.sc-road i.done{background:var(--gold-d)}
-.sc-road i.cur{background:var(--gold);box-shadow:0 0 6px var(--gold)}
-.sc-road i.bs{width:auto;height:auto;background:none;box-shadow:none;font-style:normal;font-family:var(--f-display);font-size:13px;line-height:1;color:var(--cinnabar)}
-.sc-road i.bs.cur{color:var(--gold);text-shadow:0 0 6px var(--gold)}
-.unit{position:absolute;bottom:calc(var(--u)*9);width:calc(var(--u)*50);display:flex;flex-direction:column;align-items:center;gap:var(--u)}
-.unit.ua{left:max(2px,calc(27% - var(--u)*25))}
-.unit.ub{right:max(2px,calc(27% - var(--u)*25))}
-.uhud{width:100%;background:rgba(10,14,15,.74);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:3px 6px;display:flex;flex-direction:column;gap:2px}
-.uhud .f-name{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 4px;align-items:baseline;min-width:0}
-.uhud .f-name b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.uhud .tag{font-size:10px;letter-spacing:0;white-space:nowrap}
-.uhud .bar{height:7px} .uhud .bar.mp{height:4px}
-.uhud .bar-n{font-size:10px;line-height:1.2}
-.uhud .fx-tags{min-height:0}
-.unit .pop{left:0;right:0;top:auto;bottom:calc(var(--u)*24);text-align:center;z-index:2}
-.spr{--fw:calc(var(--su,var(--u))*32);width:var(--fw);height:calc(var(--su,var(--u))*26);background-size:calc(var(--fw)*4) 100%;background-repeat:no-repeat;image-rendering:pixelated;transform-origin:50% 100%;animation:breathe 1.6s ease-in-out infinite}
-.bossu .spr{--su:calc(var(--u)*1.3);filter:drop-shadow(0 0 5px rgba(207,74,58,.75))}
-@keyframes breathe{50%{transform:translateY(calc(var(--u)*-.5))}}
-.walk .ua .spr,.ub.in .spr{animation:walkf .36s steps(2) infinite}
-@keyframes walkf{from{background-position-x:calc(var(--fw)*-1)}to{background-position-x:calc(var(--fw)*-3)}}
-.spr.atk{background-position-x:calc(var(--fw)*-3)}
-.ua .spr.atk{animation:lungeA var(--sp,.3s) ease-out}
-.ub .spr.atk{animation:lungeB var(--sp,.3s) ease-out}
-@keyframes lungeA{40%,70%{transform:translateX(var(--lx))}}
-@keyframes lungeB{40%,70%{transform:translateX(calc(var(--lx)*-1))}}
-.spr.hit{animation:hit .3s}
-@keyframes hit{25%{transform:translateX(-3px);filter:brightness(2) sepia(1) saturate(5) hue-rotate(-40deg)}60%{transform:translateX(3px)}}
-.spr.dodge{animation:dodge .3s}
-.ub .spr.dodge{--dx:14px}
-@keyframes dodge{50%{transform:translate(var(--dx,-14px),-6px);opacity:.6}}
-.spr.heal{animation:heal .5s}
-@keyframes heal{50%{filter:drop-shadow(0 0 6px #7ee2b4) brightness(1.3)}}
-.spr.dead{animation:none;transition:transform .6s ease-in,opacity .6s;opacity:.4}
-.ua .spr.dead{transform:rotate(-80deg)}
-.ub .spr.dead{transform:rotate(80deg)}
+/* 闯江湖：竖屏一条路往画面深处延伸，像《六六英雄》。画面是像素 canvas，名字、血条、预告用 DOM 叠在上面 */
+.rov{position:fixed;inset:0;z-index:45;background:radial-gradient(600px 300px at 50% 0,#14201f,transparent 70%),#05080a;display:flex;justify-content:center;align-items:flex-start;overflow:auto;padding:max(8px,env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.run{position:relative;width:min(440px,100%,max(300px,calc((100dvh - 300px)*.8)));display:flex;flex-direction:column;gap:6px}
+.r-top{display:flex;align-items:center;gap:8px}
+.r-top b{font-family:var(--f-display);font-weight:400;font-size:20px;color:var(--gold);letter-spacing:2px;white-space:nowrap}
+.r-step{flex:1;display:flex;gap:5px;align-items:center;justify-content:center;min-width:0}
+.r-step i{display:block;width:8px;height:8px;border-radius:50%;background:#2c3a3a}
+.r-step i.shop{border-radius:2px;background:#24443a}
+.r-step i.amb{background:#4a2420}
+.r-step i.bs{width:11px;height:11px;border-radius:2px;background:#5a2a24}
+.r-step i.done{background:var(--gold-d)}
+.r-step i.cur{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.r-step i.bs.cur{background:var(--cinnabar);box-shadow:0 0 6px var(--cinnabar)}
+.r-gold{color:var(--q4);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.r-wx{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.r-wx .bar{flex:1 1 60px;height:6px}
+.r-wx .bar i{background:var(--q3)}
+.r-perks{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px}
+.r-perks:empty{display:none}
+.r-perks span{font-size:11px;padding:0 7px;border-radius:8px;background:#2d2140;color:var(--q3)}
+.r-stage{position:relative;aspect-ratio:144/180;border-radius:10px;overflow:hidden;border:1px solid var(--line2);background:#000}
+.r-stage canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.re{position:absolute;transform:translateX(-50%);cursor:pointer}
+.re-info{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:max(64px,130%);display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none}
+.re-info b{font-size:11px;font-weight:600;white-space:nowrap;text-shadow:0 1px 2px #000,0 0 3px #000}
+.re.tgt .re-info b{color:var(--gold)}
+.re-info .bar{width:100%;height:5px}
+.re-int{font-size:12px;font-weight:700;color:#ff9a88;background:rgba(10,14,15,.85);border:1px solid #6a2e26;border-radius:8px;padding:0 6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.re-int:empty{display:none}
+.re-tags{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.re-tags span{font-size:9px;line-height:1.5;padding:0 4px;border-radius:6px;background:rgba(10,14,15,.85);color:var(--muted)}
+.r-boss{position:absolute;top:6px;left:12%;right:12%;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.r-boss b{font-family:var(--f-display);font-weight:400;font-size:17px;color:#ff8a78;text-shadow:0 1px 3px #000}
+.r-boss .bar{width:100%;height:8px}
+.r-boss span{font-size:10px;color:var(--fg);text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
+.r-hero{position:absolute;left:50%;bottom:28%;width:0;height:0}
+.r-stage .pop{left:-50px;right:auto;width:100px;top:auto;bottom:0;text-align:center;z-index:2}
+.re .pop{left:50%;margin-left:-50px;bottom:60%}
+.pop.gold{color:var(--q4);font-size:14px}
+.r-me{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-size:12px}
+.r-me b{font-size:13px}
+.r-me .bar.hp{height:9px}
+.r-me .bar.mp{grid-column:2;height:4px}
+.r-me .re-tags{grid-column:1/-1;justify-content:flex-start}
+.r-me .re-tags:empty{display:none}
+#rahn{font-variant-numeric:tabular-nums;color:var(--muted)}
+.r-ctl{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:148px;justify-content:center}
+.r-pre,.r-hint{font-size:13px;text-align:center;color:var(--muted);min-height:26px}
+.r-pre b{font-size:20px;font-weight:700;color:var(--gold);margin-right:8px;font-variant-numeric:tabular-nums}
+.r-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+.btn.r-go{min-width:150px;font-size:17px;padding:8px 20px;letter-spacing:4px}
+.die.blank{cursor:default;opacity:.55}
+.die.blank b{color:#a8996e}
+.die.fu{outline:2px solid var(--q3)}
+.die:disabled{cursor:default}
+.r-log{height:68px;overflow:auto;font-size:12px;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 8px;display:flex;flex-direction:column;gap:2px}
+.r-log p{line-height:1.45}
+.r-modal{position:absolute;inset:0;z-index:5;background:rgba(5,8,9,.84);display:flex;align-items:center;justify-content:center;padding:10px}
+.r-card{width:100%;max-height:100%;overflow:auto;overflow-x:hidden;background:var(--panel);border:1px solid var(--gold-d);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.r-card h3{font-family:var(--f-display);font-weight:400;font-size:26px;color:var(--gold);letter-spacing:6px;text-align:center}
+.perk{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer}
+.perk:hover,.perk:focus-visible{border-color:var(--q3);box-shadow:0 0 0 1px var(--q3)}
+.perk b{color:var(--q3);font-size:15px}
+.perk span{font-size:12px;color:var(--muted)}
+.ritem{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:center;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--panel2)}
+.ritem span{grid-column:1;font-size:12px;color:var(--muted)}
+.ritem button{grid-column:2;grid-row:1/3}
+.r-rw{flex-direction:column;gap:4px}
+.run-go{display:flex;align-items:center;gap:12px;margin:2px 0 10px}
+.run-go .btn{flex:none;font-size:16px;padding:8px 22px;letter-spacing:3px}
+@media (max-width:520px){.run-go{flex-direction:column;align-items:stretch}}
+.r-top b{flex:1}
+.r-path{display:flex;justify-content:center}
+.r-step i.ev{border-radius:2px;background:#3a3460}
+.r-step i.x{width:6px;height:6px}
+.r-perks span.dsk{background:#3a2e14;color:var(--gold)}
+.r-tip{width:100%;font-size:12px;line-height:1.55;color:var(--fg);background:#1c2a1e;border:1px solid #3f6a4a;border-radius:8px;padding:5px 9px;text-align:left}
+.r-tip b{color:var(--jade);margin-right:6px}
+.r-ctl .tray{padding-top:8px}
+.r-ban{position:absolute;left:0;right:0;top:36%;z-index:3;text-align:center;font-family:var(--f-display);font-size:38px;color:#ffe08a;text-shadow:0 0 12px #ff9a3d,0 2px 0 #7a3a10;pointer-events:none;animation:ban 1s ease-out forwards}
+.r-ban.big{font-size:52px}
+@keyframes ban{0%{opacity:0;transform:scale(2.2)}18%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+.r-stage.shake{animation:shake .32s}
+@keyframes shake{20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,-1px)}}
+.die.fly{animation:fly .45s ease-in forwards}
+.die.fly:nth-child(2){animation-delay:.04s}.die.fly:nth-child(3){animation-delay:.08s}.die.fly:nth-child(4){animation-delay:.12s}.die.fly:nth-child(5){animation-delay:.16s}
+@keyframes fly{to{transform:translateY(-150px) scale(.4);opacity:0}}
+.die em.ds{position:absolute;right:3px;bottom:2px;font-style:normal;font-size:10px;font-weight:700;line-height:1.4;padding:0 3px;border-radius:4px;background:#5a4a8a;color:#fff}
+.die em.ds.on{background:var(--gold);color:#1b1407;box-shadow:0 0 6px #ffd36a}
+.die u{position:absolute;top:-10px;left:50%;transform:translateX(-50%);text-decoration:none;font-size:10px;font-weight:700;line-height:1.5;padding:0 5px;border-radius:5px;background:#203247;color:#8fc0ff;white-space:nowrap}
+.tray .die.frz{background:#d6ebf8;border-color:#6fb4ff;box-shadow:0 0 0 2px #6fb4ff,0 3px 0 #4a7aa0}
+.die.chs u{background:#3a2448;color:#d0a0ff}
+.die.vnm{border-color:#7ac050}
+.die.vnm u{background:#24401c;color:#9ad050}
+.perk small{font-size:11px;color:var(--muted)}
+.perk.dsk b{color:var(--gold)}
+.r-stars{text-align:center;font-size:30px;letter-spacing:6px;color:var(--gold);line-height:1.2}
+.r-stars i,.zst i{font-style:normal;color:#3a4c4c}
+.r-evd,.r-evres{font-size:14px;line-height:1.8;text-align:center}
+.r-card>.btn{align-self:center;min-width:140px}
+.zst{color:var(--gold);font-size:11px;letter-spacing:1px}
+.run-go .btns{display:flex;flex-direction:column;gap:6px;flex:none}
+@media (prefers-reduced-motion:reduce){.die.fly,.r-ban,.r-stage.shake{animation:none}.die.fly{opacity:0}}
 .result{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;border:1px solid var(--line2)}
 .result.win{border-color:var(--gold-d);background:#211e14}
 .result.lose{border-color:#5a2a24;background:#1f1514}
@@ -481,9 +539,6 @@ span.die{cursor:default}
   .duel{grid-template-columns:1fr;gap:6px}
   .vs{text-align:center;font-size:20px}
   .blog{height:190px}
-  .bt.walkm .blog{height:120px}
-  .scene{--u:2.4px;height:calc(var(--u)*88)}
-  .uhud .bar-n{display:none}
   .story{margin-top:8vh;padding:18px}
   .sday{font-size:11px}
 }
@@ -491,7 +546,6 @@ span.die{cursor:default}
   .taiji,.acu li.next .pt,.sc-btn{animation:none}
   .news span{animation:none;padding-left:12px}
   .pop,.toast{animation-duration:.01s}
-  .scene .ly,.spr{animation:none}
   .bar i{transition:none}
 }
 </style>
@@ -1006,7 +1060,7 @@ const hqOdds=s=>+(.9*36/(6-Math.abs(s-5))-1).toFixed(1);
 let S=null;
 let CS='wudang'; // 创建时选中的门派
 let RBS=null;    // 转生时选中的门派
-let resetArm=false, rbArm=false, sellAllArm=false;
+let resetArm=false, rbArm=false, sellAllArm=false, runAbArm=false;
 let BT=null, SV=null, gemPick=null;
 
 function newGame(name,sect){
@@ -1025,7 +1079,7 @@ function newGame(name,sect){
     titles:[],title:null,stat:{boss:0,arenaWin:0,qiyu:0,escort:0,wbKill:0,enMax:0,sc:0,chushi:0,champ:0,mj:0,dan:0,forge:0,bounty:0},
     karma:0,kd:{good:3,evil:3},comps:{xiao:0,su:0,liu:0,yan:0},compEv:{},comp:null,chatDay:{},gifts:{},giftKnown:{},
     tudi:[],xj:'',legends:[],dh:null,mj:{left:3,run:null},mat:{},gather:{herb:3,ore:3},pills:{kb:0,hx:0},pillUsed:0,
-    gamble:{win:0,n:0,drunk:0},manual:false,gTab:{},
+    gamble:{win:0,n:0,drunk:0},manual:false,gTab:{},run:null,tut:{},stars:[0,0,0,0,0,0,0],mute:false,
     day:today(),tab:'jianghu',kills:0,uidc:1};
 }
 function fill(def,obj){for(const k in def){if(obj[k]===undefined)obj[k]=def[k];else if(def[k]&&typeof def[k]==='object'&&!Array.isArray(def[k])&&obj[k]&&typeof obj[k]==='object')fill(def[k],obj[k])}return obj}
@@ -1323,102 +1377,131 @@ function aiHold(f){
 }
 function aiDice(f){let paid=0;for(;;){const t=evalBest(f).t;if(t>=5)break;if(f.rr<=0){if(paid>=1||t>=3||f.mp<rerollCost(f))break;paid++}aiHold(f);if(!doReroll(f))break}}
 function markCount(f){const m={};f.dice.forEach((_,i)=>faceMarks(f,i).forEach(k=>m[k]=(m[k]||0)+1));return m}
+/// 掷骰出招拆成几个独立函数，单挑（battleGen）和闯关（一次打好几个对手）共用
+// env：nm(f) 名字着色，push(text,side,fx) 记战报，round 当前回合；闯关时还会带 mul(a,r)（局内额外倍率）和 onHit(a,t,total,r)（命中后的局内效果）
+const tickBuffs=f=>{f.buffs.forEach(b=>b.left--);f.buffs=f.buffs.filter(b=>b.left>0)};
+// 护体罡气挡不住持续伤害：对其施加的持续伤害翻 2.5 倍
+function addDot(t,v,n,l){if(t.mech==='guard')v=Math.round(v*2.5);t.dots=t.dots.filter(d=>d.l!==l);t.dots.push({v,t:n,l})}
+// 出手前：持续伤害发作、冷却、晕眩、首领机制。返回 false 表示这一回合出不了手
+function preTurn(a,env){
+  const {nm,push}=env,rain=fy('rain');
+  for(const d of a.dots){const v=rain?Math.round(d.v*(d.l==='灼烧'?.5:/毒/.test(d.l)?2:1)):d.v;a.hp=Math.max(0,a.hp-v);d.t--;push(`${nm(a)} ${d.l}发作，损失 <b class="d">${v}</b> 气血`,a.side,[{on:a.side,v:'-'+v,k:'dmg'}])}
+  a.dots=a.dots.filter(d=>d.t>0);
+  if(a.hp<=0)return false;
+  for(const k in a.cds)if(a.cds[k]>0)a.cds[k]--;
+  if(a.stun){a.stun=false;tickBuffs(a);push(`${nm(a)} 被震晕，无法出手`,a.side);return false}
+  if(a.mech==='regen'&&env.round%3===0){const h=Math.round(a.maxhp*.1);a.hp=Math.min(a.maxhp,a.hp+h);push(`${nm(a)} 运起水遁回春，回复 <b class="h">${h}</b> 气血`,a.side,[{on:a.side,v:'+'+h,k:'heal'}])}
+  if(a.mech==='berserk'&&!a.rage&&a.hp<a.maxhp*.5){a.rage=true;a.atk*=1.8;a.spd*=1.3;push(`${nm(a)} 气血翻涌，陷入狂暴！`,a.side)}
+  return true;
+}
+// 新掷一手：五颗都还没锁，重掷次数回满
+function freshRoll(a,extraRR=0){
+  a.fi=[0,0,0,0,0].map(()=>Math.floor(Math.random()*6));a.dice=a.fi.map(i=>faceVal(a,i));a.held=[false,false,false,false,false];
+  a.rr=1+((a.dset&&a.dset.rr)||0)+(hasSet4(a,'zhenwu')?1:0)+extraRR;
+}
+// 骰子定下来之后这一招是什么：骰型、触发的武学，以及骰型倍率 × 武学加成 × 剑气印 × 兵器类型 × 套装
+function readRoll(a){
+  const cb=evalBest(a),mk=markCount(a),wt=a.wt,cm=a.mon?MON_B[cb.t]:COMBO[cb.t].m;
+  const trig=(a.passives||[]).filter(p=>fires(p,cb.t));
+  const anqi=wt==='anqi'&&cb.t===0; // 暗器：散招变成三连发
+  // 触发的武学合成这一招：伤害加成相加，暴击、吸血、疗伤累加，持续伤害和增益取第一个
+  const s={n:anqi?'暗器连发':a.mon&&trig.length?trig[0].n:COMBO[cb.t].mv,mult:anqi?.5:1,hits:anqi?3:1,crit:0,steal:0,heal:0,stun:0,dot:null,buff:null,bsrc:''};
+  let bonus=0;for(const p of trig){bonus+=p.dmg||0;s.crit+=p.crit||0;s.steal+=p.steal||0;s.heal+=p.heal||0;s.stun=Math.max(s.stun,p.stun||0);if(p.dot&&!s.dot)s.dot=p.dot;if(p.buff&&!s.buff){s.buff=p.buff;s.bsrc=p.n}}
+  let M=cm*(1+bonus)*(1+.12*(mk.jianqi||0));
+  if(wt==='jian'&&cb.t===4)M*=1.4;if(wt==='dao'&&(cb.t===1||cb.t===2))M*=1.25;if(wt==='gun'&&cb.t>=5)M*=1.3;if(wt==='zhang'&&cb.t===3)M*=1.35;if(wt==='shan')M*=1+Math.max(0,cb.sum-15)*.03;
+  if(hasSet4(a,'lieyang')&&cb.t>=5)M*=1.3;if(hasSet4(a,'fengyun'))M*=1+.06*a.dice.filter(v=>v===6).length;
+  return {cb,mk,cm,trig,s,M};
+}
+// 不掷暴击、不算闪避时这一手大约能打多少，用来在出招前预告伤害
+function hitEstimate(a,t,env){
+  const r=readRoll(a);if(!r.s.mult)return 0;
+  const K=50+5*a.lv,mul=r.M*(env&&env.mul?env.mul(a,r):1)*(t.mech==='shield'&&env&&env.round<=3?.5:1);
+  return Math.max(1,Math.round(eff(a,'atk')*r.s.mult*mul*K/(K+eff(t,'def'))*(t.dmgMul||1)))*(r.s.hits||1);
+}
+// 按掷好的骰子出招打 t，战报经 env.push 记下
+function strike(a,t,env){
+  const {nm,push}=env,r=readRoll(a),{cb,mk,cm,trig,s}=r,wt=a.wt;
+  const M=r.M*(env.mul?env.mul(a,r):1);
+  const LA=a.lg||NOLG,LT=t.lg||NOLG;
+  const mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
+  let txt=`${nm(a)} 掷出 <span class="dc">${a.dice.map(v=>DIE[v-1]||'▢').join('')}</span> <b class="cbx">${cb.n} ×${cm}</b>「<em>${s.n}</em>」${!a.mon&&trig.length?`，触发 ${trig.map(p=>p.n).join('、')}`:''}${mkTxt?`，${mkTxt}`:''}`;const fx=[];
+  let total=0,landed=0,crits=0;
+  if(s.mult){
+    const hits=s.hits||1,K=50+5*a.lv;
+    a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
+    let mul=M;if(hits>1&&wt==='anqi')mul*=1.1;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
+    if(t.mech==='shield'&&env.round<=3)mul*=.5;if(hasRl(t,'jingang'))mul*=.85;if(hits>1&&hasRl(a,'lianji'))mul*=1.2;
+    const defF=LA.has('yitian')?.7:1;
+    const dg=Math.min(t.mech==='sand'?60:40,eff(t,'dodge'))*(t.mech==='sand'&&hits>1?.5:1)-(hasRl(a,'mingzhong')?20:0);
+    for(let i=0;i<hits;i++){
+      if(Math.random()*100<dg)continue;
+      let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08)*(t.dmgMul||1);
+      if((forceCrit&&!crits)||Math.random()*100<Math.min(80,a.crit+(s.crit||0)+12*(mk.bao||0))){d*=1.6;crits++}
+      total+=Math.max(1,Math.round(d));landed++;
+    }
+    if(!landed){txt+=`，被 ${nm(t)} 闪身避过`;fx.push({on:t.side,v:'闪避',k:'miss'})}
+    else{
+      t.hp=Math.max(0,t.hp-total);
+      txt+=(hits>1?`，${landed}/${hits} 段命中`:'')+`，造成 <b class="d">${total}</b> 点伤害`+(crits?'<span class="cr">（暴击）</span>':'');
+      fx.push({on:t.side,v:'-'+total,k:crits?'crit':'dmg'});
+      const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0)+.06*(mk.xi||0)+(hasSet4(a,'xueyi')?.1:0);
+      if(wt==='zhang'&&cb.t===3&&t.hp>0&&!t.stun&&Math.random()<.15*(t.boss?.5:1)){t.stun=true;txt+=`，掌力透体，${nm(t)} 被震晕`}
+      if(stl){const h=Math.round(total*stl);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，吸取 <b class="h">${h}</b> 气血`}
+      if(s.dot&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def')))),s.dot.t,s.dot.l);txt+=`，${nm(t)} 身中${s.dot.l}`}
+      if(a.mech==='venom'&&t.hp>0){addDot(t,Math.max(1,Math.round(t.maxhp*.03)),3,'五毒');txt+=`，${nm(t)} 中了五毒`}
+      if(mk.du&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.18*mk.du*K/(K+eff(t,'def')))),3,'毒印');txt+=`，毒印发作`}
+      if(mk.huo&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.18*mk.huo*K/(K+eff(t,'def')))),3,'灼烧');txt+=`，火印灼身`}
+      if(mk.han&&t.hp>0&&!t.stun&&Math.random()<.1*mk.han*(t.boss?.5:1)){t.stun=true;txt+=`，寒印冻住了 ${nm(t)}`}
+      if(hasRl(a,'zhuoshao')&&t.hp>0&&Math.random()<.25){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.35*K/(K+eff(t,'def')))),3,'灼烧');txt+=`，火灵珠燃起灼焰`}
+      if(t.mech==='reflect'&&a.hp>0){const back=Math.round(total*(hits>1?.2:.08));a.hp=Math.max(0,a.hp-back);txt+=`，剑意反震，${nm(a)} 受到 <b class="d">${back}</b> 点反伤`;fx.push({on:a.side,v:'-'+back,k:'dmg'})}
+      if(s.stun&&t.hp>0&&Math.random()<s.stun*(t.boss?.5:1)){t.stun=true;txt+=`，${nm(t)} 被震晕`}
+      if(LA.has('biyu')&&t.hp>0&&!t.stun&&Math.random()<.2*(t.boss?.5:1)){t.stun=true;txt+=`，箫声摇曳，${nm(t)} 心神失守`}
+      if(LA.has('bingpo')&&t.hp>0&&Math.random()<.3){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.4*K/(K+eff(t,'def')))),3,'寒毒');txt+=`，银针透骨，${nm(t)} 身中寒毒`}
+      if(env.onHit)txt+=env.onHit(a,t,total,r)||'';
+    }
+  }
+  if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
+  if(LA.has('junzi')&&a.hp>0)a.hp=Math.min(a.maxhp,a.hp+Math.round(a.maxhp*.03));
+  if(mk.chun&&a.hp>0){const h=Math.round(a.maxhp*.03*mk.chun);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回春印回复 <b class="h">${h}</b> 气血`}
+  if(mk.jin){a.buffs=a.buffs.filter(b=>b.src!=='金刚印');a.buffs.push({def:.12*mk.jin,src:'金刚印',left:2})}
+  if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.bsrc);a.buffs.push({...s.buff,src:s.bsrc,left:s.buff.t+1});txt+=`，${s.bsrc}：${passiveTxt({buff:s.buff})}`}
+  a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*.06));
+  tickBuffs(a);push(txt,a.side,fx);
+  return {r,total,landed,crits};
+}
+function petAct(f,t,env){
+  const {nm,push}=env,p=f.pet,K=50+5*f.lv,dm=k=>Math.max(1,Math.round(eff(f,'atk')*k*p.pw*K/(K+eff(t,'def'))));
+  const who=`${nm(f)} 的${p.n}`;
+  if(p.id==='hou'){const d=dm(.6);t.hp=Math.max(0,t.hp-d);push(`${who}窜上前偷袭，造成 <b class="d">${d}</b> 点伤害`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+  else if(p.id==='he'){const h=Math.round(f.maxhp*.06*p.pw);f.hp=Math.min(f.maxhp,f.hp+h);push(`${who}衔来草药，回复 <b class="h">${h}</b> 气血`,f.side,[{on:f.side,v:'+'+h,k:'heal'}])}
+  else if(p.id==='lang'){const d=dm(.5);t.hp=Math.max(0,t.hp-d);if(t.hp>0){t.dots=t.dots.filter(x=>x.l!=='流血');t.dots.push({v:dm(.3),t:2,l:'流血'})}push(`${who}扑咬过去，造成 <b class="d">${d}</b> 点伤害，${nm(t)} 血流不止`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+  else if(p.id==='gui'){f.buffs=f.buffs.filter(b=>b.src!=='龟甲');f.buffs.push({def:.4,src:'龟甲',left:2});push(`${who}以龟甲护主，防御提升40%`,f.side)}
+  else if(p.id==='hu'){const d=dm(.3);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.35*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 神魂颠倒`}push(`${who}施展媚术，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+}
+function compAct(f,t,env){
+  const {nm,push}=env,c=f.comp,K=50+5*f.lv,dm=k=>Math.max(1,Math.round(eff(f,'atk')*k*K/(K+eff(t,'def'))));
+  if(c==='xiao'){const d=dm(.9);t.hp=Math.max(0,t.hp-d);push(`萧寒拔剑而出，一道剑气斩向 ${nm(t)}，造成 <b class="d">${d}</b> 点伤害`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+  else if(c==='su'){const h=Math.round(f.maxhp*.08);f.hp=Math.min(f.maxhp,f.hp+h);push(`苏晚晴弹出三枚金针，为 ${nm(f)} 止血疗伤，回复 <b class="h">${h}</b> 气血`,f.side,[{on:f.side,v:'+'+h,k:'heal'}])}
+  else if(c==='liu'){f.buffs=f.buffs.filter(b=>b.src!=='挥毫助威');f.buffs.push({atk:.25,src:'挥毫助威',left:3});push(`柳三变在一旁挥毫吟诗，${nm(f)} 精神大振，攻击提升25%`,f.side)}
+  else if(c==='yan'){const d=dm(.6);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.25*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 被点中穴道`}push(`燕七七从暗处甩出飞刀，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+}
 // 战斗写成生成器：手动出招时在玩家出手前暂停，等待选择；自动战斗直接一路跑完
 function* battleGen(A,B,opt,log){
   const maxR=opt.rounds||40;
-  const nm=f=>`<span class="${f.side}">${esc(f.name)}</span>`;
-  const push=(text,side,fx)=>log.push({text,side,fx:fx||[],a:[A.hp,A.mp],b:[B.hp,B.mp],ta:tagsOf(A),tb:tagsOf(B)});
-  const tick=f=>{f.buffs.forEach(b=>b.left--);f.buffs=f.buffs.filter(b=>b.left>0)};
-  const rain=fy('rain');
-  // 护体罡气挡不住持续伤害：对其施加的持续伤害翻 2.5 倍
-  const addDot=(t,v,n,l)=>{if(t.mech==='guard')v=Math.round(v*2.5);t.dots=t.dots.filter(d=>d.l!==l);t.dots.push({v,t:n,l})};
+  const env={round:0,nm:f=>`<span class="${f.side}">${esc(f.name)}</span>`,push:(text,side,fx)=>log.push({text,side,fx:fx||[],a:[A.hp,A.mp],b:[B.hp,B.mp],ta:tagsOf(A),tb:tagsOf(B)})};
+  const {nm,push}=env;
   const act=function*(a,t){
-    for(const d of a.dots){const v=rain?Math.round(d.v*(d.l==='灼烧'?.5:/毒/.test(d.l)?2:1)):d.v;a.hp=Math.max(0,a.hp-v);d.t--;push(`${nm(a)} ${d.l}发作，损失 <b class="d">${v}</b> 气血`,a.side,[{on:a.side,v:'-'+v,k:'dmg'}])}
-    a.dots=a.dots.filter(d=>d.t>0);
-    if(a.hp<=0)return;
-    for(const k in a.cds)if(a.cds[k]>0)a.cds[k]--;
-    if(a.stun){a.stun=false;tick(a);push(`${nm(a)} 被震晕，无法出手`,a.side);return}
-    if(a.mech==='regen'&&round%3===0){const h=Math.round(a.maxhp*.1);a.hp=Math.min(a.maxhp,a.hp+h);push(`${nm(a)} 运起水遁回春，回复 <b class="h">${h}</b> 气血`,a.side,[{on:a.side,v:'+'+h,k:'heal'}])}
-    if(a.mech==='berserk'&&!a.rage&&a.hp<a.maxhp*.5){a.rage=true;a.atk*=1.8;a.spd*=1.3;push(`${nm(a)} 气血翻涌，陷入狂暴！`,a.side)}
+    if(!preTurn(a,env))return;
     // 掷骰：手动时把骰子交给玩家锁定、重掷，直到出招；否则电脑按策略掷
-    a.fi=[0,0,0,0,0].map(()=>Math.floor(Math.random()*6));a.dice=a.fi.map(i=>faceVal(a,i));a.held=[false,false,false,false,false];
-    a.rr=1+((a.dset&&a.dset.rr)||0)+(hasSet4(a,'zhenwu')?1:0);
+    freshRoll(a);
     if(a.manual){for(;;){const c=yield a;if(c==='auto'){a.manual=false;break}if(!c||c.go)break;if(c.reroll)doReroll(a)}}
     if(!a.manual)aiDice(a);
-    const cb=evalBest(a),mk=markCount(a),wt=a.wt,cm=a.mon?MON_B[cb.t]:COMBO[cb.t].m;
-    const trig=(a.passives||[]).filter(p=>fires(p,cb.t));
-    const anqi=wt==='anqi'&&cb.t===0; // 暗器：散招变成三连发
-    // 触发的武学合成这一招：伤害加成相加，暴击、吸血、疗伤累加，持续伤害和增益取第一个
-    const s={n:anqi?'暗器连发':a.mon&&trig.length?trig[0].n:COMBO[cb.t].mv,mult:anqi?.5:1,hits:anqi?3:1,crit:0,steal:0,heal:0,stun:0,dot:null,buff:null,bsrc:''};
-    let bonus=0;for(const p of trig){bonus+=p.dmg||0;s.crit+=p.crit||0;s.steal+=p.steal||0;s.heal+=p.heal||0;s.stun=Math.max(s.stun,p.stun||0);if(p.dot&&!s.dot)s.dot=p.dot;if(p.buff&&!s.buff){s.buff=p.buff;s.bsrc=p.n}}
-    const LA=a.lg||NOLG,LT=t.lg||NOLG;
-    const mkTxt=Object.entries(mk).map(([k,n])=>`${PAGES[k].n}×${n}`).join('、');
-    let txt=`${nm(a)} 掷出 <span class="dc">${a.dice.map(v=>DIE[v-1]).join('')}</span> <b class="cbx">${cb.n} ×${cm}</b>「<em>${s.n}</em>」${!a.mon&&trig.length?`，触发 ${trig.map(p=>p.n).join('、')}`:''}${mkTxt?`，${mkTxt}`:''}`;const fx=[];
-    // 骰型倍率 × 武学加成 × 剑气印 × 兵器类型 × 套装
-    let M=cm*(1+bonus)*(1+.12*(mk.jianqi||0));
-    if(wt==='jian'&&cb.t===4)M*=1.4;if(wt==='dao'&&(cb.t===1||cb.t===2))M*=1.25;if(wt==='gun'&&cb.t>=5)M*=1.3;if(wt==='zhang'&&cb.t===3)M*=1.35;if(wt==='shan')M*=1+Math.max(0,cb.sum-15)*.03;
-    if(hasSet4(a,'lieyang')&&cb.t>=5)M*=1.3;if(hasSet4(a,'fengyun'))M*=1+.06*a.dice.filter(v=>v===6).length;
-    if(s.mult){
-      const hits=s.hits||1,K=50+5*a.lv;let total=0,landed=0,crits=0;
-      a.nAct=(a.nAct||0)+1;const forceCrit=LA.has('yuchang')&&a.nAct%3===0;
-      let mul=M;if(hits>1&&wt==='anqi')mul*=1.1;if(LA.has('tulong')&&t.boss)mul*=1.3;if(LA.has('bawang')&&a.hp/a.maxhp<.3)mul*=1.5;if(LA.has('xuantie'))mul*=1.2;if(LT.has('jinsi'))mul*=.85;
-      if(t.mech==='shield'&&round<=3)mul*=.5;if(hasRl(t,'jingang'))mul*=.85;if(hits>1&&hasRl(a,'lianji'))mul*=1.2;
-      const defF=LA.has('yitian')?.7:1;
-      const dg=Math.min(t.mech==='sand'?60:40,eff(t,'dodge'))*(t.mech==='sand'&&hits>1?.5:1)-(hasRl(a,'mingzhong')?20:0);
-      for(let i=0;i<hits;i++){
-        if(Math.random()*100<dg)continue;
-        let d=eff(a,'atk')*s.mult*mul*K/(K+eff(t,'def')*defF)*R(.92,1.08);
-        if((forceCrit&&!crits)||Math.random()*100<Math.min(80,a.crit+(s.crit||0)+12*(mk.bao||0))){d*=1.6;crits++}
-        total+=Math.max(1,Math.round(d));landed++;
-      }
-      if(!landed){txt+=`，被 ${nm(t)} 闪身避过`;fx.push({on:t.side,v:'闪避',k:'miss'})}
-      else{
-        t.hp=Math.max(0,t.hp-total);
-        txt+=(hits>1?`，${landed}/${hits} 段命中`:'')+`，造成 <b class="d">${total}</b> 点伤害`+(crits?'<span class="cr">（暴击）</span>':'');
-        fx.push({on:t.side,v:'-'+total,k:crits?'crit':'dmg'});
-        const stl=(s.steal||0)+(a.lsteal||0)+(LA.has('xuedao')?.15:0)+.06*(mk.xi||0)+(hasSet4(a,'xueyi')?.1:0);
-        if(wt==='zhang'&&cb.t===3&&t.hp>0&&!t.stun&&Math.random()<.15*(t.boss?.5:1)){t.stun=true;txt+=`，掌力透体，${nm(t)} 被震晕`}
-        if(stl){const h=Math.round(total*stl);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，吸取 <b class="h">${h}</b> 气血`}
-        if(s.dot&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*s.dot.k*K/(K+eff(t,'def')))),s.dot.t,s.dot.l);txt+=`，${nm(t)} 身中${s.dot.l}`}
-        if(a.mech==='venom'&&t.hp>0){addDot(t,Math.max(1,Math.round(t.maxhp*.03)),3,'五毒');txt+=`，${nm(t)} 中了五毒`}
-        if(mk.du&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.18*mk.du*K/(K+eff(t,'def')))),3,'毒印');txt+=`，毒印发作`}
-        if(mk.huo&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.18*mk.huo*K/(K+eff(t,'def')))),3,'灼烧');txt+=`，火印灼身`}
-        if(mk.han&&t.hp>0&&!t.stun&&Math.random()<.1*mk.han*(t.boss?.5:1)){t.stun=true;txt+=`，寒印冻住了 ${nm(t)}`}
-        if(hasRl(a,'zhuoshao')&&t.hp>0&&Math.random()<.25){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.35*K/(K+eff(t,'def')))),3,'灼烧');txt+=`，火灵珠燃起灼焰`}
-        if(t.mech==='reflect'&&a.hp>0){const back=Math.round(total*(hits>1?.2:.08));a.hp=Math.max(0,a.hp-back);txt+=`，剑意反震，${nm(a)} 受到 <b class="d">${back}</b> 点反伤`;fx.push({on:a.side,v:'-'+back,k:'dmg'})}
-        if(s.stun&&t.hp>0&&Math.random()<s.stun*(t.boss?.5:1)){t.stun=true;txt+=`，${nm(t)} 被震晕`}
-        if(LA.has('biyu')&&t.hp>0&&!t.stun&&Math.random()<.2*(t.boss?.5:1)){t.stun=true;txt+=`，箫声摇曳，${nm(t)} 心神失守`}
-        if(LA.has('bingpo')&&t.hp>0&&Math.random()<.3){addDot(t,Math.max(1,Math.round(eff(a,'atk')*.4*K/(K+eff(t,'def')))),3,'寒毒');txt+=`，银针透骨，${nm(t)} 身中寒毒`}
-      }
-    }
-    if(s.heal){const h=Math.round(a.maxhp*s.heal);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回复 <b class="h">${h}</b> 气血`;fx.push({on:a.side,v:'+'+h,k:'heal'})}
-    if(LA.has('junzi')&&a.hp>0)a.hp=Math.min(a.maxhp,a.hp+Math.round(a.maxhp*.03));
-    if(mk.chun&&a.hp>0){const h=Math.round(a.maxhp*.03*mk.chun);a.hp=Math.min(a.maxhp,a.hp+h);txt+=`，回春印回复 <b class="h">${h}</b> 气血`}
-    if(mk.jin){a.buffs=a.buffs.filter(b=>b.src!=='金刚印');a.buffs.push({def:.12*mk.jin,src:'金刚印',left:2})}
-    if(s.buff){a.buffs=a.buffs.filter(b=>b.src!==s.bsrc);a.buffs.push({...s.buff,src:s.bsrc,left:s.buff.t+1});txt+=`，${s.bsrc}：${passiveTxt({buff:s.buff})}`}
-    a.mp=Math.min(a.maxmp,a.mp+Math.round(a.maxmp*.06));
-    tick(a);push(txt,a.side,fx);
-  };
-  const petAct=(f,t)=>{
-    const p=f.pet,K=50+5*f.lv,dm=k=>Math.max(1,Math.round(eff(f,'atk')*k*p.pw*K/(K+eff(t,'def'))));
-    const who=`${nm(f)} 的${p.n}`;
-    if(p.id==='hou'){const d=dm(.6);t.hp=Math.max(0,t.hp-d);push(`${who}窜上前偷袭，造成 <b class="d">${d}</b> 点伤害`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
-    else if(p.id==='he'){const h=Math.round(f.maxhp*.06*p.pw);f.hp=Math.min(f.maxhp,f.hp+h);push(`${who}衔来草药，回复 <b class="h">${h}</b> 气血`,f.side,[{on:f.side,v:'+'+h,k:'heal'}])}
-    else if(p.id==='lang'){const d=dm(.5);t.hp=Math.max(0,t.hp-d);if(t.hp>0){t.dots=t.dots.filter(x=>x.l!=='流血');t.dots.push({v:dm(.3),t:2,l:'流血'})}push(`${who}扑咬过去，造成 <b class="d">${d}</b> 点伤害，${nm(t)} 血流不止`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
-    else if(p.id==='gui'){f.buffs=f.buffs.filter(b=>b.src!=='龟甲');f.buffs.push({def:.4,src:'龟甲',left:2});push(`${who}以龟甲护主，防御提升40%`,f.side)}
-    else if(p.id==='hu'){const d=dm(.3);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.35*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 神魂颠倒`}push(`${who}施展媚术，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
-  };
-  const compAct=(f,t)=>{
-    const c=f.comp,K=50+5*f.lv,dm=k=>Math.max(1,Math.round(eff(f,'atk')*k*K/(K+eff(t,'def'))));
-    if(c==='xiao'){const d=dm(.9);t.hp=Math.max(0,t.hp-d);push(`萧寒拔剑而出，一道剑气斩向 ${nm(t)}，造成 <b class="d">${d}</b> 点伤害`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
-    else if(c==='su'){const h=Math.round(f.maxhp*.08);f.hp=Math.min(f.maxhp,f.hp+h);push(`苏晚晴弹出三枚金针，为 ${nm(f)} 止血疗伤，回复 <b class="h">${h}</b> 气血`,f.side,[{on:f.side,v:'+'+h,k:'heal'}])}
-    else if(c==='liu'){f.buffs=f.buffs.filter(b=>b.src!=='挥毫助威');f.buffs.push({atk:.25,src:'挥毫助威',left:3});push(`柳三变在一旁挥毫吟诗，${nm(f)} 精神大振，攻击提升25%`,f.side)}
-    else if(c==='yan'){const d=dm(.6);t.hp=Math.max(0,t.hp-d);let x='';if(t.hp>0&&Math.random()<.25*(t.boss?.5:1)){t.stun=true;x=`，${nm(t)} 被点中穴道`}push(`燕七七从暗处甩出飞刀，造成 <b class="d">${d}</b> 点伤害${x}`,f.side,[{on:t.side,v:'-'+d,k:'dmg'}])}
+    strike(a,t,env);
   };
   push(`${nm(A)} 与 ${nm(B)} 拉开架势……`,null);
   let round=0,winner=null;
   while(round<maxR&&!winner){
-    round++;
+    round++;env.round=round;
     const order=[A,B].sort((x,y)=>(eff(y,'spd')-eff(x,'spd'))||(Math.random()-.5));
     for(const f of order){
       const t=f===A?B:A;yield* act(f,t);
@@ -1428,9 +1511,9 @@ function* battleGen(A,B,opt,log){
     if(!winner)for(const f of [A,B]){
       const t=f===A?B:A;
       if(!f.pet||f.hp<=0||t.hp<=0||Math.random()>=.4)continue;
-      petAct(f,t);if(t.hp<=0){winner=f;break}
+      petAct(f,t,env);if(t.hp<=0){winner=f;break}
     }
-    if(!winner&&A.comp&&A.hp>0&&B.hp>0&&Math.random()<.3){compAct(A,B);if(B.hp<=0)winner=A}
+    if(!winner&&A.comp&&A.hp>0&&B.hp>0&&Math.random()<.3){compAct(A,B,env);if(B.hp<=0)winner=A}
     if(log.length)log[log.length-1].round=round;
   }
   if(!winner){
@@ -1445,17 +1528,6 @@ function simulate(A,B,opt={}){const g=battleGen(A,B,opt,[]);let r=g.next();while
 /* ============ 战斗流程 ============ */
 function fInfo(f){return {name:f.name,lv:f.lv,tag:f.sectN||(f.boss?'首领':f.elite?'精英':'江湖'),maxhp:f.maxhp,maxmp:f.maxmp}}
 const stageLv=(z,i)=>i===5?z.top:z.lv+Math.round(i*(z.top-1-z.lv)/4);
-function fight(zi,i){
-  if(BT||SV)return;
-  const z=ZONES[zi],st=STORY[zi];
-  if(i===0&&!S.story.seen[zi+'a']){S.story.seen[zi+'a']=1;save();showStory(st.pre,null,()=>fight(zi,i));return}
-  if(i===5&&!S.story.seen[zi+'b']){S.story.seen[zi+'b']=1;save();showStory(st.boss,null,()=>fight(zi,i));return}
-  if(S.karma<=-150&&Math.random()<.1){const sc=pick(['shaolin','wudang','emei']);startBattle(mkNPC('名门弟子',sc,S.lv,1,'追杀'),{type:'hunt',zi,i,walk:true,foeSect:sc,title:'通缉 · 名门弟子追杀'});return}
-  if(fy('xueyi')&&Math.random()<.08){const sc=pick(SECT_KEYS);startBattle(mkNPC('血衣楼杀手',sc,S.lv,.95,'血衣楼'),{type:'xueyi',zi,i,walk:true,foeSect:sc,title:'血衣楼杀手伏击'});return}
-  const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
-  const m=applyMech(mkMonster(name,lv,boss,false),boss?ZONE_MECH[zi]:null);if(boss)m.passives[0].n=z.bs;
-  startBattle(m,{type:'stage',zi,i,walk:true,manualOK:boss,title:`${z.n} · ${boss?'首领':'第 '+(i+1)+' 战'}`});
-}
 function startBattle(enemy,ctx){
   const A=mkPlayer();A.side='a';enemy.side='b';usePills();
   if(ctx.prep)ctx.prep(A,enemy);
@@ -1463,12 +1535,12 @@ function startBattle(enemy,ctx){
   if(S.manual&&!(ctx.manualOK===false&&(S.auto||S.tAuto))){ // 勾了手动掷骰就全部手动；开着连续挑战或自动连闯时，小怪仍自动打
     A.manual=true;const log=[];
     BT={manual:true,gen:battleGen(A,enemy,ctx.sim||{},log),log,A,enemy,info,i:-1,timer:null,autoT:null,ctx,done:false};
-    showBattle();return; // 开局后由 showBattle 接着走 manualRun
+    showBattle();manualRun(BT.gen.next());return;
   }
   const res=simulate(A,enemy,ctx.sim||{});
   const reward=applyResult(res.win,ctx,enemy,A);
   save();
-  BT={res,info,enemy,i:0,timer:null,autoT:null,ctx,reward,done:false};
+  BT={res,info,i:0,timer:null,autoT:null,ctx,reward,done:false};
   showBattle();
 }
 function applyResult(win,ctx,enemy,A){
@@ -1564,9 +1636,12 @@ function applyResult(win,ctx,enemy,A){
   }
   return rw;
 }
-/* ============ 走路战斗：横版场景与像素小人 ============ */
-// 江湖关卡的战斗放在横版场景里演：主角一路往右走，对手迎面走来，停下就地开打，打赢了接着走
-// 小人和背景都用 canvas 一个点一个点画好，转成图片当 CSS 背景；小人一张图四帧：站、迈左脚、迈右脚、出招
+/* ============ 闯江湖：一整趟路（仿《六六英雄》） ============ */
+// 进入区域后沿一条路往画面深处走：点「前进」走到下一处，路上是一波波对手、奇遇、行脚商人，尽头是首领
+// 每波可能来好几只怪，怪头顶写着这回合要打你多少；你自己掷骰、锁骰、重掷、点选目标、出招；首领还会扰乱你的骰子
+// 气血一路不回满；打倒对手攒悟性，攒满就三选一：心法（整体强化）或骰技（绑在某一颗骰子上）；倒下就结束，已经拿到的奖励不收回
+// 这一趟随时存进存档（S.run），关掉页面或「暂离」之后可以回来接着走
+// 画面是 144×180 的像素 canvas：远景剪影 + 逐行画的透视路面（条纹随前进滚动）+ 路边道具 + 小人；名字、血条、预告用 DOM 叠在上面
 const shade=(h,f)=>{const n=parseInt(h.slice(1),16);return '#'+[n>>16,n>>8&255,n&255].map(v=>Math.round(f<0?v*(1+f):v+(255-v)*f).toString(16).padStart(2,'0')).join('')};
 const SCOL={shaolin:'#c98a2e',wudang:'#6c9bd2',emei:'#d68fb0',gaibang:'#93a955',mingjiao:'#d65e40',tangmen:'#5fb7a1',tianshan:'#9cc7ea'};
 const SECT_LOOK={shaolin:{hair:'bald',wpn:'staff',b:'#a02a20'},wudang:{hair:'bun',wpn:'sword',b:'#2a3a5a'},emei:{hair:'long',wpn:'sword',b:'#f0e0e8'},
@@ -1586,80 +1661,103 @@ const MON_SPR={
  剑宗弃徒:{r:'#5a6a7a',b:'#c0c0c0',hair:'bun',wpn:'sword'},黑衣死士:{r:'#1e2024',b:'#7a1a1a',hair:'hat',wpn:'saber'},血刀门人:{r:'#8a1e1e',b:'#2a1a1a',hair:'band',wpn:'saber'},
  独孤剑魔:{r:'#2a2a3a',b:'#9a8a6a',h:'#c8c8c8',hair:'long',wpn:'sword'},
 };
-function drawHuman(P,f,L){
-  const ape=L.k==='ape',r=L.r,d=shade(r,-.35),b=L.b||shade(r,-.55),h=L.h||'#1e1a18',s=L.s||'#e8b890',p=ape?d:shade(r,-.6),k='#14100e',m='#d8dde0';
-  const W=L.wpn,front=W==='staff'||W==='axe';
-  P(5,25,16,1,'rgba(0,0,0,.35)');
-  for(const x of [[9,12],[7,14],[10,11],[6,15]][f]){P(x,20,2,4,p);P(x,24,3,1,k)}
-  if(front&&f<3){if(W==='staff'){P(17,3,1,22,'#8a5a2a');P(17,3,1,2,'#c9a050')}else{P(17,8,1,16,'#6a4a2a');P(18,7,3,6,m);P(21,8,1,4,m)}} // 长兵器竖着拿在身前
-  P(8,12,7,6,r);P(7,17,9,3,r);P(7,12,1,8,d);P(7,19,9,1,d);
-  if(!ape){P(8,16,7,1,b);P(12,12,2,2,shade(r,.35))}
-  if(L.patch){P(9,13,2,2,shade(r,-.25));P(12,18,2,1,'#c9a050')}
-  P(9,4,7,7,s);
-  const H=L.hair;
-  if(ape){P(8,3,8,3,r);P(8,6,4,5,r)}
-  else if(H==='bald'){P(10,3,5,1,s);P(11,4,1,1,'#a0603a');P(13,4,1,1,'#a0603a')}
-  else if(H==='scarf'){P(9,3,7,1,b);P(8,4,8,2,b);P(8,6,3,3,b);P(6,6,2,2,b)}
-  else{
-    P(9,3,7,1,h);P(8,4,8,1,h);P(8,5,4,4,h);
-    if(H==='bun'){P(10,1,3,2,h);P(9,2,1,1,'#c9a050')}
-    if(H==='long')P(7,5,3,9,h);
-    if(H==='band')P(8,5,8,1,'#c0302a');
-    if(H==='messy'){P(9,2,1,1,h);P(11,1,1,2,h);P(13,2,1,1,h);P(15,3,1,2,h)}
-    if(H==='hat'){P(6,4,13,1,'#6a5430');P(9,2,6,2,'#a88a4a');P(11,1,2,1,'#a88a4a')}
-  }
-  if(L.mask){P(12,5,4,6,'#eeeae0');P(14,7,1,1,'#c0302a')}else P(14,7,1,1,k);
-  if(L.beard)P(12,10,4,3,L.beard);
-  if(f===3){ // 出招：手臂伸直，兵器朝前
-    P(14,13,5,2,r);P(19,13,2,2,s);
-    if(W==='sword'){P(21,12,1,4,'#c9a050');P(22,13,8,1,m);P(22,14,7,1,shade(m,-.3));P(30,13,1,1,'#fff')}
-    else if(W==='saber'){P(21,12,1,4,'#8a6a30');P(22,13,7,2,m);P(29,12,2,2,m);P(22,15,6,1,shade(m,-.3))}
-    else if(W==='staff'){P(4,13,27,1,'#8a5a2a');P(29,13,2,1,'#c9a050');P(19,13,2,2,s)}
-    else if(W==='axe'){P(20,13,8,1,'#6a4a2a');P(27,9,3,9,m);P(30,10,1,7,m);P(19,13,2,2,s)}
-    else if(W==='fan'){P(21,9,2,8,'#e8dcc0');P(23,10,1,6,'#e8dcc0');P(24,11,1,4,'#e8dcc0');P(21,12,1,2,'#6a4a2a')}
-    else if(W==='dart'){P(23,13,2,1,m);P(26,11,2,1,m);P(27,15,2,1,m)}
-    else{P(19,12,3,4,s);P(22,13,2,2,'rgba(255,240,200,.6)')}
-  }else if(front){P(14,13,2,2,r);P(15,15,1,1,r);P(16,14,2,2,s)}
-  else{
-    const [ax,hx,hy]=[[13,13,17],[14,15,16],[11,11,17]][f],dy=ape?2:0;
-    P(ax,13,2,hy-13+dy,r);P(hx,hy+dy,2,1,s);
-    if(W==='sword'){P(hx-1,hy+1,4,1,'#c9a050');P(hx+1,hy+2,1,5,m)}
-    else if(W==='saber'){P(hx-1,hy+1,3,1,'#8a6a30');P(hx,hy+2,2,5,m)}
-    else if(W==='fan')P(hx,hy-3,1,4,'#d8c8a0');
-  }
-}
-function drawWolf(P,f,L){
-  const c=L.r,dk=shade(c,-.3),lt=shade(c,.35),k='#14100e',y=f===3?1:0;
-  P(4,25,22,1,'rgba(0,0,0,.35)');
-  for(const x of [[7,10,17,20],[5,11,15,21],[8,9,18,19],[4,8,19,23]][f]){P(x,19,2,5,dk);P(x,24,2,1,k)}
-  P(6,14,15,5,c);P(7,13,12,1,dk);P(9,18,10,1,lt);
-  if(L.fox){P(1,11,5,4,c);P(1,11,2,2,'#ffffff')}else{P(3,13,3,2,c);P(1,11,2,3,c)}
-  P(20,11+y,6,5,c);P(21,9+y,2,2,c);P(24,9+y,2,2,dk);P(24,13+y,1,1,k);
-  if(f===3){P(26,12+y,5,2,c);P(30,12+y,1,1,k);P(26,15+y,4,1,c);P(27,14+y,1,1,'#fff');P(29,14+y,1,1,'#fff')}
-  else{P(26,13,3,3,c);P(28,13,1,1,k);P(26,15,2,1,lt)}
-}
-function drawSnake(P,f,L){
-  const c=L.r,dk=shade(c,-.35),lt=shade(c,.4),k='#14100e',w=[0,1,-1,0][f],a=f===3?4:0;
-  P(5,25,18,1,'rgba(0,0,0,.35)');
-  P(6,21,15,4,c);P(8,20,11,1,c);P(6,24,15,1,dk);P(9,22,8,1,lt);
-  P(15+w,13,3,8,c);P(16+w+a/2,10,3,4,c);P(17+w+a,8,5,4,c);P(17+w+a,11,5,1,lt);P(20+w+a,9,1,1,k);P(22+w+a,10,2+a/2,1,'#d03030');
-}
-const SPR={},SCN={};
-const pxCanvas=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,(x,y,ww,hh,col)=>{g.fillStyle=col;g.fillRect(x,y,ww,hh)});return c.toDataURL()};
-function sprSheet(L,flip){
-  const key=JSON.stringify(L)+(flip?1:0);
-  return SPR[key]||(SPR[key]=pxCanvas(128,26,(g,P)=>{
-    const dr=L.k==='wolf'?drawWolf:L.k==='snake'?drawSnake:drawHuman;
-    for(let f=0;f<4;f++){g.save();g.translate(f*32+(flip?32:0),0);if(flip)g.scale(-1,1);dr(P,f,L);g.restore()}
-  }));
-}
+// 路边的人和物：商人、奇遇
+const MERCHANT={r:'#7a5a3a',b:'#c9a050',hair:'hat',beard:'#6a5040',pack:1};
+const EV_LOOK={chest:{k:'chest'},spring:{k:'spring'},elder:{r:'#d8d4c8',b:'#8a6a3a',h:'#e8e8e8',hair:'bun',beard:'#e8e8e8'},dice:{r:'#7a3a3a',b:'#c9a050',hair:'band',pack:1}};
 // 主角按门派和所用兵器画；追杀、伏击的人按对方门派画；其余查怪物表
-function sprLook(side,enemy,ctx){
+function sprLook(side,enemy){
   if(side==='a'){const lk=SECT_LOOK[S.sect];return {...lk,r:SCOL[S.sect],wpn:WT_LOOK[itemWt(S.equip.wpn)]||lk.wpn}}
-  if(ctx.foeSect){const lk=SECT_LOOK[ctx.foeSect];return ctx.type==='xueyi'?{...lk,r:'#5a1414',b:'#1a1a1a',hair:'hat'}:{...lk,r:shade(SCOL[ctx.foeSect],-.15)}}
+  if(enemy.foeSect){const lk=SECT_LOOK[enemy.foeSect];return enemy.amb==='xueyi'?{...lk,r:'#5a1414',b:'#1a1a1a',hair:'hat'}:{...lk,r:shade(SCOL[enemy.foeSect],-.15)}}
   return MON_SPR[enemy.name]||{r:'#5a5a5a',b:'#3a3a3a',hair:'scarf',wpn:'saber'};
 }
-// 七个区域的场景：天空渐变、远景剪影、近景道具、地面
+// 小人 24×28，四帧：站、迈步、出招、挨打。怪物和路边的人画正面，主角画背面（往路的深处走）
+function drawFront(P,f,L,back){
+  const ape=L.k==='ape',r=L.r,d=shade(r,-.35),b=L.b||shade(r,-.55),h=L.h||'#1e1a18',s=L.s||'#e8b890',p=ape?d:shade(r,-.6),k='#14100e',m='#d8dde0',W=L.wpn,H=L.hair,up=f===2,hurt=f===3;
+  P(6,27,12,1,'rgba(0,0,0,.35)');
+  P(9,21,2,f===1?4:5,p);P(9,f===1?25:26,2,1,k);P(13,21,2,5,p);P(13,26,2,1,k);
+  if(L.pack){P(5,10,14,10,'#6a4a2a');P(6,9,12,1,'#8a6a3a')}
+  if(!up&&!hurt){if(W==='staff'){P(20,3,1,24,'#8a5a2a');P(20,3,1,2,'#c9a050')}if(W==='axe'){P(20,9,1,15,'#6a4a2a');P(21,8,3,5,m)}}
+  P(7,13,10,6,r);P(6,18,12,4,r);P(6,18,1,4,d);P(17,18,1,4,d);P(6,21,12,1,d);
+  if(!ape){P(7,17,10,1,b);if(!back)P(11,13,2,2,shade(r,.35))}
+  if(L.patch){P(8,14,2,2,shade(r,-.25));P(14,19,2,1,'#c9a050')}
+  const aw=ape?3:2,ah=ape?9:6;
+  if(hurt){P(5-(ape?1:0),9,aw,5,r);P(5-(ape?1:0),8,aw,1,s);P(17,9,aw,5,r);P(17,8,aw,1,s)} // 挨打：两手往上一扬
+  else{P(5-(ape?1:0),13,aw,ah,r);P(5-(ape?1:0),13+ah,aw,1,s);if(up){P(17,7,aw,7,r);P(17,6,aw,1,s)}else{P(17,13,aw,ah,r);P(17,13+ah,aw,1,s)}}
+  P(8,5,8,8,s);
+  if(ape){P(7,4,10,4,r);P(7,8,2,4,r);P(15,8,2,4,r);P(9,7,6,6,s)}
+  else if(back){
+    if(H==='scarf'){P(7,4,10,7,b);P(9,11,2,3,b)}
+    else if(H!=='bald'){P(8,4,8,8,h);P(7,5,1,5,h);P(16,5,1,5,h)}
+  }else{
+    if(H==='bald'){P(9,4,6,1,s);P(10,5,1,1,'#a0603a');P(13,5,1,1,'#a0603a')}
+    else if(H==='scarf'){P(7,4,10,3,b);P(7,7,1,3,b);P(16,7,1,3,b)}
+    else{P(8,4,8,2,h);P(7,5,1,5,h);P(16,5,1,5,h);P(8,6,2,1,h);P(14,6,2,1,h)}
+  }
+  if(!ape&&H!=='bald'&&H!=='scarf'){
+    if(H==='bun'){P(11,2,2,2,h);P(10,3,1,1,'#c9a050')}
+    if(H==='long')back?P(7,8,10,9,h):(P(6,6,2,10,h),P(16,6,2,10,h));
+    if(H==='band'){P(7,6,10,1,'#c0302a');if(back)P(11,7,1,4,'#c0302a')}
+    if(H==='messy'){P(8,3,1,1,h);P(10,2,1,2,h);P(13,2,1,2,h);P(15,3,1,1,h)}
+    if(H==='hat'){P(4,5,16,1,'#6a5430');P(8,2,8,3,'#a88a4a')}
+  }
+  if(!back){
+    if(L.mask){P(9,6,6,6,'#eeeae0');P(10,9,1,1,'#c0302a');P(13,9,1,1,'#c0302a')}
+    else if(hurt){P(10,9,2,1,k);P(12,9,2,1,k)}else{P(10,9,1,1,k);P(13,9,1,1,k)}
+    if(L.beard)P(9,11,6,3,L.beard);
+  }
+  if(hurt)return;
+  if(up){
+    if(W==='sword'){P(18,0,1,8,m);P(17,8,3,1,'#c9a050')}
+    else if(W==='saber'){P(18,1,2,7,m);P(17,8,3,1,'#8a6a30')}
+    else if(W==='staff')P(18,0,1,14,'#8a5a2a');
+    else if(W==='axe'){P(18,1,1,8,'#6a4a2a');P(19,0,4,4,m)}
+    else if(W==='fan')P(16,4,5,4,'#e8dcc0');
+    else if(W==='dart'){P(20,5,1,2,m);P(22,8,1,2,m);P(19,2,1,2,m)}
+    else if(W)P(17,5,3,3,s);
+  }else if(W==='sword'){P(17,20,3,1,'#c9a050');P(18,21,1,6,m)}
+  else if(W==='saber'){P(17,20,3,1,'#8a6a30');P(18,21,2,5,m)}
+  else if(W==='fan')P(17,17,3,3,'#e8dcc0');
+}
+function drawWolfF(P,f,L){
+  const c=L.r,dk=shade(c,-.3),lt=shade(c,.35),k='#14100e',up=f===2,hurt=f===3;
+  P(5,27,14,1,'rgba(0,0,0,.35)');
+  P(7,21,2,f===1?4:5,dk);P(15,21,2,5,dk);P(7,f===1?25:26,2,1,k);P(15,26,2,1,k);
+  if(L.fox){P(16,9,5,6,c);P(18,9,3,2,'#ffffff')}else P(17,11,3,3,c);
+  P(6,14,12,8,c);P(9,16,6,5,lt);
+  const y=up?2:hurt?-1:0;
+  P(6,7+y,12,8,c);P(6,4+y,3,3,c);P(15,4+y,3,3,c);P(7,5+y,1,2,dk);P(16,5+y,1,2,dk);
+  if(hurt){P(8,10+y,2,1,dk);P(14,10+y,2,1,dk)}else{P(8,10+y,2,1,k);P(14,10+y,2,1,k)}
+  P(9,12+y,6,3,lt);P(11,12+y,2,1,k);
+  if(up){P(10,14+y,4,2,'#802020');P(10,14+y,1,1,'#fff');P(13,14+y,1,1,'#fff')}
+}
+function drawSnakeF(P,f,L){
+  const c=L.r,dk=shade(c,-.35),lt=shade(c,.4),k='#14100e',w=f===1?1:f===3?-2:0,up=f===2;
+  P(4,27,16,1,'rgba(0,0,0,.35)');
+  P(4,22,16,4,c);P(6,21,12,1,c);P(4,25,16,1,dk);P(7,23,10,1,lt);
+  P(10+w,12,4,10,c);P(11+w,13,2,9,lt);
+  const y=up?2:f===3?-2:0;
+  P(8+w,7+y,8,6,c);P(9+w,9+y,1,1,k);P(14+w,9+y,1,1,k);P(11+w,13+y,2,up?3:1,'#d03030');
+}
+function drawChest(P,f){
+  P(4,27,16,1,'rgba(0,0,0,.35)');P(5,18,14,9,'#7a4a22');P(5,26,14,1,'#5a3418');P(5,21,14,1,'#c9a050');
+  if(f===2){P(5,12,14,4,'#9a6a32');P(5,12,14,1,'#c9a050');P(7,16,10,2,'#ffe7a1');P(9,13,6,3,'rgba(255,231,161,.6)')}
+  else{P(5,15,14,4,'#9a6a32');P(5,15,14,1,'#c9a050');P(11,18,2,3,'#e8c860')}
+}
+function drawSpring(P,f){
+  P(2,22,20,6,'#4a7aa0');P(3,21,18,1,'#8ab8d8');P(4,23,16,3,'#5a8ab0');P(1,20,4,4,'#7a7a72');P(19,21,4,4,'#7a7a72');P(9,19,5,3,'#6a6a62');
+  if(f===1)P(8,24,3,1,'#e8f4fb');else P(13,25,3,1,'#e8f4fb');
+}
+const pxCanvasEl=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,(x,y,ww,hh,col)=>{g.fillStyle=col;g.fillRect(x,y,ww,hh)});return c};
+// 一套四帧小人图，外加一张全白的剪影，挨打时叠上去闪一下
+const RSPR={};
+function runSheet(L,back){
+  const key=JSON.stringify(L)+(back?'b':'f');if(RSPR[key])return RSPR[key];
+  const dr={wolf:drawWolfF,snake:drawSnakeF,chest:drawChest,spring:drawSpring}[L.k]||drawFront;
+  const img=pxCanvasEl(96,28,(g,P)=>{for(let f=0;f<4;f++){g.save();g.translate(f*24,0);dr(P,f,L,back);g.restore()}});
+  const fl=pxCanvasEl(96,28,g=>{g.drawImage(img,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#fff';g.fillRect(0,0,96,28)});
+  return RSPR[key]={img,fl};
+}
+// 七个区域的景色：天空渐变、远景剪影、路边道具；gr 是路面、路边线、路两侧的地面
 const ZSC=[
  {sky:['#283149','#c98656'],far:{t:'town',c:'#4b3f52',win:'#e8a850'},near:['willow','rock','willow'],trunk:'#3b2a22',leaf:'#4e7a3a',rock:'#6a5a48',gr:['#7a6040','#5e4a32','#55703a']},
  {sky:['#1f3242','#87a99c'],far:{t:'peaks',c:'#3d5656'},near:['pine','rock','pine'],trunk:'#3b2a22',leaf:'#2f5a3a',rock:'#6f6e66',gr:['#6f6e66','#55544e','#4a6a3a']},
@@ -1677,11 +1775,12 @@ const PROP={
  reed(P,x,z){for(let i=0;i<5;i++){const h=8+(i*7)%6;P(x+i*2,48-h,1,h,z.leaf);P(x+i*2,46-h,1,2,'#9a7a4a')}},
  bamboo(P,x,z){for(let i=0;i<2;i++){const bx=x+i*5;P(bx,0,2,48,z.leaf);for(let y=3+i*4;y<48;y+=8)P(bx,y,2,1,z.trunk);P(bx+2,10+i*9,4,1,z.leaf);P(bx+4,9+i*9,2,1,z.leaf);P(bx-4,22+i*7,4,1,z.leaf);P(bx-5,21+i*7,2,1,z.leaf)}},
 };
-// 背景两层：远景慢、近景快，宽 160 点首尾相接，可以无限横向平铺
-function sceneLayers(zi){
+// 远景剪影：宽 160 点，地平线在第 48 行
+const SCN={};
+function runFar(zi){
   if(SCN[zi])return SCN[zi];
-  const z=ZSC[zi],F=z.far,W=Math.PI*2/160;let n=zi*1000;const rnd=()=>seeded(++n);
-  const far=pxCanvas(160,64,(g,P)=>{
+  const F=ZSC[zi].far,W=Math.PI*2/160;let n=zi*1000;const rnd=()=>seeded(++n);
+  return SCN[zi]=pxCanvasEl(160,64,(g,P)=>{
     if(F.t==='peaks'||F.t==='dunes')for(let x=0;x<160;x++){
       const tri=(p,o)=>1-Math.abs(((x+o)%p)/p*2-1);
       const h=F.t==='dunes'?10+5*Math.sin(x*W*2)+3*Math.sin(x*W*5+1):8+20*tri(80,10)**(F.sharp?1.6:1.2)+8*tri(32,4);
@@ -1701,81 +1800,606 @@ function sceneLayers(zi){
       if(F.t==='town')for(let j=0;j<5;j++){const w=12-2*j,b=48-j*6;P(128-w/2,b-5,w,5,wall);P(126-w/2,b-6,w+4,1,wall)} // 城外的塔
     }
   });
-  const near=pxCanvas(160,64,(g,P)=>{
-    const [g0,g1,g2]=z.gr;P(0,48,160,16,g0);P(0,48,160,1,g2);
-    for(let i=0;i<60;i++)P(Math.floor(rnd()*160),49+Math.floor(rnd()*15),1+Math.floor(rnd()*2),1,g1);
-    for(let x=6+Math.floor(rnd()*10);x<148;x+=18+Math.floor(rnd()*30))PROP[z.near[Math.floor(rnd()*z.near.length)]](P,x,z);
+}
+
+/* 音效和震动：用 WebAudio 现场合成，不需要音频文件；可以在闯关画面顶上关掉 */
+let AC=null;
+function sfx(k){
+  if(!S||S.mute)return;
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){return}
+  const t=AC.currentTime;
+  const tone=(f,d,type,v,at=0,f2)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t+at);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+at+d);
+    g.gain.setValueAtTime(v,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+d);o.connect(g).connect(AC.destination);o.start(t+at);o.stop(t+at+d+.02)};
+  const noise=(d,v,at=0,hp=800)=>{const n=Math.floor(AC.sampleRate*d),b=AC.createBuffer(1,n,AC.sampleRate),ch=b.getChannelData(0);for(let i=0;i<n;i++)ch[i]=(Math.random()*2-1)*(1-i/n);
+    const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='highpass';f.frequency.value=hp;g.gain.value=v;s.buffer=b;s.connect(f).connect(g).connect(AC.destination);s.start(t+at)};
+  ({roll:()=>{for(let i=0;i<6;i++)noise(.035,.08,i*.045,1800)},
+    lock:()=>tone(880,.05,'square',.035),
+    hit:()=>{noise(.08,.12,0,300);tone(150,.12,'sine',.14,0,60)},
+    crit:()=>{noise(.14,.16,0,200);tone(240,.2,'sawtooth',.08,0,60)},
+    hurt:()=>tone(200,.16,'square',.05,0,90),
+    miss:()=>tone(500,.1,'sine',.04,0,1000),
+    heal:()=>{tone(660,.14,'sine',.05);tone(990,.18,'sine',.05,.08)},
+    coin:()=>{tone(1300,.06,'square',.03);tone(1750,.12,'square',.03,.05)},
+    step:()=>noise(.025,.03,0,500),
+    combo:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'square',.05,i*.07)),
+    perk:()=>[392,523,659].forEach((f,i)=>tone(f,.22,'triangle',.07,i*.09)),
+    jinx:()=>tone(300,.4,'sawtooth',.05,0,120),
+    win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.24,'triangle',.07,i*.11)),
+    lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,.32,'triangle',.07,i*.16))}[k]||(()=>{}))();
+}
+function buzz(p){if(!S||S.mute||!navigator.vibrate||(navigator.userActivation&&!navigator.userActivation.hasBeenActive))return;try{navigator.vibrate(p)}catch(e){}}
+
+let RUN=null;
+const RW=144,RH=180,RHY=58,RCX=72; // 画面像素尺寸、地平线、路中线
+const NODE_GAP=7,FIGHT_D=2.5;      // 相邻两处的距离；对手站在面前多远
+const RUN_HP=[1,.75,.65],RUN_ATK=[1,.62,.5]; // 一波来 1/2/3 只时，每只的气血、攻击按单挑怪的多少倍
+const XWAVE_F=.8;                  // 流寇比同段关卡的怪弱一些
+const RUN_AMB=.75;                 // 追杀、伏击的人是照着你的属性生成的，半路气血不满时要弱一些
+const RUN_BOSS_HP=[1.2,1.2,1.2,1.2,1.2,1.2,1.7]; // 首领多出的气血，抵消一路攒下的强化；独孤剑魔的剑意反震挡不住骰技和溅射，再多加一些
+const PERKS={
+ atk:{n:'磨砺锋芒',max:3,d:l=>`攻击 +${15*l}%`},
+ crit:{n:'会心一击',max:3,d:l=>`暴击率 +${10*l}%`},
+ steal:{n:'嗜血',max:3,d:l=>`吸血 ${8*l}%`},
+ hp:{n:'铁骨',max:3,d:l=>`气血上限 +${20*l}%，选中时回复 20% 气血`},
+ guard:{n:'金身',max:3,d:l=>`受到的伤害 -${10*l}%`},
+ regen:{n:'吐纳',max:3,d:l=>`每回合回复 ${4*l}% 气血`},
+ rr:{n:'妙手',max:2,d:l=>`每回合多 ${l} 次免费重掷`},
+ six:{n:'六六大顺',max:3,d:l=>`每掷出一颗 6 点，这一招伤害 +${10*l}%`},
+ poison:{n:'毒手',max:3,d:l=>`打中后让对手中毒 3 回合，每回合约 ${25*l}% 攻击`},
+ sweep:{n:'横扫千军',max:3,d:l=>`打中目标时，其余对手受到 ${35*l}% 溅射`},
+ chain:{n:'连环',max:2,d:l=>`掷出两对或更好时追加一击，${50*l}% 伤害`},
+ fate:{n:'天命',max:2,d:l=>`每回合掷骰时，前 ${l} 颗直接出最大点并锁住`},
+ mp:{n:'聚气',max:2,d:l=>`内力上限 +${30*l}%，每回合多回 ${6*l}% 内力`},
+ gold:{n:'招财',max:2,d:l=>`铜钱 +${50*l}%`},
+};
+// 骰技：绑在某一颗骰子上，出招时那颗骰子的点数满足条件就发动；同一颗最多练到三重
+const DSK={
+ jq:{n:'剑气',c:'剑',ok:v=>v>=4,d:l=>`这颗掷出 4 点以上：剑气斩向所有对手，各受「攻击 × 点数 × ${8+4*l}%」`},
+ dz:{n:'毒针',c:'毒',ok:v=>v%2===1,d:l=>`这颗掷出单数：目标中毒 3 回合，每回合约 ${20+10*l}% 攻击`},
+ hc:{n:'回春',c:'春',ok:v=>v>=1&&v<=3,d:l=>`这颗掷出 1~3 点：回复「(4 − 点数) × ${2+2*l}%」气血`},
+ jl:{n:'惊雷',c:'雷',ok:v=>v===6,d:l=>`这颗掷出 6 点：目标 ${20+15*l}% 几率被震晕（首领减半）`},
+ pj:{n:'破甲',c:'破',ok:v=>v>=5,d:l=>`这颗掷出 5 点以上：这一招伤害 +${10+15*l}%`},
+};
+// 首领扰乱骰子：每隔一回合用一次，用的时候头顶会写明
+const JINX={
+ seal:{n:'拦路',d:'你这回合少一次免费重掷'},
+ freeze:{n:'镇骰',d:'冻住骰子，这回合不能重掷'},
+ chaos:{n:'浑水',d:'塞进混乱骰：一半的面没有点数'},
+ venom:{n:'毒骰',d:'染毒的骰子出招时若是单数，你会中毒'},
+ sand:{n:'黄沙',d:'掷完后两颗骰子各少 1 点'},
+};
+const ZONE_JINX=['seal','freeze','chaos','venom','sand','freeze','any'];
+const RSHOP={
+ yao:{n:'金创药',d:'回复 35% 气血',p:12},
+ qi:{n:'回气丹',d:'内力回满',p:8},
+ fu:{n:'改点符',d:'出招前把一颗骰子翻到想要的那一面',p:15},
+ wu:{n:'顿悟丹',d:'立刻三选一一个强化',p:25},
+ mo:{n:'磨刀石',d:'这一趟攻击 +10%',p:18},
+};
+const REV={
+ chest:{n:'路边宝箱',d:'一只落满灰的木箱，锁已经锈坏了。'},
+ elder:{n:'神秘老者',d:'白发老者拦住你：「年轻人，老夫这里有两条路。」'},
+ dice:{n:'骰子摊',d:'摊主摇着骰盅：「三颗骰子，猜大小，押十文！」'},
+ spring:{n:'山泉',d:'路边一汪清泉，泉水甘冽。'},
+};
+// 第一次闯关时的提示，做过一次对应的事就不再出现
+const TIPS={
+ walk:'点「前进」沿路往前走，走到下一处会停下。',
+ roll:'怪物头顶的 ⚔ 数字，是它这一回合要打你多少。轮到你了，点「掷骰」。',
+ pick:'点骰子能锁住它，重掷只换没锁的。凑出一对、三条、顺子、葫芦，伤害成倍往上翻。满意了就「出招」。',
+ tgt:'这一波不止一个对手：点哪个怪就打哪个，先收拾打得最疼的。',
+ perk:'悟性攒满就能三选一。「心法」整体变强，「骰技」绑在某一颗骰子上，出招时那颗点数对了就发动。',
+ jinx:'首领在扰乱你的骰子：冻住的骰子不能重掷，混乱骰可能掷出空面。头顶写着他这回合用了什么。',
+ shop:'路上打怪捡的铜钱，可以在这里花掉。',
+ event:'路上会有奇遇，选一样再上路。',
+};
+const pl=k=>(RUN&&RUN.perks[k])||0;
+const runTip=k=>S.tut[k]?'':`<p class="r-tip"><b>提示</b>${TIPS[k]}</p>`;
+const tipDone=k=>{if(!S.tut[k]){S.tut[k]=1;save()}};
+function runA(){
+  const A=mkPlayer();A.side='a';
+  A.atk*=1+.15*pl('atk')+.1*RUN.whet;A.crit+=10*pl('crit');A.lsteal=(A.lsteal||0)+.08*pl('steal');
+  A.maxhp=Math.round(A.maxhp*(1+.2*pl('hp')));A.maxmp=Math.round(A.maxmp*(1+.3*pl('mp')));A.dmgMul=1-.1*pl('guard');
+  return A;
+}
+// 升级、拿强化后重算属性：气血按比例保留，身上的增益、持续伤害和这一手骰子都留着
+function runRefresh(){
+  const o=RUN.A,n=runA();
+  n.hp=Math.max(1,Math.round(n.maxhp*o.hp/o.maxhp));n.mp=Math.min(n.maxmp,o.mp);
+  for(const k of ['buffs','dots','cds','stun','fi','dice','held','rr','nAct'])n[k]=o[k];
+  RUN.A=n;
+}
+// 一趟路：五处关卡对手（照常发关卡奖励）、三波流寇、两处奇遇、一个商人，尽头首领
+function runPlan(){
+  const ev=shuffle(Object.keys(REV));
+  return [{t:'fight',i:0},{t:'fight',x:0},{t:'event',k:ev[0]},{t:'fight',i:1},{t:'fight',i:2},{t:'shop'},
+    {t:'fight',x:2},{t:'fight',i:3},{t:'event',k:ev[1]},{t:'fight',x:3},{t:'fight',i:4},{t:'fight',i:5}];
+}
+const monScale=(m,h,a)=>{m.maxhp=m.hp=Math.max(1,Math.round(m.maxhp*h));m.atk*=a};
+// 每处的对手：关卡怪一波一到三只，越往后越多；流寇两三只、弱一些；尽头是首领，后几个区域还带一个喽啰
+function runWave(nd){
+  const zi=RUN.zi,z=ZONES[zi];
+  if(nd.amb){const e=nd.amb==='hunt'?mkNPC('名门弟子',nd.sect,S.lv,1,'追杀'):mkNPC('血衣楼杀手',nd.sect,S.lv,.95,'血衣楼');e.foeSect=nd.sect;e.amb=nd.amb;monScale(e,RUN_AMB,RUN_AMB);return [e]}
+  if(nd.x!=null){const n=nd.x>=3?3:2,lv=stageLv(z,nd.x);
+    return Array.from({length:n},()=>{const m=mkMonster(z.mobs[Math.floor(Math.random()*3)],lv,false,false);monScale(m,RUN_HP[n-1]*XWAVE_F,RUN_ATK[n-1]*XWAVE_F);return m})}
+  const i=nd.i,lv=stageLv(z,i);
+  if(i===5){
+    const b=applyMech(mkMonster(z.boss,lv,true,false),ZONE_MECH[zi]);b.passives[0].n=z.bs;monScale(b,RUN_BOSS_HP[zi],1);
+    if(zi<2)return [b];
+    const m=mkMonster(z.mobs[2],Math.max(1,lv-2),false,false);monScale(m,.4,.45);return [b,m];
+  }
+  const n=[1,2,2,3,3][i];
+  return Array.from({length:n},(_,j)=>{const m=mkMonster(z.mobs[j?Math.floor(Math.random()*(STAGE_MOB[i]+1)):STAGE_MOB[i]],lv,false,false);monScale(m,RUN_HP[n-1],RUN_ATK[n-1]);return m});
+}
+function runEnt(e,j,arr,d){
+  const n=arr.length;
+  e.side='e'+j;e.X=arr[0].boss&&n===2?(j?1:-.2):n===1?0:n===2?(j?.62:-.62):[-1.05,0,1.05][j];e.d=d+(n===3&&j===1?.8:n===2&&j===1&&!arr[0].boss?.4:0); // 三只时中间那只站后一点，名字不挤在一起
+  e.sheet=runSheet(sprLook('b',e),false);e.shown=e.hp;e.an=null;e.ph=Math.random()*1200;
+  if(e.hp<=0){e.dead=true;e.dying=-1e9}
+  return e;
+}
+function runPropCanvases(zi){const z=ZSC[zi];return [...new Set(z.near)].map(k=>pxCanvasEl(26,48,(g,P)=>PROP[k](P,k.endsWith('pine')?12:9,z)))}
+function runLog(t){if(!RUN)return;RUN.log.push(t);if(RUN.log.length>40)RUN.log.shift();const el=$('#rlog');if(el){el.insertAdjacentHTML('beforeend',`<p>${t}</p>`);while(el.children.length>40)el.firstChild.remove();el.scrollTop=el.scrollHeight}}
+
+// 搭起闯关画面：开新的一趟和接着走都从这里开始
+function runBuild(zi){
+  const z=ZSC[zi];
+  RUN={zi,nodes:[],ni:0,cam:0,mv:null,perks:{},ds:[null,null,null,null,null],whet:0,gold:0,wx:0,need:2,pend:0,popts:null,fu:0,fuMode:false,fuDie:null,round:0,kills:0,rw:[],
+    ents:[],tgt:0,q:[],log:[],phase:'walk',arrived:false,hero:{an:null},props:[],propZ:.6,slash:[],side:null,shop:null,ev:null,jx:null,
+    far:runFar(zi),pc:runPropCanvases(zi),cols:{side:[z.gr[2],shade(z.gr[2],-.08)],road:[z.gr[0],shade(z.gr[0],-.07)],edge:z.gr[1]},
+    hs:runSheet(sprLook('a'),true)};
+  RUN.env={round:0,nm:f=>`<span class="${f.side==='a'?'a':'b'}">${esc(f.name)}</span>`,
+    push:(text,side,fx)=>RUN.q.push({text,side,fx:fx||[],hp:RUN.ents.map(e=>e.hp),a:[RUN.A.hp,RUN.A.mp]}),
+    mul:a=>{if(a.side!=='a'||!a.dice)return 1;let m=1+.1*pl('six')*a.dice.filter(v=>v===6).length;
+      RUN.ds.forEach((d,i)=>{if(d&&d.k==='pj'&&DSK.pj.ok(a.dice[i]))m*=1.1+.15*d.l});return m}};
+  const ov=document.createElement('div');ov.className='rov';ov.id='rov';
+  ov.innerHTML=`<div class="run" role="dialog" aria-modal="true" aria-label="闯江湖">
+    <div class="r-top" id="r-top"></div><div class="r-path" id="r-path"></div><div class="r-wx" id="r-wx"></div>
+    <div class="r-stage" id="r-stage"><canvas id="rcv" width="${RW}" height="${RH}"></canvas><div id="r-ents"></div><div id="r-bossbar"></div><div class="r-hero" id="rhero"></div></div>
+    <div class="r-me" id="r-me"></div><div class="r-ctl" id="r-ctl"></div><div class="r-log" id="rlog" aria-live="polite"></div><div id="r-modal"></div></div>`;
+  document.body.appendChild(ov);
+  RUN.raf=requestAnimationFrame(runFrame);
+}
+function runStart(zi){
+  if(BT||SV||RUN)return;
+  if(S.run)return runResume();
+  if(!S.story.seen[zi+'a']){S.story.seen[zi+'a']=1;save();showStory(STORY[zi].pre,null,()=>runStart(zi));return}
+  runBuild(zi);RUN.nodes=runPlan();RUN.pend=1;RUN.A=runA();
+  runLog(`你踏上了${ZONES[zi].n}的路。先领悟一门心法，再点「前进」。`);
+  runPerkOpen();
+}
+// 存进存档：只存这一趟的进度和自己、对手的状态，画面重新搭
+function runSave(){
+  if(!RUN)return;
+  if(RUN.phase==='over'){S.run=null;save();return}
+  const A=RUN.A,fight=RUN.arrived&&RUN.ents.some(e=>e.hp>0);
+  S.run={zi:RUN.zi,nodes:RUN.nodes,ni:RUN.ni,perks:RUN.perks,ds:RUN.ds,whet:RUN.whet,gold:RUN.gold,wx:RUN.wx,need:RUN.need,pend:RUN.pend,fu:RUN.fu,kills:RUN.kills,rw:RUN.rw,round:RUN.round,
+    popts:RUN.popts,shop:RUN.phase==='shop'?RUN.shop:null,ev:RUN.phase==='event'?RUN.ev:null,
+    a:{hp:A.hp,mp:A.mp,buffs:A.buffs,dots:A.dots,cds:A.cds},
+    ents:fight?RUN.ents.map(({sheet,an,shown,dying,est,...o})=>o):null};
+  save();
+}
+function runResume(){
+  const R=S.run;if(!R||BT||SV||RUN)return;
+  runBuild(R.zi);
+  for(const k of ['nodes','ni','perks','ds','whet','gold','wx','need','pend','fu','kills','rw','popts'])RUN[k]=R[k];
+  RUN.A=runA();Object.assign(RUN.A,R.a);RUN.A.hp=Math.max(1,Math.min(RUN.A.hp,RUN.A.maxhp));RUN.A.mp=Math.min(RUN.A.mp,RUN.A.maxmp);
+  const nd=RUN.nodes[RUN.ni];runLog(`你回到${ZONES[R.zi].n}的路上，接着往前走。`);
+  if(R.ents&&nd){RUN.cam=(RUN.ni+1)*NODE_GAP;RUN.ents=R.ents.map((e,j,arr)=>runEnt(e,j,arr,RUN.cam+FIGHT_D));RUN.arrived=true;RUN.round=Math.max(0,(R.round||1)-1);runRound();return}
+  if((R.shop||R.ev)&&nd){RUN.cam=(RUN.ni+1)*NODE_GAP;RUN.arrived=true;RUN.side={d:RUN.cam+1.2,X:.85,sh:runSheet(nd.t==='shop'?MERCHANT:EV_LOOK[nd.k],false),anim:nd.k==='spring',open:!!(R.ev&&R.ev.done&&nd.k==='chest')};
+    if(R.shop){RUN.shop=R.shop;RUN.phase='shop'}else{RUN.ev=R.ev;RUN.phase='event'}runUI();return}
+  RUN.cam=RUN.ni*NODE_GAP;RUN.phase='walk';runUI();
+}
+// 暂离：存好进度、收起画面，回到江湖页面
+function runAway(){if(!RUN||RUN.phase==='anim'||RUN.phase==='moving'||RUN.phase==='over')return;runSave();cancelAnimationFrame(RUN.raf);clearTimeout(RUN.timer);const o=$('#rov');if(o)o.remove();RUN=null;render()}
+function runClose(){if(!RUN)return;if(RUN.phase==='over')S.run=null;save();cancelAnimationFrame(RUN.raf);clearTimeout(RUN.timer);const o=$('#rov');if(o)o.remove();RUN=null;render();storyPending()}
+
+// 点「前进」：走到下一处。要打的对手一开始就站在远处，走近了才停下
+function runForward(){
+  if(!RUN||RUN.phase!=='walk'||RUN.popts)return;
+  let nd=RUN.nodes[RUN.ni];if(!nd)return;
+  tipDone('walk');
+  if(nd.t==='fight'&&nd.i!=null&&nd.i<5&&!nd.chk){ // 闯江湖时可能遭到追杀或伏击：在这一处前面多出一波
+    nd.chk=1;let amb=null;
+    if(S.karma<=-150&&Math.random()<.1)amb={t:'fight',amb:'hunt',sect:pick(['shaolin','wudang','emei'])};
+    else if(fy('xueyi')&&Math.random()<.08)amb={t:'fight',amb:'xueyi',sect:pick(SECT_KEYS)};
+    if(amb){RUN.nodes.splice(RUN.ni,0,amb);nd=amb}
+  }
+  const to=(RUN.ni+1)*NODE_GAP;
+  if(nd.t==='fight'){usePills();const w=runWave(nd);RUN.ents=w.map((e,j)=>runEnt(e,j,w,to+FIGHT_D));RUN.tgt=0}
+  else{RUN.ents=[];RUN.side={d:to+1.2,X:.85,sh:runSheet(nd.t==='shop'?MERCHANT:EV_LOOK[nd.k],false),anim:nd.k==='spring'}}
+  RUN.arrived=false;RUN.mv={from:RUN.cam,to,t0:performance.now(),dur:S.fast?500:1600};RUN.phase='moving';runUI();
+  RUN.timer=setTimeout(()=>{if(RUN&&RUN.mv){RUN.cam=RUN.mv.to;RUN.mv=null;runArrive()}},RUN.mv.dur); // 到站由计时器决定，画面只负责跟着画
+}
+function runArrive(){
+  const nd=RUN.nodes[RUN.ni];RUN.arrived=true;
+  if(nd.t==='shop'){
+    RUN.shop=[{k:'yao',left:2},...shuffle(['qi','fu','wu','mo']).slice(0,3).map(k=>({k,left:1}))];RUN.phase='shop';
+    runLog('路边歇着个行脚商人，冲你招手。');runSave();runUI();return;
+  }
+  if(nd.t==='event'){RUN.ev={k:nd.k,done:false,res:''};RUN.phase='event';runLog(REV[nd.k].d);runSave();runUI();return}
+  if(nd.i===5&&!nd.amb&&!S.story.seen[RUN.zi+'b']){S.story.seen[RUN.zi+'b']=1;save();RUN.phase='story';runUI();showStory(STORY[RUN.zi].boss,null,()=>{if(RUN)runArrive()});return}
+  const names=[...new Set(RUN.ents.map(e=>e.name))].map(n=>`<span class="b">${esc(n)}</span>`).join('、');
+  runLog(nd.amb==='hunt'?`${names} 追上来了：「恶贼，哪里走！」`:nd.amb==='xueyi'?`${names} 从暗处杀出！`:nd.x!=null?`一伙流寇围了上来：${names}`:`${names} 拦住了去路！`);
+  RUN.round=0;runRound();
+}
+// 新一回合：怪先掷好骰子定下这一招（头顶显示大约伤害），首领每隔一回合扰乱一次你的骰子，你身上的持续伤害发作，然后轮到你掷骰
+function runRound(){
+  const A=RUN.A,env=RUN.env;RUN.round++;env.round=RUN.round;RUN.q=[];RUN.jx=null;
+  if(pl('regen')&&A.hp>0){const h=Math.round(A.maxhp*.04*pl('regen'));A.hp=Math.min(A.maxhp,A.hp+h);env.push(`吐纳调息，回复 <b class="h">${h}</b> 气血`,'a',[{on:'a',v:'+'+h,k:'heal'}])}
+  if(pl('mp'))A.mp=Math.min(A.maxmp,A.mp+Math.round(A.maxmp*.06*pl('mp')));
+  for(const e of RUN.ents)if(e.hp>0){freshRoll(e);aiDice(e);e.est=hitEstimate(e,A,env)}
+  const bs=RUN.ents.find(e=>e.boss&&e.hp>0);
+  if(bs&&RUN.round%2===1){
+    let k=ZONE_JINX[RUN.zi];if(k==='any')k=pick(Object.keys(JINX));
+    const n=k==='sand'||(k==='freeze'&&RUN.zi>=5)?2:1;
+    RUN.jx={k,dice:shuffle([0,1,2,3,4]).slice(0,n)};bs.jx=k;
+    env.push(`${env.nm(bs)} 施展「${JINX[k].n}」：${JINX[k].d}`,null);
+  }else if(bs)bs.jx=null;
+  const ok=preTurn(A,env);
+  A.dice=null;
+  runPlay(()=>{
+    if(A.hp<=0)return runOver(false);
+    if(!ok){RUN.q=[];runEnemyTurn();runPlay(runAfterRound);return} // 被晕住：这回合只能挨打
+    RUN.phase='roll';runSave();runUI();
   });
-  return SCN[zi]={far,near};
 }
-function sceneHTML(fh){
-  const c=BT.ctx,[ia,ib]=BT.info,z=ZSC[c.zi],ly=sceneLayers(c.zi);
-  const road=[0,1,2,3,4,5].map(j=>j===5?`<i class="bs${c.i===5?' cur':''}">首</i>`:`<i class="${j<c.i?'done':j===c.i?'cur':''}"></i>`).join('');
-  return `<div class="scene" id="scene" style="--sk1:${z.sky[0]};--sk2:${z.sky[1]}">
-    <div class="ly far" style="background-image:url(${ly.far})"></div><div class="ly near" style="background-image:url(${ly.near})"></div>
-    <div class="sc-road" aria-hidden="true">${road}</div>
-    <div class="unit ua" id="fa"><div class="uhud">${fh(ia,'a')}</div><div class="spr" id="sa" style="background-image:url(${sprSheet(sprLook('a',null,c))})"></div></div>
-    <div class="unit ub${BT.enemy.boss?' bossu':''}" id="fb"><div class="uhud">${fh(ib,'b')}</div><div class="spr" id="sb" style="background-image:url(${sprSheet(sprLook('b',BT.enemy,c),1)})"></div></div></div>`;
+const runFrozen=i=>!!(RUN.jx&&RUN.jx.k==='freeze'&&RUN.jx.dice.includes(i));
+function runRoll(){
+  if(!RUN||RUN.phase!=='roll')return;const A=RUN.A,J=RUN.jx;
+  tipDone('roll');if(J)tipDone('jinx');
+  freshRoll(A,pl('rr'));
+  const fs=A.dset?A.dset.faces:STD_FACES,mx=Math.max(...fs);
+  for(let i=0;i<pl('fate');i++){A.fi[i]=fs.indexOf(mx);A.dice[i]=mx;A.held[i]=true}
+  if(J){
+    if(J.k==='seal')A.rr=Math.max(0,A.rr-1);
+    for(const i of J.dice){if(J.k==='freeze')A.held[i]=true;if(J.k==='chaos'&&Math.random()<.5)A.dice[i]=0;if(J.k==='sand')A.dice[i]=Math.max(1,A.dice[i]-1)}
+  }
+  RUN.rolled=[1,1,1,1,1];RUN.phase='pick';sfx('roll');runUI();
 }
-// 一边走一边让对手从右边走进画面，走到位置再开打
-function walkIn(go){
-  const sc=$('#scene'),ub=$('#fb');
-  sc.classList.add('walk');ub.classList.add('in');
-  $('#blog').insertAdjacentHTML('beforeend',`<p class="muted">一路前行，<span class="b">${esc(BT.info[1].name)}</span> 迎面拦住去路。</p>`);
-  ub.style.transition='none';ub.style.transform=`translateX(${sc.clientWidth-ub.offsetLeft}px)`;
-  void ub.offsetWidth;ub.style.transition='transform 1.1s linear';ub.style.transform='';
-  BT.walkT=setTimeout(()=>{sceneStop();go()},1150);
+function runReroll(){
+  if(!RUN||RUN.phase!=='pick')return;const A=RUN.A,J=RUN.jx,was=A.held.map(h=>!h);
+  if(!doReroll(A))return;
+  if(J&&J.k==='chaos')for(const i of J.dice)if(was[i]&&Math.random()<.5)A.dice[i]=0;
+  RUN.rolled=was;sfx('roll');runUI();
 }
-function sceneStop(){const sc=$('#scene'),ub=$('#fb');if(!sc)return;sc.classList.remove('walk');ub.classList.remove('in');ub.style.transition='none';ub.style.transform=''}
-const sprAnim=(s,c)=>{const el=$('#s'+s);if(!el)return;el.classList.remove('atk','hit','dodge','heal');void el.offsetWidth;el.classList.add(c)};
-// 出手的一方冲上去，被打的一方闪红或闪开；中毒、疗伤这类只作用自己的就在原地闪
-function sceneAct(e){
-  if(!$('#scene'))return;
-  if(e.side&&e.fx.some(f=>f.on!==e.side)){
-    sprAnim(e.side,'atk');
-    setTimeout(()=>{for(const f of e.fx)if(f.on!==e.side)sprAnim(f.on,f.k==='miss'?'dodge':'hit')},(S.auto||S.tAuto)?70:120);
-  }else for(const f of e.fx)sprAnim(f.on,f.k==='heal'?'heal':f.k==='miss'?'dodge':'hit');
+const runTarget=()=>{const t=RUN.ents[RUN.tgt];return t&&t.hp>0?t:RUN.ents.find(e=>e.hp>0)};
+// 出招：先结算你这一招，再是连环、横扫、毒手、骰技，然后灵兽和知己，最后活着的对手按头顶预告出手
+function runAttack(){
+  if(!RUN||RUN.phase!=='pick')return;
+  const A=RUN.A,env=RUN.env,t=runTarget();if(!t)return;RUN.q=[];RUN.fuMode=false;RUN.fuDie=null;
+  tipDone('pick');if(RUN.ents.filter(e=>e.hp>0).length>1)tipDone('tgt');
+  const res=strike(A,t,env),K=50+5*A.lv,cb=res.r.cb;
+  if(cb.t>=4)RUN.ban={text:`${cb.n} ×${res.r.cm}`,big:cb.t>=5};
+  if(res.landed){
+    const others=RUN.ents.filter(e=>e!==t&&e.hp>0);
+    if(pl('chain')&&cb.t>=2&&t.hp>0){const d=Math.max(1,Math.round(res.total*.5*pl('chain')));t.hp=Math.max(0,t.hp-d);env.push(`连环追击，再打 ${env.nm(t)} <b class="d">${d}</b> 点`,'a',[{on:t.side,v:'-'+d,k:'dmg'}])}
+    const sp=(A.wt==='gun'?.3:0)+(cb.t>=5?.5:0)+.35*pl('sweep'); // 棍法、葫芦以上的大招和横扫千军都会波及旁边的人
+    if(sp&&others.length){const fx=others.map(o=>{const d=Math.max(1,Math.round(res.total*sp*(o.dmgMul||1)));o.hp=Math.max(0,o.hp-d);return {on:o.side,v:'-'+d,k:'dmg'}});
+      env.push(`劲风横扫，波及 ${others.map(env.nm).join('、')}`,'a',fx)}
+    if(pl('poison')&&t.hp>0)addDot(t,Math.max(1,Math.round(eff(A,'atk')*.25*pl('poison')*K/(K+eff(t,'def')))),3,'毒手');
+  }
+  // 骰技：看绑着骰技的那几颗骰子掷出了什么
+  RUN.ds.forEach((d,i)=>{
+    if(!d||!DSK[d.k].ok(A.dice[i]))return;const v=A.dice[i];
+    if(d.k==='jq'){const tg=RUN.ents.filter(e=>e.hp>0);if(!tg.length)return;
+      const fx=tg.map(e=>{const dm=Math.max(1,Math.round(eff(A,'atk')*v*(.08+.04*d.l)*K/(K+eff(e,'def'))*(e.dmgMul||1)));e.hp=Math.max(0,e.hp-dm);return {on:e.side,v:'-'+dm,k:'dmg'}});
+      env.push(`第 ${i+1} 颗骰子掷出 ${v} 点，剑气斩向 ${tg.map(env.nm).join('、')}`,'a',fx)}
+    if(d.k==='dz'&&t.hp>0){addDot(t,Math.max(1,Math.round(eff(A,'atk')*(.2+.1*d.l)*K/(K+eff(t,'def')))),3,'毒针');env.push(`第 ${i+1} 颗骰子掷出 ${v} 点，毒针钉进 ${env.nm(t)} 体内`,null)}
+    if(d.k==='hc'){const h=Math.round(A.maxhp*(4-v)*(.02+.02*d.l));A.hp=Math.min(A.maxhp,A.hp+h);env.push(`第 ${i+1} 颗骰子掷出 ${v} 点，回春回复 <b class="h">${h}</b> 气血`,'a',[{on:'a',v:'+'+h,k:'heal'}])}
+    if(d.k==='jl'&&t.hp>0&&!t.stun&&Math.random()<(.2+.15*d.l)*(t.boss?.5:1)){t.stun=true;env.push(`第 ${i+1} 颗骰子掷出 6 点，一道惊雷劈下，${env.nm(t)} 被震晕`,null)}
+  });
+  const J=RUN.jx;
+  if(J&&J.k==='venom'&&J.dice.some(i=>A.dice[i]%2===1)){addDot(A,Math.max(1,Math.round(A.maxhp*.05)),3,'骰毒');env.push(`染毒的骰子是单数，${env.nm(A)} 中了骰毒`,null)}
+  const alive=()=>RUN.ents.some(e=>e.hp>0);
+  if(A.hp>0&&A.pet&&alive()&&Math.random()<.4)petAct(A,runTarget(),env);
+  if(A.hp>0&&A.comp&&alive()&&Math.random()<.3)compAct(A,runTarget(),env);
+  runEnemyTurn();
+  RUN.fly=true;runPlay(runAfterRound);
 }
-// 打完：输的一方倒地；赢了就接着往前走，倒下的对手随地面一起往后退出画面
-function sceneEnd(win){
-  const sc=$('#scene');if(!sc)return;
-  sceneStop();for(const s of ['a','b'])$('#s'+s).classList.remove('atk','hit','dodge','heal');$(win?'#sb':'#sa').classList.add('dead');
-  if(!win)return;
-  const cur=$('.sc-road .cur');if(cur&&!cur.classList.contains('bs'))cur.className='done';
-  BT.walkT=setTimeout(()=>{
-    if(!$('#scene'))return;
-    const ub=$('#fb'),u=parseFloat(getComputedStyle(sc).getPropertyValue('--u'))||3,dist=ub.offsetLeft+ub.offsetWidth;
-    sc.classList.add('walk');ub.style.transition=`transform ${(dist/(u*50)).toFixed(2)}s linear`;ub.style.transform=`translateX(${-dist}px)`;
-  },500);
+function runEnemyTurn(){const A=RUN.A,env=RUN.env;for(const e of RUN.ents){if(e.hp<=0||A.hp<=0)continue;if(preTurn(e,env)&&e.hp>0)strike(e,A,env)}}
+function runAfterRound(){
+  const A=RUN.A;
+  for(const e of RUN.ents)if(e.hp<=0&&!e.dead){
+    e.dead=true;RUN.kills++;
+    const g=e.boss?0:Math.round((4+Math.floor(Math.random()*4))*(1+.5*pl('gold')));RUN.gold+=g;if(g){runPop(e.side,`+${g} 文`,'gold');sfx('coin')}
+    RUN.wx+=e.boss?3:e.amb?2:1;while(RUN.wx>=RUN.need){RUN.wx-=RUN.need;RUN.need++;RUN.pend++}
+  }
+  if(A.hp<=0)return runOver(false);
+  if(RUN.ents.every(e=>e.hp<=0))return runClear();
+  runRound();
 }
+const runCtx=nd=>nd.amb?{type:nd.amb,zi:RUN.zi,i:0}:{type:'stage',zi:RUN.zi,i:nd.i};
+// 打完首领按剩下的气血评星：通关一星，剩四成两星，剩七成三星；第一次拿到两星、三星各有奖励
+function runStars(){
+  const A=RUN.A,r=A.hp/A.maxhp,n=1+(r>=.4?1:0)+(r>=.7?1:0),old=S.stars[RUN.zi]||0,rw=[];
+  if(n>old){S.stars[RUN.zi]=n;if(old<2&&n>=2)rw.push(addPage());if(n>=3){rw.push(addTicket());const j=20*(RUN.zi+1);S.jade+=j;rw.push(`魂玉 +${j}`)}}
+  RUN.stars=n;RUN.starNew=n>old;return rw;
+}
+// 打完一波：关卡对手照常领这一关的奖励，流寇只给铜钱和悟性；稍作调息（回一点气血内力，增益和异常状态清掉），攒够悟性就三选一
+function runClear(){
+  const nd=RUN.nodes[RUN.ni],lv0=S.lv;
+  if(nd.x==null){
+    const rw=applyResult(true,runCtx(nd),RUN.ents[0],RUN.A);
+    if(nd.i===5&&!nd.amb)rw.push(...runStars());
+    save();
+    RUN.rw.push({t:nd.amb==='hunt'?'名门追杀':nd.amb==='xueyi'?'血衣楼伏击':nd.i===5?'首领':`第 ${nd.i+1} 战`,rw});
+    runLog(`<b class="q4">胜</b>　${rw.join('，')}`);
+  }else{S.kills+=RUN.ents.length;runLog('<b class="q4">胜</b>　流寇四散而逃。')}
+  if(S.lv>lv0)runRefresh();
+  if(nd.i===5&&!nd.amb)return runOver(true);
+  const A=RUN.A;A.hp=Math.min(A.maxhp,A.hp+Math.round(A.maxhp*.12));A.mp=Math.min(A.maxmp,A.mp+Math.round(A.maxmp*.2));A.buffs=[];A.dots=[];A.stun=false;A.dice=null;RUN.jx=null;
+  RUN.ni++;RUN.phase='walk';
+  if(RUN.pend)runPerkOpen();else{runSave();runUI()}
+}
+function runOver(win,quit){
+  clearTimeout(RUN.timer);RUN.mv=null;
+  const nd=RUN.nodes[RUN.ni];
+  if(!win&&!quit&&nd&&nd.t==='fight'&&nd.x==null){RUN.lose=applyResult(false,runCtx(nd),RUN.ents[0],RUN.A)}
+  if(!win&&!quit)RUN.hero.dying=performance.now();
+  RUN.phase='over';RUN.win=win;RUN.quit=quit;RUN.popts=null;S.run=null;save();
+  sfx(win?'win':'lose');if(!win&&!quit)buzz([60,40,120]);runUI();
+}
+// 三选一：心法和骰技混着出，有空骰子或能升级的骰技时至少给一个骰技
+function runPerkOpen(){
+  const perks=Object.keys(PERKS).filter(k=>pl(k)<PERKS[k].max).map(k=>'p:'+k);
+  const empty=[0,1,2,3,4].filter(i=>!RUN.ds[i]),up=[0,1,2,3,4].filter(i=>RUN.ds[i]&&RUN.ds[i].l<3),dice=[];
+  if(empty.length)dice.push(`d:${pick(Object.keys(DSK))}:${pick(empty)}`);
+  if(up.length)dice.push('u:'+pick(up));
+  const out=[];if(dice.length)out.push(dice.splice(Math.floor(Math.random()*dice.length),1)[0]);
+  const rest=shuffle([...perks,...dice]);while(out.length<3&&rest.length)out.push(rest.shift());
+  RUN.popts=shuffle(out);runSave();runUI();
+}
+function runPickPerk(v){
+  if(!RUN||!RUN.popts||!RUN.popts.includes(v))return;
+  const [t,a,b]=v.split(':');let msg='';
+  if(t==='p'){RUN.perks[a]=pl(a)+1;runRefresh();if(a==='hp'){const A=RUN.A;A.hp=Math.min(A.maxhp,A.hp+Math.round(A.maxhp*.2))}msg=`心法「<b class="q3">${PERKS[a].n}</b>」：${PERKS[a].d(pl(a))}`}
+  else if(t==='d'){RUN.ds[+b]={k:a,l:1};msg=`第 ${+b+1} 颗骰子练成骰技「<b class="q3">${DSK[a].n}</b>」：${DSK[a].d(1)}`}
+  else{const d=RUN.ds[+a];d.l++;msg=`第 ${+a+1} 颗骰子的「<b class="q3">${DSK[d.k].n}</b>」练到${CN[d.l]}重：${DSK[d.k].d(d.l)}`}
+  RUN.pend--;tipDone('perk');runLog(msg);sfx('perk');
+  if(RUN.pend>0)runPerkOpen();else{RUN.popts=null;runSave();runUI()}
+}
+// 奇遇：宝箱、神秘老者、骰子摊、山泉，选一样再上路
+function runEvent(c){
+  if(!RUN||RUN.phase!=='event'||RUN.ev.done||RUN.popts)return;
+  const E=RUN.ev,A=RUN.A;let r='';tipDone('event');
+  if(E.k==='chest'){
+    if(c==='open'){RUN.side.open=true;const x=Math.random();
+      if(x<.15){const h=Math.round(A.hp*.12);A.hp=Math.max(1,A.hp-h);RUN.gold+=8;r=`箱子里藏着机关，飞出一蓬毒针！你损失 ${h} 气血，只摸到 8 文。`;sfx('hurt');buzz(40)}
+      else if(x<.3){RUN.pend++;r='箱底压着半本残破的拳谱，你读了几页，若有所悟。';sfx('perk')}
+      else{const g=12+Math.floor(Math.random()*13);RUN.gold+=g;r=`箱子里是 ${g} 文铜钱`;if(Math.random()<.35){RUN.fu++;r+='，还有一张改点符'}r+='。';sfx('coin')}}
+    else r='你没去碰那只箱子。';
+  }else if(E.k==='elder'){
+    if(c==='blood'){const h=Math.round(A.hp*.2);A.hp=Math.max(1,A.hp-h);RUN.pend++;r=`老者在你背上拍了一掌，你吐出一口血（−${h} 气血），却觉得经脉一通。`;sfx('perk')}
+    else{const h=Math.round(A.maxhp*.3);A.hp=Math.min(A.maxhp,A.hp+h);r=`老者替你推宫过血，回复 ${h} 气血。`;sfx('heal')}
+  }else if(E.k==='dice'){
+    if(c==='leave')r='你摆摆手走开了。';
+    else if(RUN.gold<10)return;
+    else{const d=[1,2,3].map(()=>1+Math.floor(Math.random()*6)),s=d[0]+d[1]+d[2],big=s>=11,win=(c==='big')===big;
+      RUN.gold+=win?10:-10;r=`骰盅掀开：<span class="dc">${d.map(v=>DIE[v-1]).join('')}</span> ${s} 点，${big?'大':'小'}。${win?'你赢了 10 文！':'你输了 10 文。'}`;sfx(win?'coin':'miss')}
+  }else{const h=Math.round(A.maxhp*.25);A.hp=Math.min(A.maxhp,A.hp+h);A.mp=A.maxmp;r=`你掬水而饮，回复 ${h} 气血，内力也回满了。`;sfx('heal')}
+  E.done=true;E.res=r;runLog(r);
+  if(RUN.pend>0)runPerkOpen();else{runSave();runUI()}
+}
+// 离开商人或奇遇，回到路上
+function runLeave(){
+  if(!RUN||RUN.popts||!(RUN.phase==='shop'||(RUN.phase==='event'&&RUN.ev.done)))return;
+  if(RUN.phase==='shop'){tipDone('shop');runLog('你谢过商人，继续上路。')}
+  RUN.shop=null;RUN.ev=null;RUN.ni++;RUN.phase='walk';runSave();runUI();
+}
+
+// 回放这一回合的战报：一条一条地出，出手的冲上去，挨打的闪白冒数字
+function runPlay(done){
+  const q=RUN.q;RUN.q=[];RUN.phase='anim';runUI();
+  if(RUN.ban){const b=RUN.ban;RUN.ban=null;const st=$('#r-stage');if(st){st.insertAdjacentHTML('beforeend',`<div class="r-ban ${b.big?'big':''}">${b.text}</div>`);setTimeout(()=>{const x=$('.r-ban');if(x)x.remove()},1100);
+    st.classList.remove('shake');void st.offsetWidth;st.classList.add('shake')}sfx('combo');buzz(b.big?[30,30,60]:40)}
+  let i=0;const sp=S.fast?140:430;
+  const step=()=>{if(!RUN||RUN.phase==='over')return;if(i>=q.length){done();return}runShow(q[i++]);RUN.timer=setTimeout(step,sp)};
+  step();
+}
+const runWho=s=>s==='a'?RUN.hero:RUN.ents.find(x=>x.side===s);
+function runShow(e){
+  runLog(e.text);
+  const now=performance.now();
+  RUN.ents.forEach((x,j)=>{x.shown=e.hp[j];if(x.shown<=0&&!x.dying)x.dying=now+180});
+  RUN.ashow=e.a;
+  const lunge=!!e.side&&e.fx.some(f=>f.on!==e.side);
+  if(lunge){const a=runWho(e.side);if(a)a.an={k:'lunge',t0:now}}
+  for(const f of e.fx){
+    const go=()=>{if(!RUN)return;const t=runWho(f.on);if(!t)return;
+      t.an={k:f.k==='miss'?'dodge':f.k==='heal'?'heal':'hit',t0:performance.now()};runPop(f.on,f.v,f.k);
+      if(f.k==='dmg'||f.k==='crit')RUN.slash.push({on:f.on,t0:performance.now(),crit:f.k==='crit',a:Math.random()*Math.PI});
+      sfx(f.k==='miss'?'miss':f.k==='heal'?'heal':f.on==='a'?'hurt':f.k==='crit'?'crit':'hit');
+      if(f.on==='a'&&f.k!=='heal'&&f.k!=='miss')buzz(25);
+      if(f.k==='crit'){const st=$('#r-stage');if(st){st.classList.remove('shake');void st.offsetWidth;st.classList.add('shake')}}};
+    if(lunge)setTimeout(go,f.on===e.side?240:150);else go();
+  }
+  runHud();
+}
+function runPop(side,v,k){
+  const host=side==='a'?$('#rhero'):$('#re-'+side.slice(1));if(!host)return;
+  const el=document.createElement('span');el.className='pop '+k;el.textContent=v;host.appendChild(el);setTimeout(()=>el.remove(),900);
+}
+
+// 透视：离镜头 rel 远的地方，缩放 s=1/rel，rel=1 正好落在画面最下沿
+function runPrj(d,X){const rel=d-RUN.cam;if(rel<=.32)return null;const s=1/rel;return {s,x:RCX+X*58*s,y:RHY+(RH-RHY)*s}}
+const entK=(e,o)=>o.s*(e.boss?4.4:2.6);
+function runFrame(now){
+  if(!RUN)return;RUN.raf=requestAnimationFrame(runFrame);
+  const cv=$('#rcv');if(!cv)return;const g=cv.getContext('2d');g.imageSmoothingEnabled=false;
+  if(RUN.mv){const m=RUN.mv,p=Math.min(1,(now-m.t0)/m.dur);RUN.cam=m.from+(m.to-m.from)*p;if(now-(RUN.stepT||0)>300){RUN.stepT=now;sfx('step')}}
+  const cam=RUN.cam,z=ZSC[RUN.zi],C=RUN.cols;
+  while(RUN.propZ<cam+26){RUN.propZ+=.45+Math.random()*.8;const sd=Math.random()<.5?-1:1;RUN.props.push({d:RUN.propZ,X:sd*(1.3+Math.random()*.9),c:RUN.pc[Math.floor(Math.random()*RUN.pc.length)]})}
+  RUN.props=RUN.props.filter(p=>p.d>cam+.3);
+  const sky=g.createLinearGradient(0,0,0,RHY);sky.addColorStop(0,z.sky[0]);sky.addColorStop(1,z.sky[1]);g.fillStyle=sky;g.fillRect(0,0,RW,RHY);
+  g.drawImage(RUN.far,-8,RHY-48);
+  for(let y=RHY;y<RH;y++){ // 地面逐行画：越往下越近、路越宽；条纹按距离交替，前进时往下滚
+    const s=(y-RHY+1)/(RH-RHY),st=Math.floor((1/s+cam)*1.6)&1,hw=Math.round(2+58*s);
+    g.fillStyle=C.side[st];g.fillRect(0,y,RW,1);g.fillStyle=C.road[st];g.fillRect(RCX-hw,y,hw*2,1);
+    g.fillStyle=C.edge;g.fillRect(RCX-hw-1,y,1,1);g.fillRect(RCX+hw,y,1,1);
+  }
+  // 远的先画：路边道具、路边的人和物、对手
+  const items=RUN.props.map(p=>({d:p.d,p}));
+  if(RUN.side)items.push({d:RUN.side.d,sd:RUN.side});
+  for(const e of RUN.ents)items.push({d:e.d,e});
+  items.sort((a,b)=>b.d-a.d);
+  const walking=!!RUN.mv;
+  for(const it of items){
+    if(it.p){const o=runPrj(it.p.d,it.p.X);if(!o||o.s<.04)continue;const k=o.s*1.5;g.drawImage(it.p.c,Math.round(o.x-13*k),Math.round(o.y-48*k),Math.round(26*k),Math.round(48*k));continue}
+    if(it.sd){const o=runPrj(it.sd.d,it.sd.X);if(!o)continue;runSpr(g,it.sd.sh,it.sd.open?2:it.sd.anim?Math.floor(now/600)%2:0,o.x,o.y,o.s*2.4,null,now,1);continue}
+    const e=it.e,o=runPrj(e.d,e.X);if(!o)continue;
+    let a=1,rot=0;if(e.dying){const p=(now-e.dying)/600;if(p>1)continue;if(p>0){a=1-p*p;rot=Math.min(1,p*1.6)*(e.X>=0?1:-1)*Math.PI/2}}
+    const k=entK(e,o),bob=Math.sin((now+e.ph)/380)>0?0:1;
+    if(RUN.arrived&&e===runTarget()&&(RUN.phase==='roll'||RUN.phase==='pick')){g.strokeStyle='#d8ad55';g.lineWidth=1;g.beginPath();g.ellipse(o.x,o.y-1,9*k,2.5*k,0,0,Math.PI*2);g.stroke()}
+    runSpr(g,e.sheet,walking?Math.floor(now/170)%2:0,o.x,o.y+bob*.5,k,e.an,now,a,1,rot);
+  }
+  // 主角站在画面下方中间，背对镜头；输了就倒下
+  const hd=RUN.hero.dying?Math.min(1,(now-RUN.hero.dying)/600):0;
+  runSpr(g,RUN.hs,walking?Math.floor(now/150)%2:0,RCX,RH-3+(walking?0:Math.sin(now/500)>0?0:.6),1.9,RUN.hero.an,now,1-hd*.5,-1,hd*Math.PI/2);
+  // 刀光
+  RUN.slash=RUN.slash.filter(sl=>now-sl.t0<240);
+  for(const sl of RUN.slash){
+    const p=(now-sl.t0)/240;let x,y,r;
+    if(sl.on==='a'){x=RCX;y=RH-30;r=14}else{const e=runWho(sl.on);if(!e)continue;const o=runPrj(e.d,e.X);if(!o)continue;const k=entK(e,o);x=o.x;y=o.y-14*k;r=10*k}
+    g.globalAlpha=1-p;g.strokeStyle=sl.crit?'#ffd36a':'#ffffff';g.lineWidth=sl.crit?2:1.5;g.beginPath();g.arc(x,y,r*(0.8+p*.4),sl.a,sl.a+2.2);g.stroke();g.globalAlpha=1;
+  }
+  // 对手的名字、血条、预告跟着小人走
+  RUN.ents.forEach((e,j)=>{
+    const el=$('#re-'+j);if(!el)return;const o=runPrj(e.d,e.X);
+    if(!o||!RUN.arrived||e.dead){el.style.display='none';return}
+    const k=entK(e,o);el.style.display='';
+    el.style.left=(o.x/RW*100)+'%';el.style.top=((o.y-27*k)/RH*100)+'%';el.style.width=(20*k/RW*100)+'%';el.style.height=(27*k/RH*100)+'%';
+  });
+}
+// 画一个小人：an 是当前动作（冲上去、挨打、闪开、回血），dir 是冲的方向（对手往下冲，主角往上冲），rot 是倒地时转过的角度
+function runSpr(g,sh,frame,x,y,k,an,now,alpha,dir,rot){
+  let dx=0,dy=0,fl=0,f=frame;
+  if(an){const t=now-an.t0;
+    if(an.k==='lunge'&&t<320){dy=Math.sin(Math.PI*t/320)*(dir>0?22:-26);f=2}
+    else if(an.k==='hit'&&t<260){dx=t<130?2:-2;fl=t<140?.85:0;f=3}
+    else if(an.k==='dodge'&&t<300)dx=Math.sin(Math.PI*t/300)*8;}
+  if(rot)f=3;
+  const w=24*k,h=28*k;
+  g.globalAlpha=alpha;
+  if(rot){g.save();g.translate(Math.round(x),Math.round(y));g.rotate(rot);g.drawImage(sh.img,f*24,0,24,28,Math.round(-w/2),Math.round(-h),Math.round(w),Math.round(h));g.restore();g.globalAlpha=1;return}
+  const X=Math.round(x-w/2+dx),Y=Math.round(y-h+dy);
+  g.drawImage(sh.img,f*24,0,24,28,X,Y,Math.round(w),Math.round(h));
+  if(fl){g.globalAlpha=alpha*fl;g.drawImage(sh.fl,f*24,0,24,28,X,Y,Math.round(w),Math.round(h))}
+  if(an&&an.k==='heal'&&now-an.t0<500){const t=(now-an.t0)/500;g.globalAlpha=1-t;g.fillStyle='#7ee2b4';for(let i=0;i<4;i++)g.fillRect(Math.round(x-w/3+i*w/5),Math.round(Y+h*.4-t*h*.5-(i%2)*4),1,3)}
+  g.globalAlpha=1;
+}
+
+// 血条、预告、状态这些随回放刷新的东西
+function runHud(){
+  if(!RUN)return;const A=RUN.A,[hp,mp]=RUN.ashow||[A.hp,A.mp];
+  const w=(id,v)=>{const el=$(id);if(el)el.style.width=Math.max(0,Math.min(100,v*100))+'%'};
+  w('#rah',hp/A.maxhp);w('#ram',mp/A.maxmp);
+  const n=$('#rahn');if(n)n.textContent=`${fmt(hp)} / ${fmt(A.maxhp)}`;
+  const tg=$('#rat');if(tg)tg.innerHTML=tagsOf(A).map(t=>`<span>${t}</span>`).join('');
+  const show=RUN.phase==='roll'||RUN.phase==='pick';
+  RUN.ents.forEach((e,j)=>{
+    w('#reh-'+j,(e.shown??e.hp)/e.maxhp);
+    const it=$('#rei-'+j);if(it)it.innerHTML=show?(e.stun?'晕眩':`⚔ ${fmt(e.est||0)}${e.jx?` · ${JINX[e.jx].n}`:''}`):'';
+    const tt=$('#ret-'+j);if(tt)tt.innerHTML=tagsOf(e).map(t=>`<span>${t}</span>`).join('');
+    const el=$('#re-'+j);if(el)el.classList.toggle('tgt',e===runTarget());
+  });
+  const bs=RUN.ents.find(e=>e.boss);
+  if(bs){w('#rbh',(bs.shown??bs.hp)/bs.maxhp);const bt=$('#rbt');if(bt)bt.textContent=`${fmt(Math.max(0,bs.shown??bs.hp))} / ${fmt(bs.maxhp)}`}
+}
+const starTxt=n=>'★'.repeat(n)+`<i>${'★'.repeat(3-n)}</i>`;
+// 按当前阶段重画顶栏、路线、对手标签、自己的状态、操作区和弹窗
+function runUI(){
+  if(!RUN||!$('#rov'))return;
+  const A=RUN.A,ph=RUN.phase,z=ZONES[RUN.zi],busy=ph==='anim'||ph==='moving';
+  $('#r-top').innerHTML=`<button class="btn sm" data-a="runAway" ${busy||ph==='over'?'disabled':''}>暂离</button><b>${z.n}</b><span class="r-gold">${RUN.gold} 文</span>
+    <button class="btn sm" data-a="runMute" aria-pressed="${!S.mute}">${S.mute?'静音':'有声'}</button><button class="btn sm" data-a="runQuit" ${ph==='over'?'disabled':''}>${RUN.quitArm?'真的撤退？':'撤退'}</button>`;
+  $('#r-path').innerHTML=`<span class="r-step" aria-label="第 ${RUN.ni+1} / ${RUN.nodes.length} 处">${RUN.nodes.map((n,i)=>`<i class="${i<RUN.ni?'done':i===RUN.ni?'cur':''} ${n.t==='shop'?'shop':n.t==='event'?'ev':n.amb?'amb':n.x!=null?'x':n.i===5?'bs':''}"></i>`).join('')}</span>`;
+  $('#r-wx').innerHTML=`<span>悟性</span><div class="bar"><i style="width:${RUN.wx/RUN.need*100}%"></i></div><span>${RUN.wx}/${RUN.need}</span>
+    <span class="r-perks">${Object.entries(RUN.perks).map(([k,l])=>`<span title="${PERKS[k].d(l)}">${PERKS[k].n}${l>1?' '+CN[l]:''}</span>`).join('')}${RUN.ds.map((d,i)=>d?`<span class="dsk" title="${DSK[d.k].d(d.l)}">${i+1}·${DSK[d.k].n}${d.l>1?' '+CN[d.l]:''}</span>`:'').join('')}${RUN.fu?`<span>改点符×${RUN.fu}</span>`:''}</span>`;
+  const key=RUN.ents.map(e=>e.side+e.name).join()+RUN.arrived;
+  if(RUN.entsKey!==key){
+    RUN.entsKey=key;
+    $('#r-ents').innerHTML=RUN.ents.map((e,j)=>`<div class="re${e.boss?' rb':''}" id="re-${j}" data-a="runTgt" data-v="${j}" style="display:none" aria-label="选 ${esc(e.name)} 为目标">
+      <div class="re-info"><span class="re-int" id="rei-${j}"></span>${e.boss?'':`<b>${esc(e.name)}</b><div class="bar hp"><i id="reh-${j}"></i></div>`}<div class="re-tags" id="ret-${j}"></div></div></div>`).join('');
+    const bs=RUN.ents.find(e=>e.boss);
+    $('#r-bossbar').innerHTML=bs&&RUN.arrived?`<div class="r-boss"><b>${esc(bs.name)}</b><div class="bar hp"><i id="rbh"></i></div><span id="rbt"></span></div>`:'';
+  }
+  $('#r-me').innerHTML=`<b>${esc(S.name)}</b><div class="bar hp"><i id="rah"></i></div><span id="rahn"></span><div class="bar mp"><i id="ram"></i></div><div class="re-tags" id="rat"></div>`;
+  const nd=RUN.nodes[RUN.ni];
+  let c='';
+  if(ph==='walk'||ph==='moving'){
+    const nx=!nd?'':nd.t==='shop'?'前方路边好像有人歇脚。':nd.t==='event'?'前方好像有什么东西……':nd.i===5?`前方就是 <b class="q4">${esc(z.boss)}</b> 的地盘。`:'前方有动静……';
+    c=`${ph==='walk'?runTip('walk'):''}<p class="r-hint">${ph==='moving'?'赶路中……':nx}</p><button class="btn pri r-go" data-a="runFwd" ${ph==='moving'||RUN.popts?'disabled':''}>前进</button>`;
+  }else if(ph==='roll'||ph==='pick'||ph==='anim'){
+    const t=runTarget(),rolled=ph==='pick'||(ph==='anim'&&A.dice),J=RUN.jx;
+    let pre='对手这一回合要出的招，写在他们头顶。轮到你了。';
+    if(rolled&&t){const r=readRoll(A),sp=(A.wt==='gun'?.3:0)+(r.cb.t>=5?.5:0)+.35*pl('sweep'),on=RUN.ds.map((d,i)=>d&&DSK[d.k].ok(A.dice[i])?DSK[d.k].n:'').filter(Boolean);
+      pre=`<b>⚔ ${fmt(hitEstimate(A,t,RUN.env))}</b>${r.cb.n} ×${r.cm}${r.trig.length?`　触发 ${r.trig.map(p=>p.n).join('、')}`:''}${on.length?`　骰技 ${on.join('、')}`:''}${sp&&RUN.ents.filter(e=>e.hp>0).length>1?`　波及旁人 ${Math.round(sp*100)}%`:''}`}
+    const fly=RUN.fly;RUN.fly=false;
+    const dice=[0,1,2,3,4].map(i=>{
+      const d=RUN.ds[i],jk=J&&J.dice.includes(i)?J.k:null,mark=jk==='freeze'?'frz':jk==='chaos'?'chs':jk==='venom'?'vnm':'';
+      const dsTag=d?`<em class="ds ${rolled&&DSK[d.k].ok(A.dice[i])?'on':''}">${DSK[d.k].c}${d.l>1?d.l:''}</em>`:'',jxTag=mark?`<u>${{frz:'冻',chs:'乱',vnm:'毒'}[mark]}</u>`:'';
+      if(!rolled)return `<span class="die blank ${mark}" aria-label="第 ${i+1} 颗，还没掷"><b>?</b>${dsTag}${jxTag}</span>`;
+      const fi=A.fi[i],ins=A.faces&&A.faces[i]&&A.faces[i][fi],inn=A.dset&&A.dset.inn[fi],r=RUN.rolled&&RUN.rolled[i],v=A.dice[i];
+      return `<button class="die ${A.held[i]?'held':''} ${r?'rolled':''} ${fly&&ph==='anim'?'fly':''} ${RUN.fuDie===i?'fu':''} ${mark}" data-a="runHold" data-v="${i}" ${ph!=='pick'?'disabled':''} aria-pressed="${A.held[i]}" aria-label="第 ${i+1} 颗，${v||'空面'}${A.held[i]?'，已锁定':''}">${dieFace(v||'空',ins,inn)}${A.held[i]?'<small>锁</small>':''}${dsTag}${jxTag}</button>`}).join('');
+    RUN.rolled=null;
+    let btns='';
+    if(ph==='roll')btns=`<button class="btn pri r-go" data-a="runRoll">掷骰</button>`;
+    else if(ph==='pick'){
+      const cost=rerollCost(A),can=A.rr>0||A.mp>=cost;
+      if(RUN.fuDie!=null){const d=RUN.fuDie;btns=`<span class="note">把第 ${d+1} 颗翻到：</span>${[0,1,2,3,4,5].map(f=>{const ins=A.faces&&A.faces[d]&&A.faces[d][f],inn=A.dset&&A.dset.inn[f];return `<button class="die mini" data-a="runFace" data-v="${f}">${dieFace(faceVal(A,f),ins,inn)}</button>`}).join('')}<button class="btn sm" data-a="runFu">算了</button>`}
+      else btns=`${RUN.fu?`<button class="btn sm ${RUN.fuMode?'pri':''}" data-a="runFu">${RUN.fuMode?'点一颗骰子…':`改点符 ×${RUN.fu}`}</button>`:''}
+        <button class="btn" data-a="runBest">一键最优锁骰</button>
+        <button class="btn" data-a="runReroll" ${can?'':'disabled'}>${A.rr>0?`重掷（免费 ${A.rr}）`:`重掷（内力 ${cost}）`}</button>
+        <button class="btn pri r-go" data-a="runGo">出招</button>`;
+    }else btns=`<span class="note">……</span>`;
+    const tip=ph==='roll'?(J?runTip('jinx'):'')||runTip('roll'):ph==='pick'?runTip('pick')||(RUN.ents.filter(e=>e.hp>0).length>1?runTip('tgt'):''):'';
+    c=`${tip}<p class="r-pre">${pre}</p><div class="tray">${dice}</div><div class="r-btns">${btns}</div>`;
+  }
+  $('#r-ctl').innerHTML=c;
+  let m='';
+  if(RUN.popts)m=`<div class="r-card"><h3>顿悟</h3><p class="note" style="text-align:center">三选一，只在这一趟有效</p>${runTip('perk')}
+    ${RUN.popts.map(v=>{const [t,a,b]=v.split(':');
+      if(t==='p')return `<button class="perk" data-a="runPerk" data-v="${v}"><small>心法</small><b>${PERKS[a].n}${pl(a)?` · ${CN[pl(a)+1]}重`:''}</b><span>${PERKS[a].d(pl(a)+1)}</span></button>`;
+      if(t==='d')return `<button class="perk dsk" data-a="runPerk" data-v="${v}"><small>骰技 · 第 ${+b+1} 颗骰子</small><b>${DSK[a].n}</b><span>${DSK[a].d(1)}</span></button>`;
+      const d=RUN.ds[+a];return `<button class="perk dsk" data-a="runPerk" data-v="${v}"><small>骰技 · 第 ${+a+1} 颗骰子</small><b>${DSK[d.k].n} · ${CN[d.l+1]}重</b><span>${DSK[d.k].d(d.l+1)}</span></button>`}).join('')}</div>`;
+  else if(ph==='shop')m=`<div class="r-card"><h3>行脚商人</h3><p class="note" style="text-align:center">「走江湖的，备点东西吧。」　你有 <b class="q4">${RUN.gold}</b> 文</p>${runTip('shop')}
+    ${RUN.shop.map(it=>{const s=RSHOP[it.k];return `<div class="ritem"><b>${s.n}</b><span>${s.d}${it.left>1?`（还剩 ${it.left}）`:''}</span><button class="btn sm pri" data-a="runBuy" data-v="${it.k}" ${it.left<1||RUN.gold<s.p?'disabled':''}>${it.left<1?'已买':`${s.p} 文`}</button></div>`}).join('')}
+    <button class="btn" data-a="runLeave">上路</button></div>`;
+  else if(ph==='event'){const E=RUN.ev,R=REV[E.k];
+    const ch=E.done?`<p class="r-evres">${E.res}</p><button class="btn pri" data-a="runLeave">上路</button>`
+      :E.k==='chest'?`<button class="btn pri" data-a="runEv" data-v="open">打开看看</button><button class="btn" data-a="runEv" data-v="skip">不碰它</button>`
+      :E.k==='elder'?`<button class="perk" data-a="runEv" data-v="blood"><b>以血换悟</b><span>失去两成气血，换一次三选一</span></button><button class="perk" data-a="runEv" data-v="heal"><b>请他疗伤</b><span>回复三成气血</span></button>`
+      :E.k==='dice'?`<div class="r-btns"><button class="btn pri" data-a="runEv" data-v="big" ${RUN.gold<10?'disabled':''}>押大（11~18）</button><button class="btn pri" data-a="runEv" data-v="small" ${RUN.gold<10?'disabled':''}>押小（3~10）</button><button class="btn" data-a="runEv" data-v="leave">走开</button></div>${RUN.gold<10?'<p class="note">你的铜钱不够十文。</p>':''}`
+      :`<button class="btn pri" data-a="runEv" data-v="drink">饮水歇脚</button>`;
+    m=`<div class="r-card"><h3>${R.n}</h3><p class="r-evd">${R.d}</p>${runTip('event')}${ch}</div>`}
+  else if(ph==='over'){const st=RUN.win?RUN.stars:0;
+    m=`<div class="r-card"><div class="result ${RUN.win?'win':'lose'}"><span class="res-big">${RUN.win?'通关':RUN.quit?'撤':'败'}</span>
+    <p>${RUN.win?`你一路杀到尽头，${esc(z.boss)}败下阵来。`:RUN.quit?'你收拾行装，暂且退回。':'你力竭倒地，被路过的樵夫背回了城里。'}　共击败 ${RUN.kills} 个对手。</p></div>
+    ${RUN.win?`<div class="r-stars">${starTxt(st)}</div><p class="note" style="text-align:center">${RUN.starNew?'新纪录！':''}通关一星，剩四成气血两星，剩七成三星</p>`:''}
+    ${RUN.rw.length?`<ul class="rw r-rw">${RUN.rw.map(x=>`<li><b>${x.t}</b>　${x.rw.join('，')}</li>`).join('')}</ul>`:''}${RUN.lose?`<p class="note">${RUN.lose.join('')}</p>`:''}
+    <button class="btn pri" data-a="runClose">回到江湖</button></div>`}
+  const md=$('#r-modal');md.className=m?'r-modal':'';md.innerHTML=m;
+  if(m){const b=md.querySelector('button:not([disabled])');if(b)b.focus({preventScroll:true})}
+  runHud();
+}
+
 function showBattle(){
-  const [ia,ib]=BT.info,walk=!!BT.ctx.walk;
+  const [ia,ib]=BT.info;
   const ov=document.createElement('div');ov.className='ov';ov.id='ov';
   const fh=(f,s)=>`<div class="f-name"><b>${esc(f.name)}</b><span class="tag">${f.tag} · ${f.lv} 级</span></div>
     <div class="bar hp"><i id="${s}-hp"></i></div><div class="bar-n" id="${s}-hpn"></div><div class="bar mp"><i id="${s}-mp"></i></div><div class="fx-tags" id="${s}-tags"></div>`;
-  ov.innerHTML=`<div class="bt${walk?' walkm':''}" role="dialog" aria-modal="true" aria-label="战斗">
+  ov.innerHTML=`<div class="bt" role="dialog" aria-modal="true" aria-label="战斗">
     <div class="bt-head"><b>${esc(BT.ctx.title)}</b><span id="bt-round">第 1 回合</span></div>
-    ${walk?sceneHTML(fh):`<div class="duel"><div class="fighter" id="fa">${fh(ia,'a')}</div><div class="vs">战</div><div class="fighter" id="fb">${fh(ib,'b')}</div></div>`}
+    <div class="duel"><div class="fighter" id="fa">${fh(ia,'a')}</div><div class="vs">战</div><div class="fighter" id="fb">${fh(ib,'b')}</div></div>
     <div class="blog" id="blog"></div>
     <div id="bt-foot" class="bt-btns"><button class="btn" data-a="btSkip">跳过</button></div></div>`;
   document.body.appendChild(ov);
-  if(walk){
-    const sc=$('#scene');
-    sc.style.setProperty('--lx',Math.max(0,$('#fb').offsetLeft-$('#fa').offsetLeft-$('#sa').offsetWidth*.7)+'px');
-    sc.style.setProperty('--sp',((S.auto||S.tAuto)?.17:.3)+'s');
-    for(const s of ['a','b'])$('#s'+s).addEventListener('animationend',e=>e.target.classList.remove('atk','hit','dodge','heal'));
-  }
-  if(BT.manual){$('#bt-foot').innerHTML='';btApply({a:[BT.A.hp,BT.A.mp],b:[BT.enemy.hp,BT.enemy.mp],ta:[],tb:[],fx:[]},false)}
-  else{BT.i=walk?-1:0;btApply(BT.res.log[0],!walk)}
-  const go=()=>{
-    if(!BT||BT.done)return;
-    if(BT.manual){manualRun(BT.gen.next());return}
-    if(BT.i<0){BT.i=0;btApply(BT.res.log[0],true)}
-    if(S.fast){btSkip();return}
-    const sp=(S.auto||S.tAuto)?170:330;
-    BT.timer=setInterval(()=>{BT.i++;if(BT.i>=BT.res.log.length){btEnd();return}btApply(BT.res.log[BT.i],true)},sp);
-  };
-  if(walk&&!S.fast)walkIn(go);else go();
+  if(BT.manual){$('#bt-foot').innerHTML='';btApply({a:[BT.A.hp,BT.A.mp],b:[BT.enemy.hp,BT.enemy.mp],ta:[],tb:[],fx:[]},false);return}
+  btApply(BT.res.log[0],true);
+  if(S.fast){btSkip();return}
+  const sp=(S.auto||S.tAuto)?170:330;
+  BT.timer=setInterval(()=>{BT.i++;if(BT.i>=BT.res.log.length){btEnd();return}btApply(BT.res.log[BT.i],true)},sp);
 }
 function btApply(e,withLog){
   const set=(s,v,inf,tags)=>{
@@ -1789,7 +2413,6 @@ function btApply(e,withLog){
   if(withLog){
     const lg=$('#blog');const p=document.createElement('p');p.innerHTML=e.text;lg.appendChild(p);lg.scrollTop=lg.scrollHeight;
     for(const f of e.fx){const el=document.createElement('span');el.className='pop '+f.k;el.textContent=f.v;$('#f'+f.on).appendChild(el);setTimeout(()=>el.remove(),900)}
-    if(BT.ctx.walk)sceneAct(e);
   }
 }
 // 手动出招：播放新产生的战报，然后等玩家选招或结算
@@ -1816,7 +2439,7 @@ function showChoices(){
   const b=$('#bt-foot [data-a=dGo]');if(b)b.focus({preventScroll:true});
 }
 function btSkip(){
-  if(!BT||BT.done||BT.manual)return;clearInterval(BT.timer);clearTimeout(BT.walkT);
+  if(!BT||BT.done||BT.manual)return;clearInterval(BT.timer);
   const lg=$('#blog');let html='';for(let i=BT.i+1;i<BT.res.log.length;i++)html+=`<p>${BT.res.log[i].text}</p>`;
   lg.insertAdjacentHTML('beforeend',html);lg.scrollTop=lg.scrollHeight;
   btApply(BT.res.log[BT.res.log.length-1],false);
@@ -1826,17 +2449,14 @@ function btSkip(){
 function btEnd(){
   clearInterval(BT.timer);BT.done=true;
   const win=BT.res.win,c=BT.ctx;
-  const autoStage=S.auto&&(c.type==='stage'||c.type==='hunt'||c.type==='xueyi')&&win&&S.story.pend==null;
   const autoTower=S.tAuto&&c.type==='tower'&&win&&S.tower.run&&!S.tower.run.picks;
-  if(c.walk)sceneEnd(win);
   const big=c.type==='wb'?(win?'斩':'伤'):(win?'胜':'败');
   $('#bt-foot').outerHTML=`<div class="result ${win||c.type==='wb'?'win':'lose'}"><span class="res-big">${big}</span><ul class="rw">${BT.reward.map(r=>`<li>${r}</li>`).join('')}</ul></div>
-    <div class="bt-btns" id="bt-foot">${autoStage||autoTower?'<span class="muted" style="font-size:12px">自动继续中…</span><button class="btn" data-a="autoStop">停止自动</button>':''}<button class="btn pri" data-a="btClose" id="bt-close">收剑</button></div>`;
+    <div class="bt-btns" id="bt-foot">${autoTower?'<span class="muted" style="font-size:12px">自动继续中…</span><button class="btn" data-a="autoStop">停止自动</button>':''}<button class="btn pri" data-a="btClose" id="bt-close">收剑</button></div>`;
   $('#bt-close').focus({preventScroll:true});
-  if(autoStage)BT.autoT=setTimeout(()=>{closeBattle();if(S.auto)fight(c.zi,c.i)},S.fast?600:1100);
   if(autoTower)BT.autoT=setTimeout(()=>{closeBattle();if(S.tAuto&&S.tower.run&&!S.tower.run.picks)towerFight()},S.fast?600:1100);
 }
-function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.autoT);clearTimeout(BT.walkT);const o=$('#ov');if(o)o.remove();BT=null;render();storyPending()}
+function closeBattle(){if(!BT)return;clearInterval(BT.timer);clearTimeout(BT.autoT);const o=$('#ov');if(o)o.remove();BT=null;render();storyPending()}
 
 /* ============ 一键操作 ============ */
 // 不弹战斗层，直接结算，用于扫荡和各种"一键"
@@ -1971,7 +2591,7 @@ function storyPick(j){
 }
 function storyEnd(){const o=$('#sov');if(o)o.remove();const a=SV.after;SV=null;if(a)a();if(!SV&&STQ.length)showStory(...STQ.shift())}
 function storyPending(){
-  if(S.story.pend==null||SV||BT)return;
+  if(S.story.pend==null||SV||BT||RUN)return;
   const z=S.story.pend;S.story.pend=null;S.story.seen[z+'c']=1;save();
   showStory(STORY[z].post,{...STORY[z].ch,zi:z},()=>{
     if(z===6&&!S.story.ending){
@@ -2249,20 +2869,23 @@ jianghu(st){
   const seenAny=S.story.seen[zi+'a'];
   const end=S.story.ending&&{xia:'侠之大者',ba:'一代枭雄',mid:'江湖散人'}[S.story.ending];
   return `<div class="jh">
-   <div class="zones">${ZONES.map((zz,i)=>`<button class="zone" aria-pressed="${i===zi}" ${unlocked(i)?'':'disabled'} data-a="zone" data-v="${i}"><span><b>${zz.n}</b><br><small>${zz.lv}–${zz.top} 级</small></span><span class="pg">${unlocked(i)?(S.prog[i]>=6?'已通关':S.prog[i]+'/6'):'未开启'}</span></button>`).join('')}</div>
+   <div class="zones">${ZONES.map((zz,i)=>`<button class="zone" aria-pressed="${i===zi}" ${unlocked(i)?'':'disabled'} data-a="zone" data-v="${i}"><span><b>${zz.n}</b><br><small>${zz.lv}–${zz.top} 级</small></span><span class="pg">${unlocked(i)?(S.prog[i]>=6?`<span class="zst">${starTxt(S.stars[i]||0)}</span>`:S.prog[i]+'/6'):'未开启'}</span></button>`).join('')}</div>
    <section class="box">
     <div class="chapter"><span><b>第${CN[zi+1]}章 · ${STORY[zi].t}</b><span class="muted">${S.story.seen[zi+'c']?'本章剧情已完成':seenAny?'剧情进行中':'击败第一个对手时开启剧情'}${zi===6&&end?`　结局：${end}`:''}</span></span>
      <button class="btn sm" data-a="replay" data-v="${zi}" ${seenAny?'':'disabled'}>回顾剧情</button></div>
     <h3>${z.n} <small>${z.d}</small></h3>
+    <div class="run-go">${S.run?(S.run.zi===zi?`<span class="btns"><button class="btn pri" data-a="runResume">继续旅途</button><button class="btn sm" data-a="runAbandon">${runAbArm?'真的放弃？':'放弃这一趟'}</button></span>`
+       :`<button class="btn" disabled>踏上旅途</button>`):`<button class="btn pri" data-a="runStart" data-v="${zi}">踏上旅途</button>`}
+     <p class="note">${S.run?(S.run.zi===zi?`这一趟走到第 ${S.run.ni+1} / ${S.run.nodes.length} 处，随时可以接着走。`:`你在${ZONES[S.run.zi].n}还有一趟没走完，先去走完或放弃。`)+'<br>':''}最好成绩 <span class="zst">${starTxt(S.stars[zi]||0)}</span>（通关一星，剩四成气血两星，剩七成三星）。<br>沿路一直往前走：五处对手和三波流寇（越往后一次来得越多），两处奇遇、一个行脚商人，尽头是${z.boss}，他还会扰乱你的骰子。自己掷骰出招，怪头顶写着它要打你多少。气血一路不回满，打怪攒悟性三选一强化，倒下就结束，已经拿到的奖励不收回。</p></div>
     <ol class="path">${[0,1,2,3,4,5].map(i=>{
       const boss=i===5,lv=stageLv(z,i),name=boss?z.boss:z.mobs[STAGE_MOB[i]];
       const cls=[i<pr?'done':'',i===pr?'cur':'',i>pr?'lock':'',boss?'boss':''].join(' ');
       const ep=powerOf(mkMonster(name,lv,boss,false)),mc=boss&&MECH[ZONE_MECH[zi]];
       return `<li class="${cls}"><span class="node">${boss?'首':i<pr?'✓':i+1}</span>
-        <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">击败前一个对手后开启</span>'}
+        <div class="st-info"><b>${name}</b> <span class="muted">${lv} 级${boss?' · 首领':''}</span><br>${i<=pr?diffChip(st.power,ep):'<span class="muted" style="font-size:12px">一路打过去才能到</span>'}
           ${mc?`<br><span class="note"><b class="q4">${mc.n}</b>：${mc.d}</span>`:''}</div>
-        <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}<button class="btn ${i===pr?'pri':''}" ${i>pr?'disabled':''} data-a="fight" data-v="${zi},${i}">${i<pr?'再战':'挑战'}</button></span></li>`}).join('')}</ol>
-    <div class="toggles"><label><input type="checkbox" id="opt-auto" data-a="autoT" ${S.auto?'checked':''}> 连续挑战（胜后自动再战同一对手，败则停止）</label><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 跳过战斗过程</label><label><input type="checkbox" id="opt-manual" data-a="manualT" ${S.manual?'checked':''}> 手动掷骰（所有战斗都由你锁骰重掷；开着连续挑战时小怪仍自动打）</label></div>
+        <span class="row" style="gap:6px;justify-content:flex-end">${i<pr?`<button class="btn sm" data-a="sweep" data-v="${zi},${i}">扫荡×10</button>`:''}</span></li>`}).join('')}</ol>
+    <div class="toggles"><label><input type="checkbox" id="opt-fast" data-a="fastT" ${S.fast?'checked':''}> 加快战斗动画（其他玩法直接跳过战斗过程）</label><label><input type="checkbox" id="opt-manual" data-a="manualT" ${S.manual?'checked':''}> 手动掷骰（悬赏、论剑等其他单挑也由你锁骰重掷；闯江湖本来就是手动）</label></div>
    </section></div>`;
 },
 tianji(){
@@ -2631,7 +3254,38 @@ const ACT={
   create(){const n=($('#cname').value||'').trim().slice(0,8)||randName();S=newGame(n,CS);
     S.equip.wpn=mkItem(1,1,'wpn');genTasks();save();render();toast(`${esc(n)} 拜入${SECTS[CS].n}，踏入江湖`)},
   zone(v){S.zSel=+v;save();render()},
-  fight(v){const [z,i]=v.split(',').map(Number);fight(z,i)},
+  runStart(v){runStart(+v)},
+  runResume(){runResume()},
+  runAbandon(){if(!S.run)return;if(!runAbArm){runAbArm=true;render();return}runAbArm=false;S.run=null;save();render();toast('你放弃了这一趟，已经拿到的奖励都还在。')},
+  runFwd(){runForward()},
+  runRoll(){runRoll()},
+  runGo(){runAttack()},
+  runHold(i){if(!RUN||RUN.phase!=='pick')return;i=+i;
+    if(RUN.fuMode){RUN.fuMode=false;RUN.fuDie=i;runUI();return}
+    if(runFrozen(i)){runLog('这颗骰子被冻住了，动不了。');return}
+    RUN.A.held[i]=!RUN.A.held[i];sfx('lock');runUI()},
+  runReroll(){runReroll()},
+  runBest(){if(!RUN||RUN.phase!=='pick')return;const A=RUN.A;aiHold(A);A.dice.forEach((v,i)=>{if(v===0)A.held[i]=false;if(runFrozen(i))A.held[i]=true});sfx('lock');runUI()},
+  runTgt(j){if(!RUN||!RUN.ents[+j]||RUN.ents[+j].hp<=0)return;RUN.tgt=+j;tipDone('tgt');runUI()},
+  runFu(){if(!RUN||RUN.phase!=='pick'||!RUN.fu)return;if(RUN.fuDie!=null){RUN.fuDie=null;RUN.fuMode=false}else RUN.fuMode=!RUN.fuMode;runUI()},
+  runFace(f){if(!RUN||RUN.fuDie==null||!RUN.fu)return;const A=RUN.A,d=RUN.fuDie;A.fi[d]=+f;A.dice[d]=faceVal(A,+f);A.held[d]=true;RUN.fu--;RUN.fuDie=null;sfx('lock');runUI()},
+  runPerk(v){runPickPerk(v)},
+  runBuy(k){const it=RUN&&RUN.phase==='shop'&&RUN.shop.find(x=>x.k===k),s=RSHOP[k];if(!it||it.left<1||RUN.gold<s.p||RUN.popts)return;
+    RUN.gold-=s.p;it.left--;const A=RUN.A;runLog(`买下${s.n}。`);sfx('coin');
+    if(k==='yao')A.hp=Math.min(A.maxhp,A.hp+Math.round(A.maxhp*.35));
+    if(k==='qi')A.mp=A.maxmp;
+    if(k==='fu')RUN.fu++;
+    if(k==='mo'){RUN.whet++;runRefresh()}
+    if(k==='wu'){RUN.pend++;runPerkOpen();return}
+    runSave();runUI()},
+  runEv(c){runEvent(c)},
+  runLeave(){runLeave()},
+  runAway(){runAway()},
+  runMute(){S.mute=!S.mute;save();runUI();sfx('lock')},
+  runQuit(){if(!RUN||RUN.phase==='over')return;
+    if(!RUN.quitArm){RUN.quitArm=true;runUI();setTimeout(()=>{if(RUN&&RUN.quitArm){RUN.quitArm=false;runUI()}},3000);return}
+    runOver(false,true)},
+  runClose(){runClose()},
   replay(v){const z=+v,s=STORY[z],L=[...s.pre];if(S.story.seen[z+'b'])L.push(...s.boss);if(S.story.seen[z+'c'])L.push(...s.post);showStory(L,null,null)},
   autoT(_,el){S.auto=el.checked;save()},
   tAutoT(_,el){S.tAuto=el.checked;save()},
@@ -2919,13 +3573,20 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='cname')ACT.create();
   if(e.key==='Escape'&&BT){if(BT.done)closeBattle();else btSkip()}
+  // 闯江湖的快捷键：空格前进/掷骰/出招，R 重掷，1~5 锁骰
+  if(RUN&&!SV&&!RUN.popts&&!/INPUT|TEXTAREA/.test(e.target.tagName)){
+    const ph=RUN.phase;
+    if(e.key===' '&&!e.target.closest('button')){e.preventDefault();if(ph==='walk')runForward();else if(ph==='roll')runRoll();else if(ph==='pick')runAttack()}
+    else if((e.key==='r'||e.key==='R')&&ph==='pick')runReroll();
+    else if(/^[1-5]$/.test(e.key)&&ph==='pick')ACT.runHold(+e.key-1);
+  }
 });
 setInterval(()=>{
   if(!S)return;
   if(document.visibilityState==='visible'){S.online.sec+=5;if(S.online.sec%60===0)save()}
   const el=$('#cult-live');if(el)el.innerHTML=cultLive();
-  const ol=$('#online-live');if(ol){const t=onlineLive();if(ol.textContent!==t){ol.textContent=t;if(onlineReady()&&!BT&&!SV)render()}}
-  if(S.day!==today()&&!BT&&!SV)render();
+  const ol=$('#online-live');if(ol){const t=onlineLive();if(ol.textContent!==t){ol.textContent=t;if(onlineReady()&&!BT&&!SV&&!RUN)render()}}
+  if(S.day!==today()&&!BT&&!SV&&!RUN)render();
 },5000);
 $('#news-t').addEventListener('animationiteration',fillNews);
 
