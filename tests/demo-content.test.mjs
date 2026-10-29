@@ -22,3 +22,55 @@ test('content rejects malformed entries and required numeric fields without thro
   const c=structuredClone(mod.CONTENT);alter(c);let result;assert.doesNotThrow(()=>result=mod.validateContent(c));assert.equal(result.valid,false);
  }
 });
+test('rarity configuration requires ranks and usable salvage and multiplier numbers',()=>{
+ for(const alter of [
+  c=>{delete c.rarities[0].rank;},
+  c=>{c.rarities[0].rank='0';},
+  c=>{c.rarities[0].rank=.5;},
+  c=>{delete c.rarities[0].salvage;},
+  c=>{c.rarities[0].salvage=1.5;},
+  c=>{delete c.rarities[0].multiplier;},
+  c=>{c.rarities[0].multiplier=0;},
+  c=>{c.rarities[0].multiplier='1';}
+ ]){
+  const c=structuredClone(mod.CONTENT);alter(c);
+  const result=mod.validateContent(c);
+  assert.equal(result.valid,false,'malformed rarity must be rejected before importing');
+  assert.ok(result.errors.some(message=>message.startsWith('rarities.')));
+ }
+});
+test('configured equipment must supply both ordinary and rare draws',()=>{
+ for(const alter of [
+  c=>{for(const entry of c.equipment)entry.rarity='common';},
+  c=>{for(const entry of c.equipment)entry.rarity='rare';},
+  c=>{for(const entry of c.rarities)entry.rank=0;},
+  c=>{for(const entry of c.rarities)entry.rank=2;}
+ ]){
+  const c=structuredClone(mod.CONTENT);alter(c);
+  const result=mod.validateContent(c);
+  assert.equal(result.valid,false,'accepted configuration must support every draw branch');
+  assert.ok(result.errors.some(message=>message.startsWith('equipment.draw')));
+ }
+});
+test('mode turn limits must be present positive integers before an expedition can use them',()=>{
+ for(const value of [undefined,0,.5,1001,'8']){
+  const c=structuredClone(mod.CONTENT);
+  if(value===undefined)delete c.modes[0].turnLimit;else c.modes[0].turnLimit=value;
+  const result=mod.validateContent(c);
+  assert.equal(result.valid,false,'invalid turn limit must not enter a run snapshot');
+  assert.ok(result.errors.some(message=>message.startsWith('modes.campaign.turnLimit')));
+ }
+ const c=structuredClone(mod.CONTENT);c.modes[0].turnLimit=1000;
+ assert.equal(mod.validateContent(c).valid,true);
+});
+test('offline cap remains editable from one through one hundred hours',()=>{
+ for(const hours of [1,48,100]){
+  const c=structuredClone(mod.CONTENT);c.economy.offlineHours=hours;
+  assert.equal(mod.validateContent(c).valid,true);
+ }
+ for(const hours of [0,100.5,101]){
+  const c=structuredClone(mod.CONTENT);c.economy.offlineHours=hours;
+  const result=mod.validateContent(c);
+  assert.equal(result.valid,false);assert.ok(result.errors.some(message=>message.startsWith('economy.offlineHours')));
+ }
+});

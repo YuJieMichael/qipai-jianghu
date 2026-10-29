@@ -83,6 +83,35 @@ export function validateContent(value){
 
  if(c.workshopRules!==undefined){const rules=c.workshopRules;const validEffects=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.entries(v).every(([k,n])=>EFFECT_KEYS.includes(k)&&typeof n==='number'&&Number.isFinite(n)&&n>=0);if(!rules||typeof rules!=='object'||Array.isArray(rules))fail('workshopRules','成长规则须为对象');else{if(!rules.slotEffects||slots.some(s=>!validEffects(rules.slotEffects[s.id])))fail('workshopRules.slotEffects','六槽效果须齐全且为非负数值');if(!rules.runeResonance||!validEffects(rules.runeResonance.yang)||!validEffects(rules.runeResonance.yin)||!validEffects(rules.relicResonance))fail('workshopRules','共鸣效果无效');}}
  if(c.combatRules!==undefined){if(!c.combatRules||typeof c.combatRules!=='object'||Array.isArray(c.combatRules))fail('combatRules','战斗规则须为对象');else for(const [key,n]of Object.entries(c.combatRules))if(!Object.keys(CONTENT.combatRules).includes(key)||typeof n!=='number'||!Number.isFinite(n)||n<0||n>100000)fail(`combatRules.${key}`,'规则数值无效');}
+ // Both draw branches must be usable before a configuration can replace a profile.
+ const rarityById=new Map(c.rarities.map(rarity=>[rarity.id,rarity]));
+ for(const rarity of c.rarities){
+  const path=`rarities.${rarity.id}`;
+  if(!Number.isInteger(rarity.rank)||rarity.rank<0||rarity.rank>100){
+   fail(`${path}.rank`,'品质阶须为 0..100 整数');
+  }
+  if(!Number.isSafeInteger(rarity.salvage)||rarity.salvage<0||rarity.salvage>10000000){
+   fail(`${path}.salvage`,'分解材料须为 0..10000000 整数');
+  }
+  if(typeof rarity.multiplier!=='number'||!Number.isFinite(rarity.multiplier)||rarity.multiplier<=0||rarity.multiplier>1000000){
+   fail(`${path}.multiplier`,'品质倍率须为正数且不超过 1000000');
+  }
+ }
+ const hasOrdinaryDraw=c.equipment.some(entry=>{
+  const rank=rarityById.get(entry.rarity)?.rank;
+  return Number.isInteger(rank)&&rank>=0&&rank<2;
+ });
+ const hasRareDraw=c.equipment.some(entry=>{
+  const rank=rarityById.get(entry.rarity)?.rank;
+  return Number.isInteger(rank)&&rank>=2&&rank<=100;
+ });
+ if(!hasOrdinaryDraw)fail('equipment.draw.ordinary','至少需要一件品质阶低于 2 的可抽取装备');
+ if(!hasRareDraw)fail('equipment.draw.rare','至少需要一件品质阶不低于 2 的保底装备');
+ for(const mode of c.modes){
+  if(!Number.isInteger(mode.turnLimit)||mode.turnLimit<1||mode.turnLimit>1000){
+   fail(`modes.${mode.id}.turnLimit`,'回合上限须为 1..1000 整数');
+  }
+ }
  if(Array.isArray(c.equipment))for(const row of c.equipment){if(!slots.some(s=>s.id===row.slot)||!c.rarities?.some(r=>r.id===row.rarity)||!c.sets?.some(s=>s.id===row.setId)||row.slot==='weapon'&&!['sword','staff','hammer'].includes(row.weaponType)||!Number.isInteger(row.maxSockets)||row.maxSockets<0||row.maxSockets>4)fail(`equipment.${row.id}`,'槽位、品质、套装、武器或镶孔错误');}
  if(Array.isArray(c.skills))for(const row of c.skills)if(!['always','pair','straight','triple','round','crit','sword','poison','guard'].includes(row.trigger))fail(`skills.${row.id}`,'未知触发条件');
  for(const key of ['sects'])for(const row of c[key]??[])if(!Array.isArray(row.faces)||row.faces.length!==6||row.faces.some(n=>!Number.isInteger(n)||n<1||n>6))fail(`${key}.${row.id}.faces`,'须为六个 1..6 点数');

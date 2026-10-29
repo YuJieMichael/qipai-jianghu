@@ -58,7 +58,7 @@ Profile至少包括version/seed/nextRunId/resources/inventory/equipped/slotLevel
 - claim {id}, signin {}, offline {}, sweep {chapter}, codex-claim {id}, collection {id}, developer-grant {}。
 - content-import {value}, content-reset {}, profile导入由validateProfile检查后控制器替换。导出只读。
 
-任务至少覆盖通关、击杀、强化、购买、采集、修炼；收益只领取一次。离线收益上限12h，倒退时间不产生收益。纯函数显式接收now。抽取只消耗本地虚拟资源，品质保底可配置。
+任务至少覆盖通关、击杀、强化、购买、采集、修炼；收益只领取一次。离线收益默认上限12h；创作配置可将上限改为1..100小时，界面显示当前上限。倒退时间不产生收益。纯函数显式接收now。抽取只消耗本地虚拟资源，品质保底可配置。
 
 ## 战斗与路线
 

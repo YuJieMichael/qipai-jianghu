@@ -89,3 +89,40 @@ test('editable workshop tuning changes enhancement and refinement without code e
  p=act(p,'content-import',{value:c}).profile;const before=api.deriveLoadout(p).effects.attack;p=act(p,'enhance',{slot:'weapon'}).profile;assert.equal(api.deriveLoadout(p).effects.attack,before+11);
  const uid=p.equipped.weapon;p=act(p,'refine',{uid}).profile;assert.equal(p.inventory.find(i=>i.uid===uid).pendingRefine.effects.attack,7);
 });
+test('invalid rarity and empty draw pools cannot replace a usable profile configuration',()=>{
+ const p=api.createProfile(1,0);
+ for(const alter of [
+  c=>{for(const rarity of c.rarities)delete rarity.rank;},
+  c=>{for(const equipment of c.equipment)equipment.rarity='common';},
+  c=>{for(const equipment of c.equipment)equipment.rarity='rare';}
+ ]){
+  const c=structuredClone(catalog.CONTENT);alter(c);
+  const result=act(p,'content-import',{value:c});
+  assert.strictEqual(result.profile,p);assert.match(result.message,/配置无效/);
+ }
+});
+test('accepted custom draw pools support an ordinary roll and guaranteed pity without failure',()=>{
+ const c=structuredClone(catalog.CONTENT);
+ for(const entry of c.equipment)entry.rarity='common';
+ c.equipment[0].rarity='rare';c.economy.drawPity=2;c.economy.drawCost={gold:1};
+ let p=act(api.createProfile(1,0),'content-import',{value:c}).profile;
+ const first=act(p,'draw');assert.notStrictEqual(first.profile,p,first.message);p=first.profile;
+ const firstTemplate=c.equipment.find(e=>e.id===p.inventory.at(-1).templateId);
+ assert.equal(firstTemplate.rarity,'common');
+ const second=act(p,'draw');assert.notStrictEqual(second.profile,p,second.message);p=second.profile;
+ assert.equal(p.inventory.at(-1).templateId,c.equipment[0].id);assert.equal(p.drawsSinceRare,0);assert.equal(p.resources.gold,998);
+});
+test('offline rewards use the default twelve hour cap and an explicitly configured forty-eight hour cap',()=>{
+ const now=48*3600000;
+ let p=api.createProfile(1,0);
+ const defaultClaim=act(p,'offline',{},now);
+ assert.equal(defaultClaim.profile.resources.gold,1720);assert.equal(defaultClaim.profile.resources.dust,192);
+ assert.match(defaultClaim.message,/上限 12 小时/);assert.strictEqual(act(defaultClaim.profile,'offline',{},now).profile,defaultClaim.profile);
+ const c=structuredClone(catalog.CONTENT);c.economy.offlineHours=48;
+ p=act(p,'content-import',{value:c}).profile;
+ const customClaim=act(p,'offline',{},now);
+ assert.equal(customClaim.profile.resources.gold,3880);assert.equal(customClaim.profile.resources.dust,408);
+ assert.match(customClaim.message,/上限 48 小时/);assert.strictEqual(act(customClaim.profile,'offline',{},now).profile,customClaim.profile);
+ const invalid=structuredClone(c);invalid.economy.offlineHours=101;
+ assert.strictEqual(act(p,'content-import',{value:invalid}).profile,p);
+});
