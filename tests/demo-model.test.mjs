@@ -9,12 +9,29 @@ test('recognizes_all_eight_combos',()=>{
  assert.equal(evaluateDice([1,2,3,4,6]).rank,0);
  assert.equal(evaluateDice([6,6,6,6,6]).rank,7);
 });
-test('reroll_preserves_held_dice_and_has_two_uses',()=>{
- const initial=battle(); const original=structuredClone(initial); const rolled=rollDice(initial);
- assert.deepEqual(initial,original); assert.equal(rolled.combat.phase,'pick');
- const held=toggleHold(rolled,2);const one=rerollDice(held);const two=rerollDice(one);
- assert.equal(one.combat.dice[2],rolled.combat.dice[2]);assert.equal(two.combat.dice[2],rolled.combat.dice[2]);
- assert.equal(two.combat.rerolls,0);assert.strictEqual(rerollDice(two),two);assert.equal(held.combat.rerolls,2);
+test('initial_roll_has_no_selected_dice_and_empty_selection_preserves_rng_and_uses',()=>{
+ const initial=battle();const before=structuredClone(initial);const rolled=rollDice(initial);
+ assert.deepEqual(initial,before);assert.equal(rolled.combat.phase,'pick');
+ assert.deepEqual(rolled.combat.held,[true,true,true,true,true]);
+ const snapshot=structuredClone(rolled);
+ assert.strictEqual(rerollDice(rolled),rolled);assert.deepEqual(rolled,snapshot);
+ assert.equal(rolled.seed,1543727538);assert.equal(rolled.combat.rerolls,2);
+});
+test('reroll_replaces_only_selected_dice_and_clears_selection_without_mutating_input',()=>{
+ const rolled=rollDice(battle());assert.deepEqual(rolled.combat.dice,[2,3,1,2,3]);
+ const selected=toggleHold(toggleHold(rolled,0),3);const before=structuredClone(selected);
+ const replaced=rerollDice(selected);
+ assert.deepEqual(replaced.combat.dice,[4,3,1,3,3]);assert.equal(replaced.seed,1551689652);
+ assert.deepEqual(replaced.combat.held,[true,true,true,true,true]);assert.equal(replaced.combat.rerolls,1);
+ assert.deepEqual(selected,before);assert.deepEqual(rolled.combat.held,[true,true,true,true,true]);
+});
+test('each_of_two_rerolls_requires_a_fresh_selection',()=>{
+ const first=rerollDice(toggleHold(rollDice(battle()),0));
+ assert.equal(first.combat.rerolls,1);assert.strictEqual(rerollDice(first),first);
+ const second=rerollDice(toggleHold(first,2));
+ assert.deepEqual(second.combat.dice,[4,3,3,2,3]);assert.equal(second.seed,1551689652);
+ assert.equal(second.combat.rerolls,0);assert.deepEqual(second.combat.held,[true,true,true,true,true]);
+ const selected=toggleHold(second,1);assert.strictEqual(rerollDice(selected),selected);
 });
 test('same_seed_replays_same_roll',()=>{
  assert.deepEqual(rollDice(battle(456)),rollDice(battle(456)));
@@ -26,7 +43,8 @@ test('invalid_index_and_wrong_phase_are_noops',()=>{
  assert.strictEqual(toggleHold(run,0),run);assert.strictEqual(rerollDice(run),run);
  const rolled=rollDice(run);assert.strictEqual(rollDice(rolled),rolled);
  for(const fn of [rollDice,rerollDice]) assert.strictEqual(fn(createRun('sword',4)).flow,'intro');
- const held=toggleHold(rolled,0);assert.equal(held.combat.held[0],true);assert.equal(rolled.combat.held[0],false);
+ for(const index of [-1,5,NaN,1.5,'1']) assert.strictEqual(toggleHold(rolled,index),rolled);
+ const held=toggleHold(rolled,0);assert.equal(held.combat.held[0],false);assert.equal(rolled.combat.held[0],true);
 });
 test('initial_state_and_config_contract',()=>{
  for(const build of ['sword','poison','guard']) {const r=createRun(build,9);assert.equal(r.flow,'intro');assert.equal(r.combat,null);assert.equal(r.hero.id,'hero');assert.equal(r.hero.hp,180);assert.equal(r.hero.attack,12);assert.deepEqual(r.diceSkills,[{kind:build,level:1},null,null,null,null]);assert.equal(BUILDS[build].id,build);}

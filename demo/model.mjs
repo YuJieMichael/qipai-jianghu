@@ -36,8 +36,9 @@ function roll(run,reroll) {
   const result=nextRandom(next.seed);next.seed=result.seed;next.combat.dice[i]=1+Math.floor(result.value*6);
  }
  next.combat.phase='pick';
+ next.combat.held=[true,true,true,true,true];
  if(reroll) next.combat.rerolls--;
- else {next.combat.held=[false,false,false,false,false];next.combat.rerolls=BALANCE.rerolls;}
+ else next.combat.rerolls=BALANCE.rerolls;
  return next;
 }
 export function rollDice(run) {return phaseIs(run,'roll')?roll(run,false):run;}
@@ -46,5 +47,5 @@ export function toggleHold(run,index) {
  const next=structuredClone(run);next.combat.held[index]=!next.combat.held[index];return next;
 }
 export function rerollDice(run) {
- return phaseIs(run,'pick')&&run.combat.rerolls>0?roll(run,true):run;
+ return phaseIs(run,'pick')&&run.combat.rerolls>0&&run.combat.held.some(held=>!held)?roll(run,true):run;
 }
