@@ -84,7 +84,10 @@ function readableUpgrade(id){
  const kind=Object.keys(BUILDS).find(k=>text.includes(k));return kind?`${BUILDS[kind].name}传承`:'武学精进';
 }
 function historyMarkup(run){
- const history=run.stats?.upgradeHistory||[];
- if(history.length)return `<ol class="upgrade-history" aria-label="本次成长历程">${history.map(h=>`<li><strong>${esc(h.title||readableUpgrade(h.id))}${Number.isInteger(h.dieIndex)?` · 第${h.dieIndex+1}骰`:''}</strong><span>${esc(h.before)} → ${esc(h.after)}</span></li>`).join('')}</ol>`;
- return `<p>${(run.stats?.upgrades||[]).map(id=>esc(readableUpgrade(id))).join(' · ')||'江湖之路，从此起步'}</p>`;
+ const history=run.stats?.upgradeHistory||[],upgrades=run.stats?.upgrades||[];
+ if(!upgrades.length)return '<p>江湖之路，从此起步</p>';
+ return `<ol class="upgrade-history" aria-label="本次成长历程">${upgrades.map(id=>{
+  const h=history.find(entry=>entry.id===id);
+  return h?`<li><strong>${esc(h.title||readableUpgrade(id))}${Number.isInteger(h.dieIndex)?` · 第${h.dieIndex+1}骰`:''}</strong><span>${esc(h.before)} → ${esc(h.after)}</span></li>`:`<li><strong>${esc(readableUpgrade(id))}</strong></li>`;
+ }).join('')}</ol>`;
 }

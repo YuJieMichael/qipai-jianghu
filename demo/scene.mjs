@@ -66,7 +66,6 @@ export function createScene(canvas,{reducedMotion=false}={}){
   if(stage==='bamboo')forest(t);else if(stage==='temple')temple();else gate(t);
   for(let i=0;i<3;i++){const fog=c.createLinearGradient(0,0,W,0);fog.addColorStop(0,'#c4dfcb00');fog.addColorStop(.5,'#c4dfcb0c');fog.addColorStop(1,'#c4dfcb00');c.fillStyle=fog;c.fillRect(Math.sin(t*.13+i)*100,300+i*55,W,23);}
   if(!options.reducedMotion)for(let i=0;i<64;i++){const x=(i*113+t*72)%1100,y=(i*73+t*270)%570;line(x,y,x-6,y+17,'#b7d6cf22',1);}
-  c.fillStyle='#c4d7c3aa';c.font='14px serif';c.textAlign='left';c.fillText(({bamboo:'夜 雨 · 竹 林',temple:'残 灯 · 破 庙',gate:'霜 刃 · 山 门'})[stage],34,38);
  }
  const blade=(x,y,angle,length=53,color='#cffff0')=>{c.save();c.translate(x,y);c.rotate(angle);poly([[-length*.6,-3],[length*.4,-3],[length*.62,0],[length*.4,3],[-length*.6,3]],color);line(-length*.56,-6,-length*.56,6,'#6ba9a3',2);c.restore();};
  function ring(x,y,rx,ry,color,alpha=1,width=2){c.save();c.globalAlpha=clamp(alpha);ellipse(x,y,rx,ry,null,color,width);c.restore();}

@@ -4,7 +4,7 @@ import {startBattle} from './combat.mjs';
 const copy=r=>structuredClone(r);
 const validIndex = index => Number.isInteger(index)&&index>=0&&index<5;
 const bound = (run,build) => run.diceSkills.some(skill=>skill?.kind===build);
-const effect = (build,level,run) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level} 点`:`附加 ${level+(run?.perks?.poisonCatalyst??0)*PERKS.poisonCatalyst.stacksPerRank} 层毒`;
+const effect = (build,level,run) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level+(run?.perks?.guardBulwark??0)*PERKS.guardBulwark.shieldPerRank} 点`:`附加 ${level+(run?.perks?.poisonCatalyst??0)*PERKS.poisonCatalyst.stacksPerRank} 层毒`;
 const skillLabel = (skill,run) => skill?`${BUILDS[skill.kind].name} ${skill.level} 级 · ${effect(skill.kind,skill.level,run)}`:'未绑定';
 const masteryLabel = (run,build) => `本门领悟 ${Math.min(BALANCE.masteryThreshold,run.mastery)} → ${Math.min(BALANCE.masteryThreshold,run.mastery+(build===run.build?1:0))}；${BALANCE.masteryThreshold} 次解锁${BUILDS[run.build].ascension}。`;
 const details = (build,run) => {

@@ -66,6 +66,25 @@ test('bulwark adds shield on every trigger and riposte adds to ascension only on
  r.hero.hp=180;r.combat.enemies[0].intent.damage=0;assert.equal(resolveRound(r).events.some(e=>e.type==='counter'),false);
 });
 
+test('guard binding previews include active bulwark shield for new bindings and matching upgrades',()=>{
+ for(const [rank,newShield,upgradedShield]of [[1,5,8],[2,7,10]]){
+  const initial=createRun('guard',19);initial.nodeIndex=1;initial.perks.guardBulwark=rank;
+  const r=journey.createChoices(initial),choice=r.choices[0],before=structuredClone(r);
+  assert.ok(choice.after.includes(`护盾 ${newShield} 点`),'generated offer includes the active route');
+  for(const [index,shield]of [[4,newShield],[0,upgradedShield]]){
+   const preview=journey.previewUpgrade(r,choice.id,index);
+   assert.equal(preview.valid,true);assert.ok(preview.after.includes(`护盾 ${shield} 点`));
+   assert.ok(preview.description.includes(`护盾 ${shield} 点`));
+   if(index===0)assert.ok(preview.before.includes(`护盾 ${newShield} 点`));
+   const committed=journey.chooseUpgrade(r,choice.id,index);
+   const fight=startBattle(committed,{id:'preview-shield',enemies:['boss']});
+   fight.combat.phase='pick';fight.combat.dice=[6,6,6,6,6];fight.combat.dice[index]=1;fight.hero.attack=0;
+   assert.equal(resolveRound(fight).events.find(e=>e.type==='shield'&&e.value>0).value,shield);
+  }
+  assert.deepEqual(r,before);
+ }
+});
+
 test('ascended sword declares ascension before dedicated sword array events',()=>{
  const r=battle();r.ascended=true;r.combat.dice=[4,4,4,2,1];const out=resolveRound(r);const asc=out.events.findIndex(e=>e.type==='ascension'),arr=out.events.findIndex(e=>e.type==='swordArray');assert.ok(asc>=0&&arr>asc);
 });
