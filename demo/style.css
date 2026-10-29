@@ -54,6 +54,8 @@
 .result-build .route-strip{justify-content:center}.decision-top{line-height:1.8}.decision-vitals{font-size:13px}
 @media(max-width:850px){.binding-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.forecast-grid{grid-template-columns:1fr 1fr}.forecast-block.direct{grid-column:span 2}.forecast-block.direct p{display:inline;margin-right:15px}.forecast-block.direct small{display:inline}}
 @media(max-width:650px){
+ .in-battle .theatre{aspect-ratio:1000/540;height:auto}
+ .in-battle .theatre canvas{object-fit:contain}
  .game{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
  .reward-instruction,.forecast-heading{align-items:flex-start;flex-direction:column;gap:4px}
  .reward-instruction strong{font-size:14px}.reward-instruction>span{font-size:12px}
