@@ -3,6 +3,8 @@ import {prepareRound,selectTarget,previewAttack,resolveRound} from './combat.mjs
 import {enterNode,completeBattle,chooseUpgrade,chooseEvent,advanceNode} from './journey.mjs';
 import {saveRun,loadRun} from './storage.mjs';
 
+export function seedFromQuery(value,fallback){return typeof value==='string'&&/^[0-9]+$/.test(value)&&Number(value)<=0xffffffff?Number(value):fallback();}
+
 /** One input gate owns the run. Presentation consumes snapshots, never rules. */
 export function createController({initial=null,storage,render=()=>{},play=async()=>{},onExit=()=>{},onSettings=()=>{},defaultSettings={},seed=()=>Date.now()>>>0}={}){
  let state=initial||createRun('sword',1),busy=false,dead=false,generation=0,message='';
@@ -75,7 +77,7 @@ async function mount(){
  scene=createScene(document.querySelector('#stage'),{reducedMotion});
  const requestedSeed=new URLSearchParams(location.search).get('seed');
  controller=createController({storage,defaultSettings:{reducedMotion},
-  seed:()=>requestedSeed!==null&&/^\d+$/.test(requestedSeed)&&Number(requestedSeed)<=0xffffffff?Number(requestedSeed):crypto.getRandomValues(new Uint32Array(1))[0],
+  seed:()=>seedFromQuery(requestedSeed,()=>crypto.getRandomValues(new Uint32Array(1))[0]),
   render:(run,options)=>{ui.render(run,options);scene.setState(run);},
   play:async event=>{audio.play(event);await scene.play(event);},
   onSettings:settings=>{audio.setMuted(settings.muted);scene.setOptions(settings);},

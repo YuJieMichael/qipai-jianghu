@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createController} from '../demo/main.mjs';
+import {createController,seedFromQuery} from '../demo/main.mjs';
 import {createRun} from '../demo/model.mjs';
 import {enterNode} from '../demo/journey.mjs';
 
 function memory(){const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};}
 function playable(){const r=enterNode(createRun('sword',19));r.combat.phase='pick';r.combat.dice=[6,6,6,6,6];r.combat.enemies[0].hp=1;return r;}
+test('seed query uses requested digits and falls back for invalid values',()=>{
+ assert.equal(seedFromQuery('2',()=>99),2);assert.equal(seedFromQuery('0',()=>99),0);
+ assert.equal(seedFromQuery(null,()=>99),99);assert.equal(seedFromQuery('4294967296',()=>99),99);
+ assert.equal(seedFromQuery('-2',()=>99),99);
+});
 test('serialized actions accept only one attack while playback is pending',async()=>{
  let release;const wait=new Promise(resolve=>release=resolve);let plays=0;
  const c=createController({initial:playable(),storage:memory(),play:async()=>{plays++;await wait;}});

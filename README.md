@@ -20,6 +20,8 @@ python3 -m http.server 8765
 
 验证：`node --test tests/demo-*.test.mjs`；平衡模拟：`node tools/simulate-demo.mjs`。
 
+可使用 `/demo/?seed=2` 重复同一起手，方便对比流派和报告问题。首版实测与限制见 [验证记录](docs/demo-verification.md)。
+
 ## 玩法
 
 - **掷骰战斗**：所有战斗都是掷骰出招。伤害 = 攻击 × 骰型倍率：散招 ×1、一对 ×1.5、两对 ×2、三条 ×3、顺子 ×4、葫芦 ×5、四条 ×7、豹子 ×10。每回合掷 5 颗骰子，可以锁定后重掷（免费 1 次，之后耗内力），也可以一键最优锁骰。
