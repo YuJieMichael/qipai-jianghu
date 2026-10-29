@@ -1,4 +1,4 @@
-import {BALANCE,BUILDS} from './config.mjs';
+import {BALANCE,BUILDS,emptyPerks} from './config.mjs';
 
 /** Pure uint32 LCG. Seed zero is valid and does not become a stuck state. */
 export function nextRandom(seed) {
@@ -7,10 +7,11 @@ export function nextRandom(seed) {
 }
 export function createRun(build,seed=1) {
  if(!Object.hasOwn(BUILDS,build)) throw new RangeError('Unknown build');
- return {version:1,seed:Number(seed)>>>0,build,nodeIndex:0,flow:'intro',
+ return {version:2,seed:Number(seed)>>>0,build,nodeIndex:0,flow:'intro',
  hero:{id:'hero',name:'无名侠客',hp:BALANCE.heroHp,maxHp:BALANCE.heroHp,shield:0,attack:BALANCE.heroAttack},
+ perks:emptyPerks(),pendingUpgrade:null,
  diceSkills:[{kind:build,level:1},null,null,null,null],upgrades:{},mastery:0,ascended:false,choices:[],combat:null,
- stats:{turns:0,kills:0,damage:0,blocked:0,poisonDamage:0,upgrades:[]}};
+ stats:{turns:0,kills:0,damage:0,blocked:0,poisonDamage:0,upgrades:[],upgradeHistory:[]}};
 }
 export function evaluateDice(values) {
  const names=['散招','一对','两对','三条','顺子','葫芦','四条','五同'];

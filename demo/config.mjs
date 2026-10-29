@@ -6,6 +6,16 @@ export const BUILDS = freeze({
  poison:{id:'poison',name:'毒针',title:'碧影针经',description:'单数施毒，毒层持续侵蚀敌人。',trigger:'单数',ascension:'百毒归心'},
  guard:{id:'guard',name:'金刚',title:'金刚护体',description:'1–3 点获得护盾，抵挡后反击。',trigger:'1–3 点',ascension:'不动明王'}
 });
+// Public route metadata used by growth cards and the shared combat rules.
+export const PERKS = freeze({
+ swordFocus:{id:'swordFocus',build:'sword',name:'凝锋',maxRank:2,effectPerRank:3,damagePerRank:3,description:'每颗触发剑气的骰子额外对当前目标造成 3 伤害。'},
+ swordEcho:{id:'swordEcho',build:'sword',name:'回响剑阵',maxRank:2,effectPerRank:3,damagePerRank:3,description:'每两颗触发剑气骰子额外对全体造成 3 伤害。'},
+ poisonLingering:{id:'poisonLingering',build:'poison',name:'蚀骨余毒',maxRank:2,effectPerRank:2,damagePerRank:2,turnsPerRank:1,description:'毒持续时间每级 +1 回合，每层毒每回合伤害每级 +2。'},
+ poisonCatalyst:{id:'poisonCatalyst',build:'poison',name:'催毒引爆',maxRank:2,effectPerRank:1,stacksPerRank:1,thresholdReductionPerRank:1,minThreshold:4,description:'每次施毒每级额外附 1 层；质变毒爆阈值每级 -1，最低 4 层，并消耗当前阈值。'},
+ guardBulwark:{id:'guardBulwark',build:'guard',name:'固若金汤',maxRank:2,effectPerRank:2,shieldPerRank:2,description:'每次护盾触发每级额外获得 2 护盾。'},
+ guardRiposte:{id:'guardRiposte',build:'guard',name:'借力反震',maxRank:2,effectPerRank:5,damagePerRank:5,description:'抵挡正数伤害且存活后，每级反击 5 伤害，与质变 8 伤害相加。'}
+});
+export const emptyPerks = () => Object.fromEntries(Object.keys(PERKS).map(id => [id,0]));
 export const ENEMY_TYPES = freeze({
  melee:{kind:'melee',name:'竹林刀客',hp:55,attack:10,shield:0,stance:0},
  ranged:{kind:'ranged',name:'夜雨弩手',hp:45,attack:10,shield:0,stance:0},

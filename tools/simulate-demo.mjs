@@ -1,5 +1,5 @@
 import {pathToFileURL} from 'node:url';
-import {BALANCE, BUILDS, NODES} from '../demo/config.mjs';
+import {BALANCE, NODES, PERKS} from '../demo/config.mjs';
 import {createRun, rollDice, toggleHold, rerollDice} from '../demo/model.mjs';
 import {prepareRound, selectTarget, resolveRound} from '../demo/combat.mjs';
 import {enterNode, completeBattle, chooseUpgrade, chooseEvent, advanceNode} from '../demo/journey.mjs';
@@ -28,7 +28,8 @@ function validate(run) {
 
 /** Deterministic policy: own-build growth, heal when injured, trigger-range holds,
  * interrupt a charging boss while it has stance, otherwise focus lowest HP. */
-export function playSeed(build, seed) {
+export function playSeed(build, seed, route = null) {
+ if(route!==null&&PERKS[route]?.build!==build)throw new RangeError('Route does not belong to build');
  let run = enterNode(createRun(build, seed));
  const battles = [], eventCounts = {};
  let transitions = 0, ascensionTurn = null;
@@ -63,9 +64,12 @@ export function playSeed(build, seed) {
     run = completeBattle(run);
    } else if (run.combat.round >= 100) throw new Error(`${build}/${seed}: battle exceeded 100 rounds`);
   } else if (run.flow === 'reward') {
-   const choice = run.choices.find(c => c.build === build);
+   const choice = (route&&run.choices.find(c=>c.perkId===route))
+    || run.choices.find(c => c.kind==='bind'&&c.build === build);
    if (!choice) throw new Error(`${build}/${seed}: missing own-build growth`);
-   run = chooseUpgrade(run, choice.id);
+   const empty=run.diceSkills.findIndex(skill=>skill===null);
+   const index=empty>=0?empty:run.diceSkills.reduce((best,skill,i)=>skill.level<run.diceSkills[best].level?i:best,0);
+   run = chooseUpgrade(run, choice.id, index);
    if (run.ascended && ascensionTurn === null) ascensionTurn = run.stats.turns;
   } else if (run.flow === 'event') {
    run = chooseEvent(run, run.hero.maxHp - run.hero.hp >= BALANCE.eventHeal ? 'heal' : 'train');
@@ -75,15 +79,15 @@ export function playSeed(build, seed) {
   validate(run);
   if (before === JSON.stringify(run)) throw new Error(`${build}/${seed}: transition did not progress`);
  }
- return {build, seed, outcome: run.flow, turns: run.stats.turns, hp: run.hero.hp,
+ return {build, seed, route, perks:run.perks, outcome: run.flow, turns: run.stats.turns, hp: run.hero.hp,
   mastery: run.mastery, ascended: run.ascended, ascensionTurn, battles, eventCounts};
 }
 
 export function simulate() {
- return Object.keys(BUILDS).map(build => {
-  const runs = Array.from({length: 100}, (_, i) => playSeed(build, i + 1));
+ return Object.values(PERKS).map(({id:route,build}) => {
+  const runs = Array.from({length: 100}, (_, i) => playSeed(build, i + 1, route));
   const wins = runs.filter(r => r.outcome === 'victory').length;
-  return {build, seeds: '1–100', wins, losses: 100 - wins, winRate: wins / 100,
+  return {build, route, seeds: '1–100', routeReached:runs.filter(r=>r.perks[route]>0).length, averageRouteRank:runs.reduce((n,r)=>n+r.perks[route],0)/100, wins, losses: 100 - wins, winRate: wins / 100,
    averageTurns: runs.reduce((n, r) => n + r.turns, 0) / 100,
    minTurns: Math.min(...runs.map(r => r.turns)), maxTurns: Math.max(...runs.map(r => r.turns)),
    masteryReached: runs.filter(r => r.mastery >= BALANCE.masteryThreshold).length,
@@ -95,6 +99,6 @@ export function simulate() {
  });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
- try {console.log(JSON.stringify({policy: 'Own-build growth; heal at 35+ missing HP, otherwise train; hold each die in its skill/build trigger range; target charging boss with stance, otherwise weakest.', results: simulate()}, null, 2));}
+ try {console.log(JSON.stringify({policy: 'Prefer named own route when offered, otherwise own bind with explicit empty/lowest-level target; heal at 35+ missing HP, otherwise train; hold each die in its skill/build trigger range; target charging boss with stance, otherwise weakest.', results: simulate()}, null, 2));}
  catch (error) {console.error(error.stack);process.exitCode = 1;}
 }
