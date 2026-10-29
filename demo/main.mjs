@@ -1,6 +1,6 @@
 import {createRun,rollDice,toggleHold,rerollDice} from './model.mjs';
 import {prepareRound,selectTarget,previewAttack,resolveRound} from './combat.mjs';
-import {enterNode,completeBattle,chooseUpgrade,chooseEvent,advanceNode} from './journey.mjs';
+import {enterNode,completeBattle,selectUpgrade,selectUpgradeTarget,cancelUpgrade,previewUpgrade,chooseUpgrade,chooseEvent,advanceNode} from './journey.mjs';
 import {saveRun,loadRun} from './storage.mjs';
 
 export function seedFromQuery(value,fallback){return typeof value==='string'&&/^[0-9]+$/.test(value)&&Number(value)<=0xffffffff?Number(value):fallback();}
@@ -33,7 +33,14 @@ export function createController({initial=null,storage,render=()=>{},play=async(
   if(action.type==='hold'){change(toggleHold(state,Number(action.value)));return;}
   if(action.type==='reroll'){change(rerollDice(state));return;}
   if(action.type==='target'){change(selectTarget(state,String(action.value)));return;}
-  if(action.type==='upgrade'){change(chooseUpgrade(state,String(action.value)));return;}
+  if(action.type==='upgrade'){change(selectUpgrade(state,String(action.value)));return;}
+  if(action.type==='upgrade-target'){change(selectUpgradeTarget(state,Number(action.value)));return;}
+  if(action.type==='upgrade-cancel'){change(cancelUpgrade(state));return;}
+  if(action.type==='upgrade-confirm'){
+   const pending=state.pendingUpgrade;
+   if(!pending||!previewUpgrade(state,pending.choiceId,pending.dieIndex).valid)return;
+   change(chooseUpgrade(state,pending.choiceId,pending.dieIndex));return;
+  }
   if(action.type==='event'){change(chooseEvent(state,String(action.value)));return;}
   if(action.type==='next'){if(state.flow==='camp')change(enterNode(advanceNode(state)));return;}
   if(action.type!=='attack'||state.flow!=='battle'||state.combat?.phase!=='pick')return;
@@ -41,9 +48,9 @@ export function createController({initial=null,storage,render=()=>{},play=async(
   checkpoint();busy=true;const ownGeneration=++generation;show();
   try{
    const result=resolveRound(state);
-   for(const event of result.events){
+   for(const [eventIndex,event] of result.events.entries()){
     if(dead||ownGeneration!==generation)return;
-    await play(event);if(dead||ownGeneration!==generation)return;show(event.snapshot);
+    await play(event,{eventIndex,events:result.events});if(dead||ownGeneration!==generation)return;show(event.snapshot);
    }
    if(dead||ownGeneration!==generation)return;
    state=result.state;
@@ -79,7 +86,7 @@ async function mount(){
  controller=createController({storage,defaultSettings:{reducedMotion},
   seed:()=>seedFromQuery(requestedSeed,()=>crypto.getRandomValues(new Uint32Array(1))[0]),
   render:(run,options)=>{ui.render(run,options);scene.setState(run);},
-  play:async event=>{audio.play(event);await scene.play(event);},
+  play:async (event,context)=>{audio.play(event);await scene.play(event,context);},
   onSettings:settings=>{audio.setMuted(settings.muted);scene.setOptions(settings);},
   onExit:()=>{cleanup();location.href='../';}
  });
