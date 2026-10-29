@@ -4,7 +4,7 @@ const clone=x=>structuredClone(x);
 const alive=e=>e.hp>0;
 const live=r=>r.combat.enemies.filter(alive);
 function enemy(kind,id){const t=ENEMY_TYPES[kind];if(!t)throw new RangeError('Unknown enemy');return {id,kind,name:t.name,hp:t.hp,maxHp:t.hp,shield:t.shield,poison:{stacks:0,turns:0},stance:t.stance,phase:1,intent:{kind:'attack',damage:t.attack,label:'进攻'},summoned:false};}
-function intents(r){for(const e of live(r)){const heavy=e.kind==='boss'&&r.combat.round%2===0;e.intent={kind:heavy?'heavy':'attack',damage:heavy?BALANCE.bossHeavyDamage:ENEMY_TYPES[e.kind].attack,label:heavy?'蓄力重击':'进攻'};}}
+function intents(r){for(const e of live(r)){const heavy=e.kind==='boss'&&r.combat.round%2===0;if(heavy)e.stance=BALANCE.bossStance;e.intent={kind:heavy?'heavy':'attack',damage:heavy?BALANCE.bossHeavyDamage:ENEMY_TYPES[e.kind].attack,label:heavy?'蓄力重击':'进攻'};}}
 export function startBattle(run,node){const r=clone(run);r.flow='battle';r.choices=[];r.hero.shield=0;r.combat={round:1,swordArrayUsed:false,phase:'roll',dice:[0,0,0,0,0],held:[false,false,false,false,false],rerolls:BALANCE.rerolls,enemies:node.enemies.map((k,i)=>enemy(k,`${node.id||'battle'}-${i}`)),targetId:''};r.combat.targetId=live(r)[0]?.id||'';intents(r);return r;}
 export function selectTarget(run,id){if(run.flow!=='battle'||!run.combat?.enemies.some(e=>e.id===id&&alive(e))||run.combat.phase==='resolved')return run;const r=clone(run);r.combat.targetId=id;return r;}
 function target(r){return live(r).find(e=>e.id===r.combat.targetId)||live(r)[0];}
