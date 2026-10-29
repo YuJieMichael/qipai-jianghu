@@ -61,13 +61,13 @@ export function validateContent(value){
  for(const key of required){
   const list=c[key];if(!Array.isArray(list)||!list.length||list.length>500){fail(key,'目录须为 1..500 条数组');continue;}
   const ids=new Set();for(const row of list){if(!row||typeof row!=='object'||!validId(row.id)||typeof row.name!=='string'||!row.name.trim()){fail(key,'每项必须含合法 id 和名称');continue;}if(ids.has(row.id))fail(`${key}.${row.id}`,'重复 id');ids.add(row.id);
-   for(const field of ['effects'])if(row[field]){if(typeof row[field]!=='object'||Array.isArray(row[field]))fail(`${key}.${field}`,'效果须为对象');else for(const [effect,n]of Object.entries(row[field]))if(![...EFFECT_KEYS,'damage','heal','shield','poison'].includes(effect)||typeof n!=='number'||!Number.isFinite(n)||n<0)fail(`${key}.${row.id}.${effect}`,'效果须为合法数值');}
-   for(const field of ['cost','upgradeCost','refineCost','infuseCost','giftCost','recruitCost','trainCost','sweepCost','reward'])if(row[field])checkCurrency(row[field],`${key}.${row.id}.${field}`);
+   for(const field of ['effects'])if(row[field]){if(typeof row[field]!=='object'||Array.isArray(row[field]))fail(`${key}.${field}`,'效果须为对象');else for(const [effect,n]of Object.entries(row[field]))if(!(key==='skills'?['damage','heal','shield','poison','attack']:[...EFFECT_KEYS,'damage','heal','shield','poison']).includes(effect)||typeof n!=='number'||!Number.isFinite(n)||n<0)fail(`${key}.${row.id}.${effect}`,'效果须为合法数值');}
+   for(const field of ['cost','upgradeCost','refineCost','infuseCost','giftCost','recruitCost','trainCost','sweepCost','reward'])if(row[field]||field==='reward'&&['modes','chapters'].includes(key))checkCurrency(row[field],`${key}.${row.id}.${field}`);
   }
  }
  if(errors.length)return {valid:false,content:null,errors};
  function checkCurrency(v,path){if(!v||typeof v!=='object'||Array.isArray(v)){fail(path,'资源须为对象');return;}for(const [k,n]of Object.entries(v))if(!costKeys.includes(k)||!Number.isSafeInteger(n)||n<0||n>10000000)fail(`${path}.${k}`,'资源为非负整数');}
- for(const key of ['slots','materials','decorations','marks'])if(!sameIds(c[key],CONTENT[key].map(v=>v.id)))fail(key,'固定枚举不可增删或改名');
+ for(const key of ['slots','materials','decorations','marks','modes'])if(!sameIds(c[key],CONTENT[key].map(v=>v.id)))fail(key,'固定枚举不可增删或改名');
 
  const bagIds=['potion','reroll','antidote','tonic','herb','ore','hide','gift','food'];
  const effectCatalogs=['equipment','sets','gems','sects','skills','talents','relics','runes','souls','titles','companions','training','meridians'];

@@ -41,3 +41,24 @@ test('resource timeout settles while its target is alive and resume cannot pay t
  const settled=structuredClone(c.profile);await c.act({type:'home'});await c.act({type:'resume'});assert.deepEqual(c.profile,settled);
  c.destroy();const restored=createController({storage,now:()=>100000});await restored.act({type:'resume'});assert.deepEqual(restored.profile,settled);restored.destroy();
 });
+
+
+test('rejected removal of a saved resource mode preserves home profile and lets the original run settle once',async()=>{
+ const storage=memory(),content=structuredClone(CONTENT);content.modes.find(mode=>mode.id==='resource').turnLimit=1;
+ let profile=applyProfileAction(createProfile(3,100000),{type:'content-import',value:content},{now:100000}).profile;
+ const c=createController({storage,initialProfile:profile,seed:()=>3,now:()=>100000});
+ try{
+  await c.act({type:'expedition',value:{build:'sword',mode:'resource',chapter:'bamboo'}});
+  const savedBattle=structuredClone(c.state);
+  await c.act({type:'home'});const before=c.profile,snapshot=structuredClone(before);
+  const removed=structuredClone(content);removed.modes=removed.modes.filter(mode=>mode.id!=='resource');
+  await c.act({type:'profile',value:{type:'content-import',value:JSON.stringify(removed)}});
+  assert.strictEqual(c.profile,before);assert.deepEqual(c.profile,snapshot);
+  await c.act({type:'resume'});assert.deepEqual(c.state,savedBattle);
+  await c.act({type:'attack'});assert.equal(c.state.flow,'victory');
+  assert.ok(c.profile.settledRunIds.includes(savedBattle.runId));
+  assert.equal(c.profile.progression.modes.resource,1);
+  const settled=structuredClone(c.profile);
+  await c.act({type:'home'});await c.act({type:'resume'});assert.deepEqual(c.profile,settled);
+ }finally{c.destroy();}
+});

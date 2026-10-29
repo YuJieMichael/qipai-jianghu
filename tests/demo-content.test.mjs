@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createProfile,applyProfileAction,beginExpedition,saveProfile,loadProfile} from '../demo/profile.mjs';
+import {createExpedition} from '../demo/adventures.mjs';
+import {enterNode} from '../demo/journey.mjs';
+import {rollDice} from '../demo/model.mjs';
+import {saveRun,loadRun} from '../demo/storage.mjs';
 const mod = await import('../demo/content.mjs').catch(()=>null);
 test('editable catalog supplies every workshop system as JSON data',()=>{
  assert.ok(mod,'content module must exist');
@@ -72,5 +77,67 @@ test('offline cap remains editable from one through one hundred hours',()=>{
   const c=structuredClone(mod.CONTENT);c.economy.offlineHours=hours;
   const result=mod.validateContent(c);
   assert.equal(result.valid,false);assert.ok(result.errors.some(message=>message.startsWith('economy.offlineHours')));
+ }
+});
+
+// These boundaries prevent content accepted by the editor from creating an unrestorable run.
+const memory=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};};
+function rejectsImport(content,path){
+ const before=createProfile(7,100000),snapshot=structuredClone(before);
+ const checked=mod.validateContent(content);
+ assert.equal(checked.valid,false,`${path} must be rejected before replacing content`);
+ assert.ok(checked.errors.some(message=>message.startsWith(path)),checked.errors.join('; '));
+ assert.equal(checked.content,null);
+ const result=applyProfileAction(before,{type:'content-import',value:JSON.stringify(content)},{now:100000});
+ assert.strictEqual(result.profile,before,'invalid import retains the exact current profile');
+ assert.deepEqual(before,snapshot,'invalid import cannot mutate the profile or run counter');
+}
+for(const effect of ['maxHp','armor','critChance','critDamage','lifesteal','poisonDamage','shieldGain','extraRerolls','openingShield','regen','thorns','fireDamage','freezeChance','comboBonus','goldBonus'])test(`skill content rejects unsupported ${effect} atomically`,()=>{
+ const content=structuredClone(mod.CONTENT);content.skills[0].effects[effect]=1;
+ rejectsImport(content,`skills.bamboo-strike.${effect}`);
+});
+for(const change of ['add','remove','rename'])test(`mode content rejects ${change} of a fixed mode ID atomically`,()=>{
+ const content=structuredClone(mod.CONTENT);
+ if(change==='add')content.modes.push({...structuredClone(content.modes[0]),id:'custom-mode'});
+ else if(change==='remove')content.modes=content.modes.filter(mode=>mode.id!=='resource');
+ else content.modes.find(mode=>mode.id==='resource').id='custom-mode';
+ rejectsImport(content,'modes');
+});
+for(const catalog of ['modes','chapters'])for(const value of ['missing','null'])test(`${catalog} require a currency reward object when ${value}`,()=>{
+ const content=structuredClone(mod.CONTENT),entry=content[catalog][0];
+ if(value==='missing')delete entry.reward;else entry.reward=null;
+ rejectsImport(content,`${catalog}.${entry.id}.reward`);
+});
+test('all supported skill effects survive content import and immutable battle save snapshots',()=>{
+ const content=structuredClone(mod.CONTENT),effects={damage:2,heal:3,shield:4,poison:1,attack:5};
+ content.skills[0].effects=effects;
+ const imported=applyProfileAction(createProfile(7,100000),{type:'content-import',value:content},{now:100000}).profile;
+ assert.ok(imported.contentOverrides);
+ const started=beginExpedition(imported),run=rollDice(enterNode(createExpedition('sword',7,{runId:started.runId,loadout:started.loadout,content:imported.contentOverrides})));
+ const boundary=structuredClone(run),store=memory();
+ assert.deepEqual(run.loadout.skills[0].effects,effects);
+ assert.equal(saveRun(store,run).ok,true);assert.deepEqual(loadRun(store).run,boundary);
+ content.skills[0].effects.damage=99;imported.contentOverrides.skills[0].effects.attack=99;
+ assert.deepEqual(run,boundary,'later editor changes cannot alter saved skill effects');
+});
+test('default and editable fixed-mode content produce restorable runs, including custom chapters and empty rewards',()=>{
+ const edited=structuredClone(mod.CONTENT);
+ edited.chapters.push({id:'custom-chapter',name:'自创章节',hpScale:1.5,attackScale:1.2,reward:{}});
+ for(const mode of edited.modes){mode.name='自创'+mode.name;mode.hpScale=1.1;mode.attackScale=1.2;mode.turnLimit=12;mode.reward={};}
+ for(const content of [structuredClone(mod.CONTENT),edited]){
+  assert.equal(mod.validateContent(content).valid,true);
+  const imported=applyProfileAction(createProfile(7,100000),{type:'content-import',value:content},{now:100000}).profile;
+  assert.ok(imported.contentOverrides);
+  const store=memory();assert.equal(saveProfile(store,imported).ok,true);assert.deepEqual(loadProfile(store).profile,imported);
+  for(const mode of content.modes){
+   const chapter=content===edited?'custom-chapter':'bamboo',started=beginExpedition(imported);
+   const run=rollDice(enterNode(createExpedition('sword',7,{runId:started.runId,loadout:started.loadout,mode:mode.id,chapter,content:imported.contentOverrides})));
+   const snapshot=structuredClone(run);
+   assert.equal(saveRun(store,run).ok,true,`${mode.id} reward snapshot persists`);
+   assert.deepEqual(loadRun(store).run,snapshot);
+   if(content===edited)assert.deepEqual(run.reward,{});
+   content.modes.find(entry=>entry.id===mode.id).reward={gold:999};
+   assert.deepEqual(run,snapshot,'later reward edits cannot alter a run');
+  }
  }
 });

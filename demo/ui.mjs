@@ -37,6 +37,10 @@ export function createUI(root,onAction){
  q('hud').innerHTML=`<section class="decision-panel"><div class="decision-vitals">气血 ${run.hero.hp} / ${run.hero.maxHp}${run.hero.shield?` · 护盾 ${run.hero.shield}`:''}</div><div class="decision-top"><span>${b.name}传承</span><span>${ascensionText(run)}</span></div>${content}</section>`;
  }
  root.classList.toggle('in-battle',flow==='battle');root.classList.toggle('has-hub',flow==='intro'&&!!opts.profile);
+ if(previousFlow!==undefined&&previousFlow!==flow){
+  const destination=flow==='intro'&&opts.profile?root.querySelector('.hub')||root:root;
+  destination.scrollIntoView?.({block:'start',behavior:'instant'});
+ }
  const pendingChanged=previousChoice!==run.pendingUpgrade?.choiceId;
  if(pendingChanged&&run.pendingUpgrade){root.querySelector('[data-action="upgrade-target"], [data-action="upgrade-confirm"]:not(:disabled)')?.focus({preventScroll:true});}
  else if(!previousFlow){root.querySelector('[data-action="start"]')?.focus({preventScroll:true});}

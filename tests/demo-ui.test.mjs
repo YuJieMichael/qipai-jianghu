@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRun} from '../demo/model.mjs';
+import {createProfile} from '../demo/profile.mjs';
 import {startBattle,previewAttack} from '../demo/combat.mjs';
 import {NODES} from '../demo/config.mjs';
 import {createExpedition} from '../demo/adventures.mjs';
@@ -69,5 +70,44 @@ test('every expedition renders a complete nine-cell pip grid for all six die val
     for(const face of faces){assert.equal((face[1].match(/class="pip /g)||[]).length,9,`${mode} uses a 3x3 grid`);assert.equal((face[1].match(/class="pip visible"/g)||[]).length,value,`${mode} displays ${value} pips`);}
    }
   }
+ }finally{ui?.destroy();globalThis.document=previousDocument;}
+});
+
+
+test('major flow changes scroll to the new screen while initial and same-flow renders retain the viewport',()=>{
+ const previousDocument=globalThis.document,nodes=new Map(),scrolls=[];
+ const hub={scrollIntoView:options=>scrolls.push({target:'hub',options})};
+ let hasHub=true;
+ const root={innerHTML:'',addEventListener(){},removeEventListener(){},contains:()=>false,classList:{toggle(){}},
+  scrollIntoView:options=>scrolls.push({target:'root',options}),querySelector(selector){
+   if(selector==='.hub')return hasHub?hub:null;
+   if(!/^#[\w-]+$/.test(selector))return null;
+   if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',className:''});return nodes.get(selector);
+  }};
+ globalThis.document={activeElement:null,addEventListener(){},removeEventListener(){}};
+ let ui;
+ try{
+  ui=createUI(root,()=>{});const profile=createProfile(7,100000),intro=createRun('sword',7);
+  ui.render(intro,{profile});ui.render(intro,{profile,hubTab:'editor'});
+  assert.deepEqual(scrolls,[],'opening the page and editing a hub tab retain scroll');
+  let run=startBattle(createRun('sword',7),NODES[0]);run.flow='battle';run.combat.phase='pick';run.combat.dice=[1,2,3,4,5];
+  ui.render(run,{profile});
+  assert.deepEqual(scrolls,[{target:'root',options:{block:'start',behavior:'instant'}}],'starting a mode reveals the battle top');
+  scrolls.length=0;
+  run=structuredClone(run);run.combat.held[0]=true;ui.render(run,{profile});
+  run=structuredClone(run);run.combat.targetId=run.combat.enemies[0].id;ui.render(run,{profile,busy:true});
+  run=structuredClone(run);run.combat.round++;run.combat.dice=[6,5,4,3,2];ui.render(run,{profile});
+  assert.deepEqual(scrolls,[],'dice, targets, animation and next rounds retain battle scroll');
+  for(const flow of ['reward','event','camp','victory']){
+   ui.render({...run,flow},{profile});
+   assert.deepEqual(scrolls.pop(),{target:'root',options:{block:'start',behavior:'instant'}},`${flow} reveals the new decision screen`);
+   ui.render({...run,flow},{profile});assert.deepEqual(scrolls,[]);
+  }
+  ui.render(intro,{profile});
+  assert.deepEqual(scrolls.pop(),{target:'hub',options:{block:'start',behavior:'instant'}},'returning home reveals the hub');
+  ui.render(run,{profile});scrolls.length=0;hasHub=false;ui.render(intro,{profile});
+  assert.deepEqual(scrolls.pop(),{target:'root',options:{block:'start',behavior:'instant'}},'home falls back to the root when a hub is absent');
+  ui.render(run);scrolls.length=0;ui.render(intro);
+  assert.deepEqual(scrolls.pop(),{target:'root',options:{block:'start',behavior:'instant'}},'standalone intro reveals its top');
  }finally{ui?.destroy();globalThis.document=previousDocument;}
 });
