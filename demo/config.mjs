@@ -1,6 +1,6 @@
 // Tuning baseline: every rule value lives here; no remote assets are required.
 const freeze = value => { if(value && typeof value==='object') {Object.values(value).forEach(freeze);Object.freeze(value);}return value; };
-export const BALANCE = freeze({heroHp:180,heroAttack:12,rerolls:2,swordDamage:6,poisonDamage:3,poisonTurns:3,poisonThreshold:6,poisonConsume:6,guardShield:8,bossHp:260,bossStance:24,bossHeavyDamage:42,bossDamage:16,campHeal:45,eventHeal:35,masteryThreshold:3,poisonBurstDamage:24,guardCounterDamage:8});
+export const BALANCE = freeze({heroHp:180,heroAttack:12,rerolls:2,swordDamage:6,poisonDamage:8,poisonTurns:3,poisonThreshold:6,poisonConsume:6,guardShield:3,bossHp:260,bossStance:24,bossHeavyDamage:42,bossDamage:16,campHeal:45,eventHeal:35,masteryThreshold:3,poisonBurstDamage:48,guardCounterDamage:8});
 export const BUILDS = freeze({
  sword:{id:'sword',name:'剑气',title:'青霄剑诀',description:'4–6 点触发剑气，飞剑贯穿敌阵。',trigger:'4–6 点',ascension:'万剑归宗'},
  poison:{id:'poison',name:'毒针',title:'碧影针经',description:'单数施毒，毒层持续侵蚀敌人。',trigger:'单数',ascension:'百毒归心'},
@@ -8,7 +8,7 @@ export const BUILDS = freeze({
 });
 export const ENEMY_TYPES = freeze({
  melee:{kind:'melee',name:'竹林刀客',hp:55,attack:10,shield:0,stance:0},
- ranged:{kind:'ranged',name:'夜雨弩手',hp:45,attack:12,shield:0,stance:0},
+ ranged:{kind:'ranged',name:'夜雨弩手',hp:45,attack:10,shield:0,stance:0},
  shield:{kind:'shield',name:'铁伞卫',hp:65,attack:8,shield:18,stance:0},
  elite:{kind:'elite',name:'破庙执刀使',hp:115,attack:15,shield:10,stance:12},
  boss:{kind:'boss',name:'山门守将',hp:BALANCE.bossHp,attack:BALANCE.bossDamage,shield:0,stance:BALANCE.bossStance}

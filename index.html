@@ -2763,7 +2763,7 @@ const TABS=[['renwu','人物'],['jianghu','江湖'],['tower','通天塔'],['shim
 const TABN=Object.fromEntries(TABS);
 const GROUPS=[['角色',['renwu','touzi','zhuangbei','wuhun','lingshou','bingqipu']],['修行',['xiulian','jingmai','shimen','shenghuo']],['江湖',['jianghu','xuanshang','tower','mijing','qiyu']],['争锋',['lunjian','dahui','huodong']],['人情',['renqing','tianji','dufang','fuli']]];
 const groupOf=t=>Math.max(0,GROUPS.findIndex(g=>g[1].includes(t)));
-const brand=()=>`<header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
+const brand=()=>`<a href="./demo/" style="display:block;padding:14px 18px;margin:12px 0;border:1px solid #527567;background:linear-gradient(115deg,#142e29,#203c31);color:#e6d5a8;text-decoration:none;border-radius:8px"><strong>夜雨竹林 · 破山门</strong><span style="float:right;font-size:13px">进入示范关卡 →</span><small style="display:block;margin-top:5px;color:#aac4b5">五骰定招 · 三脉传承 · 独立闯关，无需等级</small></a><header class="top"><div class="brand"><span class="seal">七<br>派</span><div><h1>七派江湖</h1><p class="sub">一人一剑　问鼎华山</p></div></div>
   ${S?'<div class="top-r"><span class="saved">进度自动保存于本浏览器</span><button class="btn sm" data-a="dailyAll">一键日常</button><button class="sc-btn" data-a="shouchong">首充送屠龙宝刀</button></div>':''}</header>`;
 
 function render(){

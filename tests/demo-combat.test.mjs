@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRun} from '../demo/model.mjs';
-import {NODES} from '../demo/config.mjs';
+import {NODES,BALANCE} from '../demo/config.mjs';
 import {startBattle,previewAttack,resolveRound,prepareRound} from '../demo/combat.mjs';
 const battle=(build='sword',kinds=['melee'])=>{const r=startBattle(createRun(build),{enemies:kinds});r.combat.phase='pick';r.combat.dice=[1,2,3,4,6];return r;};
 test('preview_equals_guaranteed_direct_hit',()=>{const r=battle();const before=structuredClone(r);const p=previewAttack(r);const out=resolveRound(r);assert.equal(out.events.find(e=>e.type==='strike').value,p.directDamage);assert.deepEqual(r,before);});
@@ -9,7 +9,7 @@ test('event_snapshots_follow_hit_order',()=>{const r=battle('sword',['boss']);r.
 test('resolved_round_rejects_double_attack',()=>{const a=resolveRound(battle());assert.deepEqual(resolveRound(a.state).events,[]);});
 test('sword only high dice and visits targets',()=>{const r=battle('sword',['boss','melee']);r.combat.dice[0]=4;assert.equal(resolveRound(r).events.filter(e=>e.type==='sword').length,2);r.combat.dice[0]=3;assert.equal(resolveRound(r).events.filter(e=>e.type==='sword').length,0);});
 test('poison odd dice lasts three rounds and bursts at six',()=>{const r=battle('poison',['boss']);r.ascended=true;r.combat.enemies[0].poison={stacks:5,turns:1};const o=resolveRound(r);assert.ok(o.events.some(e=>e.type==='burst'));assert.equal(o.state.combat.enemies[0].poison.stacks,0);r.combat.dice[0]=2;r.combat.enemies[0].poison={stacks:0,turns:0};assert.equal(resolveRound(r).events.filter(e=>e.type==='poison').length,0);});
-test('guard shields low dice and counters once',()=>{const r=battle('guard',['boss']);r.ascended=true;const o=resolveRound(r);assert.equal(o.events.find(e=>e.type==='shield').value,8);assert.equal(o.events.filter(e=>e.type==='counter').length,1);assert.equal(o.state.stats.blocked,8);});
+test('guard shields low dice and counters once',()=>{const r=battle('guard',['boss']);r.ascended=true;const o=resolveRound(r);assert.equal(o.events.find(e=>e.type==='shield').value,BALANCE.guardShield);assert.equal(o.events.filter(e=>e.type==='counter').length,1);assert.equal(o.state.stats.blocked,BALANCE.guardShield);});
 test('boss_half_health_summons_once',()=>{const r=battle('sword',['boss']);r.combat.enemies[0].hp=135;r.combat.dice[0]=4;const o=resolveRound(r);assert.equal(o.state.combat.enemies.length,3);assert.equal(o.events.filter(e=>e.type==='phase').length,1);const next=prepareRound(o.state);next.combat.phase='pick';next.combat.dice=[1,2,3,4,6];assert.equal(resolveRound(next).state.combat.enemies.length,3);});
 test('breaking_stance_interrupts_charged_attack',()=>{const r=battle('sword',['boss']);r.combat.enemies[0].stance=1;r.combat.enemies[0].intent={kind:'heavy',damage:42,label:'重击'};const o=resolveRound(r);assert.equal(o.state.hero.hp,180);});
 test('counter_kill_prevents_later_action',()=>{const r=battle('guard',['melee']);r.ascended=true;r.hero.attack=0;r.combat.enemies[0].hp=5;const o=resolveRound(r);assert.equal(o.events.filter(e=>e.type==='counter').length,1);assert.equal(o.state.combat.enemies[0].hp,0);});
