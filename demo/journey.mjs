@@ -5,7 +5,9 @@ export function createChoices(run){
  if(run.choices.length)return run;
  const r=copy(run),slot=r.diceSkills.findIndex(s=>s===null),dieIndex=slot<0?0:slot;
  const builds=[r.build,...Object.keys(BUILDS).filter(b=>b!==r.build)];
- r.flow='reward';r.choices=builds.map(build=>{const old=r.diceSkills[dieIndex],level=old?.kind===build?old.level+1:1;return {id:`growth-${r.nodeIndex}-${r.stats.upgrades.length}-${build}`,title:`${BUILDS[build].name}·${slot<0?'精修':'传承'}`,description:`第 ${dieIndex+1} 颗骰子绑定${BUILDS[build].name}。${build===r.build?`本门领悟 ${Math.min(3,r.mastery)} → ${Math.min(3,r.mastery+1)}；三次解锁${BUILDS[build].ascension}。`:BUILDS[build].description}`,before:old?`${BUILDS[old.kind].name} ${old.level} 级`:'未绑定',after:`${BUILDS[build].name} ${level} 级`,build,dieIndex,kind:'skill'};});return r;
+ const effect=(build,level)=>build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level} 点`:`附加 ${level} 层毒`;
+ const details=build=>build==='poison'?`每层毒每回合 ${BALANCE.poisonDamage} 伤害，持续 ${BALANCE.poisonTurns} 回合；升华后满 ${BALANCE.poisonThreshold} 层触发 ${BALANCE.poisonBurstDamage} 伤害毒爆。`:build==='sword'?'剑气贯穿全体敌人。':'护盾抵挡敌人伤害。';
+ r.flow='reward';r.choices=builds.map(build=>{const old=r.diceSkills[dieIndex],level=old?.kind===build?old.level+1:1;return {id:`growth-${r.nodeIndex}-${r.stats.upgrades.length}-${build}`,title:`${BUILDS[build].name}·${slot<0?'精修':'传承'}`,description:`第 ${dieIndex+1} 颗骰子：${BUILDS[build].trigger}触发，${effect(build,level)}。${details(build)}${build===r.build?`本门领悟 ${Math.min(BALANCE.masteryThreshold,r.mastery)} → ${Math.min(BALANCE.masteryThreshold,r.mastery+1)}；${BALANCE.masteryThreshold} 次解锁${BUILDS[build].ascension}。`:`本门领悟 ${Math.min(BALANCE.masteryThreshold,r.mastery)} → ${Math.min(BALANCE.masteryThreshold,r.mastery)}。`}`,before:old?`${BUILDS[old.kind].name} ${old.level} 级 · ${effect(old.kind,old.level)}`:'未绑定',after:`${BUILDS[build].name} ${level} 级 · ${effect(build,level)}`,build,dieIndex,kind:'skill'};});return r;
 }
 export function enterNode(run){
  const node=NODES[run.nodeIndex];if(!node)return run;
