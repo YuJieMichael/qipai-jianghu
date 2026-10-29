@@ -13,7 +13,7 @@ export function createController({initial=null,storage,render=()=>{},play=async(
  let saved=loadRun(storage);message=saved.message||'';
  const show=(view=state)=>{display=view;if(!dead)render(view,{busy,message,settings,hasSave:!!saved.run,preview:view.flow==='battle'?previewAttack(view):null});};
  const checkpoint=()=>{if(state.flow==='intro')return;const result=saveRun(storage,state);if(result.ok){saved={run:structuredClone(state),message:''};}else message=result.message;};
- const change=next=>{if(next===state)return;state=next;checkpoint();show();};
+ const change=next=>{next=rollDice(next);if(next===state)return;state=next;checkpoint();show();};
  async function act(action){
   if(dead||!action)return;
   if(action.type==='mute'||action.type==='motion'){
@@ -27,7 +27,7 @@ export function createController({initial=null,storage,render=()=>{},play=async(
    message='';change(enterNode(createRun(action.type==='start'?action.value:state.build,seed())));return;
   }
   if(action.type==='resume'){
-   saved=loadRun(storage);message=saved.message||'';if(saved.run){state=saved.run;show();}return;
+   saved=loadRun(storage);message=saved.message||'';if(saved.run){state=rollDice(saved.run);if(state!==saved.run)checkpoint();show();}return;
   }
   if(action.type==='roll'){change(rollDice(state));return;}
   if(action.type==='hold'){change(toggleHold(state,Number(action.value)));return;}
@@ -54,7 +54,7 @@ export function createController({initial=null,storage,render=()=>{},play=async(
    }
    if(dead||ownGeneration!==generation)return;
    state=result.state;
-   state=state.hero.hp<=0||!state.combat.enemies.some(e=>e.hp>0)?completeBattle(state):prepareRound(state);
+   state=rollDice(state.hero.hp<=0||!state.combat.enemies.some(e=>e.hp>0)?completeBattle(state):prepareRound(state));
    busy=false;checkpoint();show();
   }catch(error){
    if(dead||ownGeneration!==generation)return;
@@ -62,7 +62,7 @@ export function createController({initial=null,storage,render=()=>{},play=async(
    console.error(error);
   }
  }
- onSettings(settings);show();
+ onSettings(settings);const ready=rollDice(state);if(ready!==state){state=ready;checkpoint();}show();
  return {act,get state(){return state;},get busy(){return busy;},get settings(){return settings;},save:checkpoint,
   destroy(){if(dead)return;checkpoint();generation++;dead=true;busy=false;}};
 }

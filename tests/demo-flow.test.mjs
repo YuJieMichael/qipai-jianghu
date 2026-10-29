@@ -94,15 +94,15 @@ test('system motion preference is default and saved false overrides it',()=>{
 });
 for(const build of ['sword','poison','guard'])test(`controller traverses full real journey ${build} seed 2`,async()=>{
  const c=createController({storage:memory(),seed:()=>2,play:async()=>{}});let rewards=0,event=false,camp=false,steps=0;const actions=new Set();
- const act=async(type,value)=>{actions.add(type);await c.act({type,value});assert.equal(c.busy,false);};
+ const act=async(type,value)=>{actions.add(type);await c.act({type,value});assert.equal(c.busy,false);if(c.state.flow==='battle'){assert.equal(c.state.combat.phase,'pick');assert.ok(c.state.combat.dice.every(value=>Number.isInteger(value)&&value>=1&&value<=6));}};
  await act('start',build);
  while(!['victory','defeat'].includes(c.state.flow)&&steps++<200){const r=c.state;
   if(r.flow==='battle'){
-   await act('roll');while(c.state.combat.rerolls>0){for(let i=0;i<5;i++){const s=c.state;const kind=s.diceSkills[i]?.kind??build,v=s.combat.dice[i];const hold=kind==='sword'?v>=4:kind==='poison'?v%2===1:v<=3;if(hold!==s.combat.held[i])await act('hold',i);}if(c.state.combat.held.every(Boolean))break;await act('reroll');}
+   while(c.state.combat.rerolls>0){for(let i=0;i<5;i++){const s=c.state;const kind=s.diceSkills[i]?.kind??build,v=s.combat.dice[i];const hold=kind==='sword'?v>=4:kind==='poison'?v%2===1:v<=3;if(hold!==s.combat.held[i])await act('hold',i);}if(c.state.combat.held.every(Boolean))break;await act('reroll');}
    const live=c.state.combat.enemies.filter(e=>e.hp>0);const target=live.find(e=>e.kind==='boss'&&e.intent.kind==='heavy'&&e.stance>0)??[...live].sort((a,b)=>a.hp-b.hp||a.id.localeCompare(b.id))[0];await act('target',target.id);await act('attack');
   }else if(r.flow==='reward'){rewards++;const choice=r.choices.find(c=>c.build===build&&c.kind!=='perk');await act('upgrade',choice.id);await act('upgrade-target',r.diceSkills.findIndex(s=>s===null)>=0?r.diceSkills.findIndex(s=>s===null):0);await act('upgrade-confirm');}else if(r.flow==='event'){event=true;await act('event',r.hero.maxHp-r.hero.hp>=35?'heal':'train');}else if(r.flow==='camp'){camp=true;await act('next');}else assert.fail(`stalled ${r.flow}`);
  }
- assert.equal(c.state.flow,'victory');assert.equal(rewards,5);assert.ok(event&&camp);for(const type of ['roll','hold','reroll','target','attack','upgrade','upgrade-target','upgrade-confirm','event','next'])assert.ok(actions.has(type));c.destroy();
+ assert.equal(c.state.flow,'victory');assert.equal(rewards,5);assert.ok(event&&camp);assert.equal(actions.has('roll'),false);for(const type of ['hold','reroll','target','attack','upgrade','upgrade-target','upgrade-confirm','event','next'])assert.ok(actions.has(type));c.destroy();
 });
 test('bfcache restore remounts once without accumulating lifecycle listeners',async()=>{
  const {bindPageLifecycle}=await import('../demo/main.mjs');const win=new EventTarget();let cleaned=0,mounted=0;
