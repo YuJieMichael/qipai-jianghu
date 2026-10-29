@@ -12,15 +12,16 @@ export function createExpedition(build,seed=1,{runId,loadout,mode='campaign',cha
  const chapterDef=content.chapters?.find(c=>c.id===chapter)||CONTENT.chapters.find(c=>c.id===chapter);
  if(!chapterDef)throw new RangeError('Unknown chapter');
  const modeDef=content.modes?.find(c=>c.id===mode)||CONTENT.modes.find(c=>c.id===mode);
+ const turnLimit=Math.max(1,Math.min(1000,Math.floor(positive(modeDef.turnLimit,30))));
  const level=Math.max(1,Math.min(1000,Math.floor(positive(floor,1))));
  const hpScale=positive(chapterDef.hpScale,1)*positive(modeDef.hpScale,1)*(mode==='tower'?1+(level-1)*.12:1);
  const attackScale=positive(chapterDef.attackScale,1)*positive(modeDef.attackScale,1)*(mode==='tower'?1+(level-1)*.08:1);
  const routeEnemy=(kind,extra={})=>{const base=ENEMY_TYPES[kind];return {kind,name:base.name,hp:Math.ceil(base.hp*hpScale),attack:Math.ceil(base.attack*attackScale),shield:Math.ceil(base.shield*hpScale),stance:Math.ceil(base.stance*hpScale),heavyDamage:Math.ceil(BALANCE.bossHeavyDamage*attackScale),...extra};};
- const battle=(id,name,kinds,extra={})=>({id,index:0,type:'battle',name,scene:'gate',reward:false,coins:15,enemies:kinds.map(k=>typeof k==='string'?routeEnemy(k):k),turnLimit:Math.floor(positive(modeDef.turnLimit,30)),...extra});
+ const battle=(id,name,kinds,extra={})=>({id,index:0,type:'battle',name,scene:'gate',reward:false,coins:15,enemies:kinds.map(k=>typeof k==='string'?routeEnemy(k):k),turnLimit,...extra});
  const event=(id,name,extra={})=>({id,index:0,type:'event',name,scene:'temple',enemies:[],reward:false,...extra});
  let route;
  switch(mode){
-  case 'campaign':route=NODES.map(n=>({...copy(n),enemies:n.enemies.map(k=>routeEnemy(k)),coins:n.type==='battle'?15:0,...(n.type==='battle'?{turnLimit:Math.floor(positive(modeDef.turnLimit,30))}:{}),...(n.type==='event'?{merchant:true,options:['heal','train','buy-potion','buy-tonic']}: {})}));break;
+  case 'campaign':route=NODES.map(n=>({...copy(n),enemies:n.enemies.map(k=>routeEnemy(k)),coins:n.type==='battle'?15:0,...(n.type==='battle'?{turnLimit}:{}),...(n.type==='event'?{merchant:true,options:['heal','train','buy-potion','buy-tonic']}: {})}));break;
   case 'boss':route=[battle('boss-trial','守将试炼',['boss'],{coins:35})];break;
   case 'tower':route=[battle(`tower-${level}`,`通天塔 · 第 ${level} 层`,[level%5===0?'boss':level%2===0?'shield':'elite'],{coins:20+level*3})];break;
   case 'dungeon':route=[battle('room-1','秘境一室',['melee'],{reward:true}),event('room-2','秘境宝箱',{treasure:25}),battle('room-3','秘境三室',['ranged','shield'],{reward:true}),{id:'room-4',index:3,type:'reward',name:'石壁传承',scene:'temple',enemies:[],reward:false},battle('room-5','秘境五室',['elite'],{reward:true}),event('room-6','秘境行商',{merchant:true,options:['heal','train','buy-potion','buy-tonic']}),{id:'room-7',index:6,type:'camp',name:'秘境营火',scene:'gate',enemies:[],reward:true},battle('room-8','秘境深处',['boss'],{coins:40})];break;

@@ -70,3 +70,15 @@ test('save validation rejects invented reinforcements, unlock tampering and unkn
  const r=create({loadout:{effects:{},dice:Array.from({length:5},()=>({faces:[1,2,3,4,5,6],marks:Array(6).fill(null),materialId:'wood',materialLevel:1,decorationId:'focus'})),bag:{potion:1}}});const good=rollDice(enterNode(r));
  for(const mutate of [s=>s.combat.frozen[0]=false,s=>s.consumed.herb=1,s=>{const e=structuredClone(s.combat.enemies[0]);e.id='invented-aid-1';s.combat.enemies.push(e);},s=>s.bag.potion=0]){const bad=structuredClone(good);mutate(bad);assert.equal(migrateRun(bad),null);}
 });
+for(const mode of ['campaign','boss'])test(`direct ${mode} factory bounds malformed turn limits before starting a restorable battle`,()=>{
+ for(const [value,want]of [[.5,1],[0,30],[-2,30],[NaN,30],[Infinity,30],['3',30],[1001,1000],[4.9,4],[null,30]]){
+  const r=enterNode(create({mode,content:{chapters:[{id:'bamboo',hpScale:1,attackScale:1,reward:{gold:1}}],modes:[{id:mode,hpScale:1,attackScale:1,turnLimit:value,reward:{gold:1}}]}}));
+  assert.equal(r.combat.turnLimit,want,`${mode} turnLimit ${String(value)}`);assert.ok(migrateRun(r));
+ }
+});
+for(const [field,index]of [['coins',0],['treasure',3]])for(const [label,value]of [['negative',-100],['fraction',.5],['nan',NaN],['infinity',Infinity],['string','100'],['null',null],['overflow',1000000001],['unsafe',Number.MAX_SAFE_INTEGER+1]])test(`saved route rejects ${label} ${field} before it can affect run currency`,()=>{
+ const r=create();r.route[index][field]=value;assert.equal(migrateRun(r),null);const s=storage();assert.equal(saveRun(s,r).ok,false);
+});
+test('saved route accepts zero currency and rejects an out of range battle turn cap',()=>{
+ const r=create();r.route[0].coins=0;r.route[3].treasure=0;assert.ok(migrateRun(r));r.route[0].turnLimit=1001;assert.equal(migrateRun(r),null);
+});

@@ -2,6 +2,7 @@ import {BALANCE,BUILDS,NODES,ENEMY_TYPES,PERKS,emptyPerks} from './config.mjs';
 export const SAVE_KEY='qipai-bamboo-demo-v1';
 const num=n=>Number.isFinite(n)&&n>=0;
 const integer=n=>Number.isInteger(n)&&n>=0;
+const currency=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000000000;
 const build=b=>Object.hasOwn(BUILDS,b);
 const object=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const counts=value=>object(value)&&Object.values(value).every(integer);
@@ -30,7 +31,7 @@ function validRoute(r){
  if(!Array.isArray(r.completedBattles)||new Set(r.completedBattles).size!==r.completedBattles.length||!r.completedBattles.every(id=>r.route.some(n=>n.id===id&&n.type==='battle')))return false;
  if(!object(r.results)||typeof r.results.completed!=='boolean'||!['worldBossDamage','worldBossHp','towerFloorCompleted'].every(k=>num(r.results[k]))||!numbers(r.reward))return false;
  if(new Set(r.route.map(n=>n?.id)).size!==r.route.length)return false;
- return r.route.every((n,i)=>object(n)&&typeof n.id==='string'&&n.index===i&&['battle','reward','event','camp'].includes(n.type)&&typeof n.name==='string'&&['bamboo','temple','gate'].includes(n.scene)&&typeof n.reward==='boolean'&&num(n.hpScale)&&num(n.attackScale)&&Array.isArray(n.enemies)&&(n.type!=='battle'||(n.enemies.length>0&&integer(n.turnLimit)&&n.turnLimit>=1))&&n.enemies.every(e=>object(e)&&Object.hasOwn(ENEMY_TYPES,e.kind)&&['hp','attack','shield','stance','heavyDamage'].every(k=>num(e[k]))&&e.hp>0));
+ return r.route.every((n,i)=>object(n)&&typeof n.id==='string'&&n.index===i&&['battle','reward','event','camp'].includes(n.type)&&typeof n.name==='string'&&['bamboo','temple','gate'].includes(n.scene)&&typeof n.reward==='boolean'&&['coins','treasure'].every(key=>!Object.hasOwn(n,key)||currency(n[key]))&&num(n.hpScale)&&num(n.attackScale)&&Array.isArray(n.enemies)&&(n.type!=='battle'||(n.enemies.length>0&&integer(n.turnLimit)&&n.turnLimit>=1&&n.turnLimit<=1000))&&n.enemies.every(e=>object(e)&&Object.hasOwn(ENEMY_TYPES,e.kind)&&['hp','attack','shield','stance','heavyDamage'].every(k=>num(e[k]))&&e.hp>0));
 }
 function validIntent(e,c){
  const i=e.intent;
@@ -88,7 +89,7 @@ function validCombat(c,r){
  if(c.frozen!==undefined&&(!Array.isArray(c.frozen)||c.frozen.length!==5||!c.frozen.every(n=>typeof n==='boolean')))return false;
  if(r.loadout?.dice&&(c.faceIndices===undefined||c.frozen===undefined||(c.phase!=='roll'&&!c.dice.every((value,i)=>value===r.loadout.dice[i].faces[c.faceIndices[i]]))))return false;
  if(r.loadout?.dice&&c.phase!=='roll'&&!c.frozen.every((frozen,i)=>frozen===(r.loadout.dice[i].decorationId==='focus'||(r.loadout.dice[i].materialId==='frost'&&c.round%2===0))))return false;
- if(c.turnLimit!==undefined&&(!integer(c.turnLimit)||c.turnLimit<1))return false;
+ if(c.turnLimit!==undefined&&(!integer(c.turnLimit)||c.turnLimit<1||c.turnLimit>1000))return false;
  if(c.timedOut!==undefined&&(typeof c.timedOut!=='boolean'||!c.turnLimit||c.round<c.turnLimit||c.phase!=='resolved'))return false;
  if(r.route){
   const node=r.route[r.nodeIndex];if(c.turnLimit!==node.turnLimit)return false;
