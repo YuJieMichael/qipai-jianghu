@@ -31,7 +31,7 @@ export function previewAttack(run){
  let forecast=null,effects=[];
  if(run.flow==='battle'&&run.combat?.phase==='pick'){
   const {state,events}=resolveRound(run);
-  forecast={totalDamage:state.stats.damage-run.stats.damage,poisonDamage:state.stats.poisonDamage-run.stats.poisonDamage,blocked:state.stats.blocked-run.stats.blocked,heroHpAfter:state.hero.hp,heroShieldAfter:state.hero.shield,enemies:state.combat.enemies.map(foe=>({id:foe.id,hpAfter:foe.hp,shieldAfter:foe.shield,poisonStacksAfter:foe.poison.stacks,poisonTurnsAfter:foe.poison.turns}))};
+  forecast={totalDamage:state.stats.damage-run.stats.damage,poisonDamage:state.stats.poisonDamage-run.stats.poisonDamage,blocked:state.stats.blocked-run.stats.blocked,heroHpAfter:state.hero.hp,heroShieldAfter:state.hero.shield,enemies:state.combat.enemies.map(foe=>({id:foe.id,name:foe.name,hpAfter:foe.hp,shieldAfter:foe.shield,poisonStacksAfter:foe.poison.stacks,poisonTurnsAfter:foe.poison.turns}))};
   effects=events.map(({type,text,value,build,sourceId,targetIds,dieIndex})=>({type,text,value,build,sourceId,targetIds,...(dieIndex===undefined?{}:{dieIndex})}));
  }
  return {combo,directDamage:e?Math.min(e.hp,Math.max(0,Math.floor(run.hero.attack*combo.multiplier)-e.shield)):0,triggers:run.combat?triggers(run):[],enemyIntents:run.combat?live(run).map(e=>({id:e.id,...e.intent})):[],forecast,effects};

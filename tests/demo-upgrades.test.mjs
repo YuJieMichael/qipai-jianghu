@@ -74,7 +74,7 @@ test('forecast and effects use actual resolution including shield, poison, targe
  for(const build of ['sword','poison','guard'])for(const targetIndex of [0,1]){
   const r=battle(build,['boss','shield']);r.hero.attack=20;r.combat.enemies[0].hp=131;r.combat.enemies[1].poison={stacks:2,turns:1};r.combat.targetId=r.combat.enemies[targetIndex].id;r.combat.dice[0]=build==='sword'?4:1;
   const before=structuredClone(r),p=previewAttack(r),out=resolveRound(r);assert.deepEqual(r,before);
-  assert.deepEqual(p.forecast,{totalDamage:out.state.stats.damage-r.stats.damage,poisonDamage:out.state.stats.poisonDamage-r.stats.poisonDamage,blocked:out.state.stats.blocked-r.stats.blocked,heroHpAfter:out.state.hero.hp,heroShieldAfter:out.state.hero.shield,enemies:out.state.combat.enemies.map(e=>({id:e.id,hpAfter:e.hp,shieldAfter:e.shield,poisonStacksAfter:e.poison.stacks,poisonTurnsAfter:e.poison.turns}))});
+  assert.deepEqual(p.forecast,{totalDamage:out.state.stats.damage-r.stats.damage,poisonDamage:out.state.stats.poisonDamage-r.stats.poisonDamage,blocked:out.state.stats.blocked-r.stats.blocked,heroHpAfter:out.state.hero.hp,heroShieldAfter:out.state.hero.shield,enemies:out.state.combat.enemies.map(e=>({id:e.id,name:e.name,hpAfter:e.hp,shieldAfter:e.shield,poisonStacksAfter:e.poison.stacks,poisonTurnsAfter:e.poison.turns}))});
   assert.deepEqual(p.effects,out.events.map(({type,text,value,build,sourceId,targetIds,dieIndex})=>({...{type,text,value,build,sourceId,targetIds},...(dieIndex===undefined?{}:{dieIndex})})));
   assert.equal(previewAttack(out.state).forecast,null);
  }
@@ -105,4 +105,33 @@ test('route-aware simulator completes fixed-seed journeys with explicit binding 
  for(const [build,route]of [['sword','swordFocus'],['sword','swordEcho'],['poison','poisonLingering'],['poison','poisonCatalyst'],['guard','guardBulwark'],['guard','guardRiposte']]){
   const run=playSeed(build,100,route);assert.equal(run.route,route);assert.equal(run.outcome,'victory');assert.ok(run.perks[route]>0);assert.equal(run.mastery,5);assert.ok(run.ascended);
  }
+});
+
+test('poison binding preview reflects lingering duration and damage at the active rank',()=>{
+ for(const [rank,damage,turns]of [[0,8,3],[1,10,4],[2,12,5]]){
+  const r=reward('poison');r.perks.poisonLingering=rank;
+  const before=structuredClone(r),preview=journey.previewUpgrade(r,r.choices[0].id,4);
+  assert.equal(preview.valid,true);assert.ok(preview.description.includes(`每层毒每回合 ${damage} 伤害，持续 ${turns} 回合`));assert.deepEqual(r,before);
+ }
+});
+
+test('poison binding preview reflects catalyst layers and the current burst threshold consumption',()=>{
+ for(const [rank,layers,threshold]of [[0,1,6],[1,2,5],[2,3,4]]){
+  const r=reward('poison');r.perks.poisonCatalyst=rank;
+  const preview=journey.previewUpgrade(r,r.choices[0].id,4);
+  assert.ok(preview.description.includes(`附加 ${layers} 层毒`));
+  assert.ok(preview.description.includes(`满 ${threshold} 层触发 48 伤害毒爆`));
+  assert.ok(preview.description.includes(`消耗 ${threshold} 层`));
+ }
+});
+
+test('boss summon forecast retains readable names for new enemies absent from the input state',()=>{
+ const r=battle();r.hero.attack=12;r.combat.enemies[0].hp=131;
+ const before=structuredClone(r),forecast=previewAttack(r).forecast;
+ assert.deepEqual(forecast.enemies.map(({id,name})=>({id,name})),[
+  {id:'test-0',name:'山门守将'},
+  {id:'test-0-aid-1',name:'竹林刀客'},
+  {id:'test-0-aid-2',name:'夜雨弩手'}
+ ]);
+ assert.equal(r.combat.enemies.length,1);assert.deepEqual(r,before);
 });

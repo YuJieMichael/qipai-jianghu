@@ -4,10 +4,18 @@ import {startBattle} from './combat.mjs';
 const copy=r=>structuredClone(r);
 const validIndex = index => Number.isInteger(index)&&index>=0&&index<5;
 const bound = (run,build) => run.diceSkills.some(skill=>skill?.kind===build);
-const effect = (build,level) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level} 点`:`附加 ${level} 层毒`;
-const skillLabel = skill => skill?`${BUILDS[skill.kind].name} ${skill.level} 级 · ${effect(skill.kind,skill.level)}`:'未绑定';
+const effect = (build,level,run) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level} 点`:`附加 ${level+(run?.perks?.poisonCatalyst??0)*PERKS.poisonCatalyst.stacksPerRank} 层毒`;
+const skillLabel = (skill,run) => skill?`${BUILDS[skill.kind].name} ${skill.level} 级 · ${effect(skill.kind,skill.level,run)}`:'未绑定';
 const masteryLabel = (run,build) => `本门领悟 ${Math.min(BALANCE.masteryThreshold,run.mastery)} → ${Math.min(BALANCE.masteryThreshold,run.mastery+(build===run.build?1:0))}；${BALANCE.masteryThreshold} 次解锁${BUILDS[run.build].ascension}。`;
-const details = build => build==='poison'?`每层毒每回合 ${BALANCE.poisonDamage} 伤害，持续 ${BALANCE.poisonTurns} 回合；升华后满 ${BALANCE.poisonThreshold} 层触发 ${BALANCE.poisonBurstDamage} 伤害毒爆。`:build==='sword'?'剑气贯穿全体敌人。':'护盾抵挡敌人伤害。';
+const details = (build,run) => {
+ if(build==='sword')return '剑气贯穿全体敌人。';
+ if(build==='guard')return '护盾抵挡敌人伤害。';
+ const lingering=run.perks?.poisonLingering??0,catalyst=run.perks?.poisonCatalyst??0;
+ const damage=BALANCE.poisonDamage+lingering*PERKS.poisonLingering.damagePerRank;
+ const turns=BALANCE.poisonTurns+lingering*PERKS.poisonLingering.turnsPerRank;
+ const threshold=Math.max(PERKS.poisonCatalyst.minThreshold,BALANCE.poisonThreshold-catalyst*PERKS.poisonCatalyst.thresholdReductionPerRank);
+ return `每层毒每回合 ${damage} 伤害，持续 ${turns} 回合；升华后满 ${threshold} 层触发 ${BALANCE.poisonBurstDamage} 伤害毒爆，每次消耗 ${threshold} 层。`;
+};
 
 /** Pure display preview; a bind must always supply its target explicitly. */
 export function previewUpgrade(run,id,index){
@@ -23,7 +31,7 @@ export function previewUpgrade(run,id,index){
  if(!['bind','skill'].includes(choice.kind)||!BUILDS[choice.build])return invalid('成长牌不可用');
  if(!validIndex(index))return invalid('请选择目标骰子');
  const old=run.diceSkills[index],level=old?.kind===choice.build?old.level+1:1;
- return {valid:true,before:skillLabel(old),after:skillLabel({kind:choice.build,level}),description:`第 ${index+1} 颗骰子：${BUILDS[choice.build].trigger}触发，${effect(choice.build,level)}。${details(choice.build)}${masteryLabel(run,choice.build)}`,reason:''};
+ return {valid:true,before:skillLabel(old,run),after:skillLabel({kind:choice.build,level},run),description:`第 ${index+1} 颗骰子：${BUILDS[choice.build].trigger}触发，${effect(choice.build,level,run)}。${details(choice.build,run)}${masteryLabel(run,choice.build)}`,reason:''};
 }
 export function createChoices(run){
  if(run.choices.length)return run;
