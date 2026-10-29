@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createRun} from '../demo/model.mjs';
 import {startBattle,previewAttack} from '../demo/combat.mjs';
 import {NODES} from '../demo/config.mjs';
+import {createExpedition} from '../demo/adventures.mjs';
 import {createUI,forecastMarkup} from '../demo/ui.mjs';
 import {loadRun,SAVE_KEY} from '../demo/storage.mjs';
 import {createChoices,chooseUpgrade} from '../demo/journey.mjs';
@@ -46,5 +47,27 @@ test('result history retains migrated choices in order after a detailed upgrade 
   assert.ok(history.indexOf('金刚传承')<history.indexOf(`${choice.title} · 第5骰`));
   assert.ok(history.includes('未绑定 → 剑气 1 级 · 每道剑气 6 伤害'));
   assert.ok(!history.includes('growth-'),'legacy identifiers have readable names');
+ }finally{ui?.destroy();globalThis.document=previousDocument;}
+});
+
+test('every expedition renders a complete nine-cell pip grid for all six die values',()=>{
+ const previousDocument=globalThis.document,nodes=new Map();
+ const root={innerHTML:'',addEventListener(){},removeEventListener(){},contains:()=>false,classList:{toggle(){}},querySelector(selector){
+  if(!/^#[\w-]+$/.test(selector))return null;
+  if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',className:''});return nodes.get(selector);
+ }};
+ globalThis.document={activeElement:null,addEventListener(){},removeEventListener(){}};
+ let ui;
+ try{
+  ui=createUI(root,()=>{});
+  for(const mode of ['boss','dungeon','resource']){
+   const run=createExpedition('sword',2,{mode});run.flow='battle';run.combat=startBattle(run,run.route[0]).combat;run.combat.phase='pick';
+   for(let value=1;value<=6;value++){
+    run.combat.dice=Array(5).fill(value);ui.render(run);
+    const faces=[...nodes.get('#hud').innerHTML.matchAll(/class="die-face[^"]*">(.*?)<\/span>/g)];
+    assert.equal(faces.length,5);
+    for(const face of faces){assert.equal((face[1].match(/class="pip /g)||[]).length,9,`${mode} uses a 3x3 grid`);assert.equal((face[1].match(/class="pip visible"/g)||[]).length,value,`${mode} displays ${value} pips`);}
+   }
+  }
  }finally{ui?.destroy();globalThis.document=previousDocument;}
 });
