@@ -1,4 +1,4 @@
-import {NODES} from './config.mjs';
+import {getRunNode} from './journey.mjs';
 import {actorRole,drawActor} from './actors.mjs';
 import {eventDuration,normalizeEventType,sampleActorPose,sampleSceneFeedback} from './choreography.mjs';
 const W=1000,H=540,TAU=Math.PI*2,colors={sword:'#baffed',poison:'#c6a6ef',guard:'#ffe0a0'};
@@ -61,7 +61,7 @@ export function createScene(canvas,{reducedMotion=false}={}){
   lantern(105,336);lantern(917,336);
  }
  function background(t){
-  const stage=NODES[run?.nodeIndex??0]?.scene||'bamboo',gradient=c.createLinearGradient(0,0,0,H);gradient.addColorStop(0,stage==='bamboo'?'#081e2c':stage==='temple'?'#19232f':'#172632');gradient.addColorStop(1,'#456051');c.fillStyle=gradient;c.fillRect(0,0,W,H);
+  const stage=getRunNode(run||{nodeIndex:0})?.scene||'bamboo',gradient=c.createLinearGradient(0,0,0,H);gradient.addColorStop(0,stage==='bamboo'?'#081e2c':stage==='temple'?'#19232f':'#172632');gradient.addColorStop(1,'#456051');c.fillStyle=gradient;c.fillRect(0,0,W,H);
   const moonX=stage==='bamboo'?694:stage==='temple'?797:501;glow(moonX,99,88,'#d1dbc920');ellipse(moonX,99,stage==='gate'?25:32,stage==='gate'?25:32,'#c6d6c5');
   if(stage==='bamboo')forest(t);else if(stage==='temple')temple();else gate(t);
   for(let i=0;i<3;i++){const fog=c.createLinearGradient(0,0,W,0);fog.addColorStop(0,'#c4dfcb00');fog.addColorStop(.5,'#c4dfcb0c');fog.addColorStop(1,'#c4dfcb00');c.fillStyle=fog;c.fillRect(Math.sin(t*.13+i)*100,300+i*55,W,23);}
@@ -152,7 +152,7 @@ export function createScene(canvas,{reducedMotion=false}={}){
  }
  function character(entity,hero,t,p){
   const id=hero?'hero':entity.id,role=actorRole(entity,hero),pose=sampleActorPose(role,actionFor(id,active?.event),p,options);
-  drawActor(c,entity,{x:pos(id),hero,time:t,pose,reducedMotion:options.reducedMotion});
+  drawActor(c,entity,{x:pos(id),hero,time:t,pose,reducedMotion:options.reducedMotion,weaponType:hero?run?.loadout?.weaponType:undefined});
   const x=pos(id),hp=Math.max(0,entity.hp||0),max=entity.maxHp||hp||1;
   c.save();c.textAlign='center';c.font='13px serif';c.fillStyle=hero?'#d5e5c8':'#c7d5c3';c.fillText(hero?'无名侠客':entity.name||'江湖客',x,466);
   c.fillStyle='#071f26bb';c.fillRect(x-34,475,68,4);c.fillStyle=hero?'#9cd7bd':'#c5a77c';c.fillRect(x-34,475,68*clamp(hp/max),4);

@@ -38,7 +38,7 @@ for(const version of [1,2])test(`resuming version ${version} waiting dice rolls 
  if(version===1){delete waiting.perks;delete waiting.pendingUpgrade;delete waiting.stats.upgradeHistory;}
  storage.setItem(SAVE_KEY,JSON.stringify(waiting));
  const controller=createController({storage});await controller.act({type:'resume'});assertOpening(controller.state);
- const boundary=structuredClone(controller.state);assert.equal(boundary.version,2);assert.deepEqual(savedRun(storage),boundary);
+ const boundary=structuredClone(controller.state);assert.equal(boundary.version,3);assert.deepEqual(savedRun(storage),boundary);
  await controller.act({type:'resume'});assert.deepEqual(controller.state,boundary);controller.destroy();
 });
 

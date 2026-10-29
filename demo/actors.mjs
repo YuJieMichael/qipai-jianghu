@@ -2,7 +2,7 @@
 const TAU=Math.PI*2;
 export function actorRole(entity={},hero=false){return hero?'hero':(['ranged','shield','elite','boss'].includes(entity.kind)?entity.kind:'melee');}
 const palettes={hero:{cloth:'#e3dfbd',shade:'#b5bea8',cape:'#226b73',edge:'#8bcbc1',metal:'#d5e4d7'},melee:{cloth:'#384650',shade:'#1c2d37',cape:'#57433f',edge:'#aa8b76',metal:'#a8bab7'},ranged:{cloth:'#7a8362',shade:'#344e40',cape:'#263d36',edge:'#c2bb89',metal:'#c9cbaa'},shield:{cloth:'#637579',shade:'#253c44',cape:'#384d4e',edge:'#9baaa0',metal:'#8dacae'},elite:{cloth:'#665153',shade:'#2c313b',cape:'#8a4141',edge:'#cea474',metal:'#b8c1b2'},boss:{cloth:'#927d5b',shade:'#393e44',cape:'#8d3a3c',edge:'#e1bd78',metal:'#c4b996'}};
-export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion=false}={}){
+export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion=false,weaponType='sword'}={}){
  const role=actorRole(entity,hero),pal=palettes[role],scale=({hero:1.25,melee:1.08,ranged:1.1,shield:1.13,elite:1.25,boss:1.4})[role],face=hero?1:-1;
  const poly=(points,fill,stroke=undefined,width=1)=>{c.beginPath();points.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
  const line=(a,b,color,width=2)=>{c.beginPath();c.moveTo(...a);c.lineTo(...b);c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.stroke()};
@@ -92,7 +92,11 @@ export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion
  c.restore();arm(frontShoulder,frontElbow,frontHand,true);
  // Every weapon uses the front-hand joint, but has its own weight and silhouette.
  c.save();c.translate(...frontHand);
- if(role==='ranged'){
+ if(role==='hero'&&weaponType==='staff'){
+  c.rotate(pose.weapon);line([-36,0],[73,0],'#a89b6d',5);line([-29,-2],[62,-2],'#d4d5ab',1);poly([[63,-13],[80,0],[63,13],[54,0]],'#7bbbad','#c0f1d6',2);ellipse(65,0,5,5,'#d5fae1');
+ }else if(role==='hero'&&weaponType==='hammer'){
+  c.rotate(pose.weapon);line([-25,0],[63,0],'#786752',7);poly([[47,-19],[76,-19],[85,-10],[85,13],[76,21],[47,21],[40,12],[40,-11]],'#7d9b91','#e1d3a6',2);line([52,-14],[52,15],'#c4b47f',3);
+ }else if(role==='ranged'){
   c.rotate(pose.weapon+Math.PI/2);c.strokeStyle='#c4af7b';c.lineWidth=4;c.beginPath();c.moveTo(0,-46);c.bezierCurveTo(36,-31,36,30,0,48);c.stroke();line([0,-46],[0,48],'#e9dfb0',1);line([-29,0],[38,0],'#d5d6b6',2);poly([[38,0],[28,-4],[29,5]],'#dfe4ce');
  }else if(role==='shield'){
   // Iron umbrella shield: faceted dome, eight ribs, boss and rim.
