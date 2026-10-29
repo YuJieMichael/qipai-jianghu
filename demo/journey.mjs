@@ -2,6 +2,10 @@ import {BALANCE,BUILDS,NODES,PERKS} from './config.mjs';
 import {nextRandom} from './model.mjs';
 import {startBattle} from './combat.mjs';
 const copy=r=>structuredClone(r);
+export const getRunNodes=run=>run?.route||NODES;
+export const getRunNode=run=>getRunNodes(run)[run.nodeIndex];
+const campKey=(run,key)=>run.route?`${key}-${run.nodeIndex}`:key;
+const gainCoins=(run,amount)=>{run.coins=(run.coins||0)+Math.floor(amount*(1+Math.max(0,Number(run.loadout?.effects?.goldBonus)||0)/100));};
 const validIndex = index => Number.isInteger(index)&&index>=0&&index<5;
 const bound = (run,build) => run.diceSkills.some(skill=>skill?.kind===build);
 const effect = (build,level,run) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level+(run?.perks?.guardBulwark??0)*PERKS.guardBulwark.shieldPerRank} 点`:`附加 ${level+(run?.perks?.poisonCatalyst??0)*PERKS.poisonCatalyst.stacksPerRank} 层毒`;
@@ -64,29 +68,45 @@ export function cancelUpgrade(run){
  const r=copy(run);r.pendingUpgrade=null;return r;
 }
 export function enterNode(run){
- const node=NODES[run.nodeIndex];if(!node)return run;
+ const node=getRunNode(run);if(!node)return run;
  if(run.flow==='battle'&&run.combat)return run;
  if(run.flow==='reward'&&run.choices.length)return run;
  if(node.type==='battle')return startBattle(run,node);
  const r=copy(run);r.combat=null;
- if(node.type==='event'){r.flow='event';return r;}
+ if(node.type==='event'){if(node.treasure&&!r.upgrades[`treasure-${r.nodeIndex}`]){gainCoins(r,node.treasure);r.upgrades[`treasure-${r.nodeIndex}`]=1;}r.flow='event';return r;}
  if(node.type==='camp'){
-  if(r.upgrades.campComplete){r.flow='camp';return r;}
-  if(!r.upgrades.campHealed){r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+BALANCE.campHeal);r.upgrades.campHealed=1;}
+  if(r.upgrades[campKey(r,'campComplete')]){r.flow='camp';return r;}
+  if(!r.upgrades[campKey(r,'campHealed')]){r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+BALANCE.campHeal);r.upgrades[campKey(r,'campHealed')]=1;}
  }
  return createChoices(r);
 }
 export function completeBattle(run){
  if(run.flow!=='battle'||!run.combat)return run;
- if(run.hero.hp>0&&run.combat.enemies.some(e=>e.hp>0))return run;
+ if(run.hero.hp>0&&run.combat.enemies.some(e=>e.hp>0)&&!run.combat.timedOut)return run;
  const r=copy(run);r.choices=[];
+ if(r.route){
+  const node=getRunNode(r),remaining=r.combat.enemies.filter(e=>e.hp>0);
+  r.results??={completed:false,worldBossDamage:0,worldBossHp:0,towerFloorCompleted:0};
+  if(r.mode==='worldboss'){const boss=r.combat.enemies[0];r.results.worldBossDamage=boss.maxHp-boss.hp;r.results.worldBossHp=boss.hp;}
+  const partial=['resource','worldboss'].includes(r.mode);
+  if(r.hero.hp<=0||(remaining.length&&!partial)){r.flow='defeat';return r;}
+  r.completedBattles??=[];
+  if(!r.completedBattles.includes(node.id)){
+   r.completedBattles.push(node.id);gainCoins(r,(node.coins||0)+(r.mode==='resource'?Math.floor(r.stats.damage/8):r.mode==='worldboss'?Math.floor(r.results.worldBossDamage/10):0));
+  }
+  if(r.nodeIndex===r.route.length-1){r.flow='victory';r.results.completed=true;if(r.mode==='tower')r.results.towerFloorCompleted=r.floor;return r;}
+  r.combat=null;
+  if(r.route[r.nodeIndex+1].type==='reward'){r.nodeIndex++;return enterNode(r);}
+  if(node.reward)return createChoices(r);
+  r.nodeIndex++;r.flow='intro';return enterNode(r);
+ }
  if(r.hero.hp<=0){r.flow='defeat';return r;}
  if(r.nodeIndex===8){r.flow='victory';return r;}
  if(r.nodeIndex===0||r.nodeIndex===4)r.nodeIndex++;
  r.combat=null;return createChoices(r);
 }
 export function advanceNode(run){
- if(run.flow!=='camp'||!run.upgrades.campComplete)return run;
+ if(run.flow!=='camp'||!run.upgrades[campKey(run,'campComplete')])return run;
  const r=copy(run);r.nodeIndex++;r.flow='intro';return enterNode(r);
 }
 export function chooseUpgrade(run,id,index){
@@ -105,11 +125,13 @@ export function chooseUpgrade(run,id,index){
  r.stats.upgradeHistory.push({id,title:choice.title,build:choice.build,kind:choice.kind==='perk'?'perk':'bind',dieIndex:choice.kind==='perk'?null:dieIndex,perkId:choice.perkId??null,before:preview.before,after:preview.after});
  if(choice.build===r.build)r.mastery++;
  r.ascended=r.mastery>=BALANCE.masteryThreshold;r.choices=[];r.pendingUpgrade=null;
- if(r.nodeIndex===7){r.upgrades.campComplete=1;r.flow='camp';return r;}
+ if((r.route&&getRunNode(r).type==='camp')||(!r.route&&r.nodeIndex===7)){r.upgrades[campKey(r,'campComplete')]=1;r.flow='camp';return r;}
  r.nodeIndex++;r.flow='intro';return enterNode(r);
 }
 export function chooseEvent(run,optionId){
- if(run.flow!=='event'||!['heal','train'].includes(optionId))return run;
- const r=copy(run);if(optionId==='heal')r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+BALANCE.eventHeal);else r.hero.attack+=3;
+ if(run.flow!=='event'||!['heal','train','buy-potion','buy-tonic'].includes(optionId))return run;
+ const node=getRunNode(run),purchase=optionId.startsWith('buy-'),price=optionId==='buy-potion'?20:30;
+ if(purchase&&(!node.merchant||(run.coins||0)<price))return run;
+ const r=copy(run);if(purchase){r.coins-=price;r.bag??={};const item=optionId.slice(4);r.bag[item]=(r.bag[item]||0)+1;}else if(optionId==='heal')r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+BALANCE.eventHeal);else r.hero.attack+=3;
  r.nodeIndex++;r.flow='intro';return enterNode(r);
 }

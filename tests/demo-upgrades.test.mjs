@@ -11,7 +11,7 @@ const memory=()=>({value:null,getItem(k){assert.equal(k,SAVE_KEY);return this.va
 
 test('version 2 growth selection requires an explicit pending binding target and cancel is harmless',()=>{
  const r=reward(),before=structuredClone(r),id=r.choices[0].id;
- assert.equal(r.version,2);assert.equal(Object.keys(r.perks).length,6);assert.equal(r.pendingUpgrade,null);
+ assert.equal(r.version,3);assert.equal(Object.keys(r.perks).length,6);assert.equal(r.pendingUpgrade,null);
  let selected=journey.selectUpgrade(r,id);assert.deepEqual(selected.pendingUpgrade,{choiceId:id,dieIndex:null});
  assert.equal(journey.chooseUpgrade(selected,id),selected);assert.equal(journey.chooseUpgrade(selected,id,4),selected);
  assert.deepEqual(journey.cancelUpgrade(selected),r);
@@ -101,7 +101,7 @@ test('forecast and effects use actual resolution including shield, poison, targe
 
 test('v1 reward migrates without rerolling or regenerating choice text, while v2 restores pending selection',()=>{
  const old=reward();old.version=1;delete old.perks;delete old.pendingUpgrade;old.choices=old.choices.map((c,i)=>({...c,kind:'skill',build:['sword','poison','guard'][i]}));
- const s=memory();s.value=JSON.stringify(old);const migrated=loadRun(s).run;assert.ok(migrated);assert.equal(migrated.version,2);assert.equal(migrated.seed,old.seed);assert.deepEqual(migrated.choices,old.choices.map(c=>({...c,kind:'bind'})));assert.equal(migrated.pendingUpgrade,null);
+ const s=memory();s.value=JSON.stringify(old);const migrated=loadRun(s).run;assert.ok(migrated);assert.equal(migrated.version,3);assert.equal(migrated.seed,old.seed);assert.deepEqual(migrated.choices,old.choices.map(c=>({...c,kind:'bind'})));assert.equal(migrated.pendingUpgrade,null);
  let r=journey.selectUpgrade(reward(),reward().choices[0].id);r=journey.selectUpgradeTarget(r,3);assert.equal(saveRun(s,r).ok,true);assert.deepEqual(loadRun(s).run,r);
 });
 

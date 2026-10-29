@@ -1,6 +1,8 @@
 import {pathToFileURL} from 'node:url';
 import {BALANCE, NODES, PERKS} from '../demo/config.mjs';
 import {createRun, rollDice, toggleHold, rerollDice} from '../demo/model.mjs';
+import {createExpedition,getRunNode} from '../demo/adventures.mjs';
+import {migrateRun} from '../demo/storage.mjs';
 import {prepareRound, selectTarget, resolveRound} from '../demo/combat.mjs';
 import {enterNode, completeBattle, chooseUpgrade, chooseEvent, advanceNode} from '../demo/journey.mjs';
 
@@ -81,6 +83,35 @@ export function playSeed(build, seed, route = null) {
  }
  return {build, seed, route, perks:run.perks, outcome: run.flow, turns: run.stats.turns, hp: run.hero.hp,
   mastery: run.mastery, ascended: run.ascended, ascensionTurn, battles, eventCounts};
+}
+
+/** Seeded offline expedition policy; validates every saved transition. */
+export function playExpedition(build,seed,options={}){
+ let run=enterNode(createExpedition(build,seed,options)),transitions=0;
+ while(!['victory','defeat'].includes(run.flow)){
+  if(++transitions>2000)throw new Error(`${run.mode}/${seed}: expedition did not terminate`);
+  if(!getRunNode(run)||!migrateRun(run))throw new Error(`${run.mode}/${seed}: invalid saved ${run.flow}/${run.combat?.phase}`);
+  const previous=JSON.stringify(run);
+  if(run.flow==='battle'){
+   if(run.combat.phase==='resolved')run=prepareRound(run);
+   run=rollDice(run);
+   while(run.combat.rerolls>0){
+    for(let i=0;i<5;i++)if(!run.combat.frozen?.[i]){
+     const hold=triggered(run.diceSkills[i]?.kind??build,run.combat.dice[i]);
+     if(hold!==run.combat.held[i])run=toggleHold(run,i);
+    }
+    if(run.combat.held.every(Boolean))break;
+    const rerolled=rerollDice(run);if(rerolled===run)break;run=rerolled;
+   }
+   run=completeBattle(resolveRound(run).state);
+  }else if(run.flow==='reward')run=chooseUpgrade(run,run.choices.find(c=>c.kind==='bind'&&c.build===build)?.id??run.choices[0].id);
+  else if(run.flow==='event')run=chooseEvent(run,'heal');
+  else if(run.flow==='camp')run=advanceNode(run);
+  else run=enterNode(run);
+  if(JSON.stringify(run)===previous)throw new Error(`${run.mode}/${seed}: expedition stalled`);
+ }
+ if(!migrateRun(run))throw new Error(`${run.mode}/${seed}: invalid final save`);
+ return {mode:run.mode,chapter:run.chapter,floor:run.floor,seed,outcome:run.flow,turns:run.stats.turns,kills:run.stats.kills,damage:run.stats.damage,hp:run.hero.hp,coins:run.coins,results:run.results};
 }
 
 export function simulate() {
