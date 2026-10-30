@@ -38,6 +38,7 @@ button:disabled { cursor: default; }
 .renewal-progress-step.is-current { color: #153f48; background: #ffe194; border-color: #fff3bc; box-shadow: 0 0 0 3px #fff4a525; text-shadow: none; }
 .renewal-targets { position: absolute; inset: 18% 0 auto; z-index: 3; pointer-events: none; }
 .renewal-enemy-target { position: absolute; transform: translateX(-50%); width: 112px; min-height: 49px; padding: 6px 7px 4px; color: #fff7db; border: 1px solid #b9d8b57a; border-radius: 10px; background: linear-gradient(#133c50dd, #173b4ddb); box-shadow: 0 3px 0 #17374866, 0 4px 10px #113b4629; pointer-events: auto; }
+.renewal-targets:has(.renewal-enemy-target:nth-child(3)) .renewal-enemy-target { width: calc(25% - 6px); max-width: 106px; }
 .renewal-enemy-target.is-selected { border-color: #ffe6a1; box-shadow: 0 0 0 2px #ffe69b2e, 0 3px 0 #17374866; }
 .renewal-enemy-target:disabled { opacity: .94; }
 .renewal-enemy-name { display: block; font-size: 11px; font-weight: 800; line-height: 1.1; letter-spacing: .5px; }
