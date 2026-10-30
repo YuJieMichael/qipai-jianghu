@@ -20,6 +20,13 @@ async function harness(t,options={}){
  return {browser,dataDir,get url(){return baseUrl;},restart:async()=>{await stop();baseUrl=await start();}};
 }
 const reject=async(p,status,code)=>assert.rejects(p,e=>e.status===status&&(!code||e.code===code));
+test('portrait chapter modules and textures load without opening unrelated nested directories',async t=>{
+ const h=await harness(t);
+ for(const [resource,mime]of [['/demo/renewal/main.mjs','text/javascript; charset=utf-8'],['/demo/renewal/assets/characters.png','image/png'],['/demo/renewal/assets/forest-path.png','image/png']]){
+  const response=await fetch(h.url+resource);assert.equal(response.status,200,resource);assert.equal(response.headers.get('content-type'),mime);assert.ok(Number(response.headers.get('content-length'))>0);
+ }
+ for(const resource of ['/demo/renewal/assets/README.md','/demo/other/private.mjs','/demo/renewal/%2e%2e/%2e%2e/server/server.mjs','/server/server.mjs'])assert.equal((await fetch(h.url+resource)).status,404,resource);
+});
 test('real HTTP sessions hash passwords, isolate profiles, serialize revisions and survive restart',async t=>{
  const h=await harness(t);const a=h.browser().client,b=h.browser().client;
  assert.deepEqual((await a.session()).user,null);await reject(a.loadProfile(),401);

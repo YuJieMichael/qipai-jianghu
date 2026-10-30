@@ -1,0 +1,196 @@
+:root {
+  color-scheme: dark;
+  --renewal-navy: #102c3b;
+  --renewal-ink: #143849;
+  --renewal-teal: #24d5b1;
+  --renewal-gold: #f7d16f;
+  --renewal-cream: #fff7db;
+  --renewal-safe-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { display: grid; place-items: center; background: radial-gradient(ellipse at 50% 35%, #315d5e, #0b202d 70%); }
+button { font: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid #fff6ac; outline-offset: 3px; }
+button { user-select: none; cursor: pointer; }
+button:disabled { cursor: default; }
+[hidden] { display: none !important; }
+.renewal-root { width: min(100%, 460px); height: 100svh; max-height: 100svh; overflow: hidden; color: var(--renewal-cream); }
+.renewal-game { --controls-height: 222px; position: relative; width: 100%; height: 100%; isolation: isolate; overflow: hidden; background: #b9dcc7; box-shadow: 0 0 90px #00132080; }
+.renewal-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+.renewal-world-shade { position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(180deg, #082f438c 0, #0c3e4a20 19%, transparent 30%, transparent 67%, #0b2c3c38 75%, #0b293c 100%); }
+.renewal-header { position: absolute; inset: max(14px, env(safe-area-inset-top)) 16px auto; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; filter: drop-shadow(0 2px 3px #123d4f66); }
+.renewal-chapter { display: flex; align-items: center; gap: 9px; }
+.renewal-chapter-seal { display: grid; place-items: center; width: 42px; height: 46px; padding-bottom: 2px; border: 2px solid #fae3a7; border-radius: 15px 15px 18px 18px; color: #fff7d6; font-size: 25px; font-weight: 950; text-shadow: 0 2px #0d6274; background: linear-gradient(150deg, #2bd0a7, #126473 80%); box-shadow: inset 0 1px 0 #f2fff299, 0 3px 0 #0c435d, 0 4px 8px #062e3540; transform: rotate(-5deg); }
+.renewal-chapter-text h1 { font-size: 22px; line-height: 1.15; margin: 0 0 4px; font-weight: 900; letter-spacing: 1.5px; text-shadow: 0 2px 2px #143d47; }
+.renewal-stage-name { color: #eefff3; font-size: 10px; font-weight: 700; letter-spacing: .6px; }
+.renewal-header-end { display: flex; align-items: center; gap: 9px; }
+.renewal-round { font-size: 11px; font-weight: 800; color: #fff8cf; text-shadow: 0 1px 2px #143d47; }
+.renewal-icon-button { width: 37px; height: 37px; padding: 0 0 2px; color: #fff5d4; font-size: 22px; line-height: 1; font-weight: 900; background: linear-gradient(#24576d, #15394f); border: 1.5px solid #f1da8b; border-radius: 12px; box-shadow: inset 0 1px #ffffff26, 0 3px 0 #122c3d, 0 3px 7px #0d384b55; }
+.renewal-icon-button:active { transform: translateY(2px); box-shadow: inset 0 1px #ffffff26, 0 1px 0 #122c3d; }
+.renewal-progress { position: absolute; z-index: 2; top: 78px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; }
+.renewal-progress-step { display: grid; place-items: center; position: relative; width: 16px; height: 16px; color: #e9ffe3; font-size: 8px; font-weight: 800; background: #173e4a66; border: 1px solid #d8edb075; border-radius: 50%; text-shadow: 0 1px #18433c; }
+.renewal-progress-step:not(:last-child)::after { content: ''; position: absolute; left: 16px; top: 6px; width: 8px; height: 2px; background: #e8f6cf75; }
+.renewal-progress-step.is-complete { background: #31b998; border-color: #e0ffc6; }
+.renewal-progress-step.is-current { color: #153f48; background: #ffe194; border-color: #fff3bc; box-shadow: 0 0 0 3px #fff4a525; text-shadow: none; }
+.renewal-targets { position: absolute; inset: 18% 0 auto; z-index: 3; pointer-events: none; }
+.renewal-enemy-target { position: absolute; transform: translateX(-50%); width: 112px; min-height: 49px; padding: 6px 7px 4px; color: #fff7db; border: 1px solid #b9d8b57a; border-radius: 10px; background: linear-gradient(#133c50dd, #173b4ddb); box-shadow: 0 3px 0 #17374866, 0 4px 10px #113b4629; pointer-events: auto; }
+.renewal-enemy-target.is-selected { border-color: #ffe6a1; box-shadow: 0 0 0 2px #ffe69b2e, 0 3px 0 #17374866; }
+.renewal-enemy-target:disabled { opacity: .94; }
+.renewal-enemy-name { display: block; font-size: 11px; font-weight: 800; line-height: 1.1; letter-spacing: .5px; }
+.renewal-target-pointer { position: absolute; bottom: -17px; left: calc(50% - 8px); color: #ffe69a; font-size: 16px; line-height: 1; text-shadow: 0 2px 0 #5a493b; }
+.renewal-health-track { position: relative; display: block; width: 100%; height: 6px; overflow: hidden; border-radius: 10px; background: #061f2fbb; box-shadow: inset 0 1px 2px #0006; }
+.renewal-health-fill { display: block; width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(#ff9b79, #ef5754); box-shadow: inset 0 1px #ffe2a588; transition: width .22s ease-out; }
+.renewal-enemy-health { padding: 5px 0 3px; }
+.renewal-enemy-numbers { display: block; font-size: 9px; line-height: 1; font-weight: 750; color: #f4e9cf; font-variant-numeric: tabular-nums; }
+.renewal-hero-health { position: absolute; z-index: 3; left: 50%; bottom: calc(var(--controls-height) + var(--renewal-safe-bottom) + 12px); transform: translateX(-50%); width: 154px; padding: 7px 8px 6px; border: 1px solid #f8e3ad9c; border-radius: 11px; background: linear-gradient(#173d50e6, #133849e6); box-shadow: 0 2px 0 #132d3e75, 0 4px 12px #0f4b4a33; }
+.renewal-hero-health .renewal-health-track { height: 7px; border: 1px solid #8aebbd44; }
+.renewal-hero-health .renewal-health-fill { background: linear-gradient(#8bec98, #33c49c); box-shadow: inset 0 1px #d4ffb877; }
+.renewal-hero-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 5px; gap: 3px; line-height: 1; }
+.renewal-hero-label strong { font-size: 10px; font-weight: 800; color: #f8edce; }
+.renewal-hp-numbers { font-size: 10px; font-weight: 800; color: #c7f5dd; font-variant-numeric: tabular-nums; }
+.renewal-shield { position: absolute; top: -15px; right: -7px; padding: 3px 6px; color: #fff0ad; background: #1e5a73; border: 1px solid #efd38e; border-radius: 7px; font-size: 10px; font-weight: 800; }
+.renewal-message { position: absolute; z-index: 4; left: 50%; top: 40%; max-width: 90%; width: max-content; margin: 0; padding: 7px 13px; transform: translateX(-50%); color: #fff5d3; text-shadow: 0 1px 2px #153f45; background: #123b4ad6; border: 1px solid #d5eed172; border-radius: 20px; box-shadow: 0 3px 10px #19493833; font-size: 11px; font-weight: 800; text-align: center; pointer-events: none; }
+.renewal-controls { position: absolute; z-index: 4; inset: auto 0 0; height: calc(var(--controls-height) + var(--renewal-safe-bottom)); padding: 13px 15px calc(13px + var(--renewal-safe-bottom)); background: linear-gradient(180deg, #163f4f00, #12374ceb 11%, #102f43fa 35%); }
+.renewal-controls::before { content: ''; position: absolute; top: 0; left: 17%; width: 66%; height: 1px; background: linear-gradient(90deg, transparent, #c5e6bd99, transparent); }
+.renewal-dice-heading { display: flex; justify-content: space-between; align-items: center; min-height: 20px; gap: 3px; margin-bottom: 6px; }
+.renewal-dice-hint { font-size: 10px; font-weight: 700; color: #d1eee2; white-space: nowrap; }
+.renewal-rerolls { padding: 4px 8px; border: 1px solid #79c8b257; border-radius: 7px; background: #19536977; color: #f6e7b9; font-size: 11px; line-height: 1; font-weight: 800; white-space: nowrap; }
+.renewal-rerolls.is-empty { color: #a9bdba; background: #183b4c; }
+.renewal-dice-tray { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 7px; }
+.renewal-die { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 10px; color: #f0e7c7; background: transparent; }
+.renewal-die-number { position: absolute; top: -4px; left: -3px; z-index: 2; display: grid; place-items: center; min-width: 16px; height: 16px; padding: 1px 3px; border: 1px solid #f4d789; border-radius: 5px; font-size: 9px; font-weight: 900; color: #173b48; background: #fee7a8; box-shadow: 0 1px 2px #08293e55; }
+.renewal-die-face { position: relative; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); width: 100%; max-width: 70px; aspect-ratio: 1; padding: 11px; gap: 3px; border: 2px solid #f4d88e; border-radius: 12px; color: var(--renewal-ink); background: linear-gradient(140deg, #fffef3 5%, #fff4d5 60%, #e9cb8d); box-shadow: inset 0 2px 0 #fff, inset 0 -3px 0 #d6b776, 0 4px 0 #ab8c4b, 0 6px 7px #061e3277; }
+.renewal-pip { display: block; width: 100%; aspect-ratio: 1; border-radius: 50%; background: #23485a; box-shadow: inset 0 1px 1px #071e3b66, 0 1px 0 #fff; opacity: 0; }
+.renewal-pip.is-visible { opacity: 1; }
+.renewal-die.has-sword .renewal-die-face { border-color: #aaf7d4; background: linear-gradient(140deg, #f8fff0, #defbde 70%, #bdebc1); box-shadow: inset 0 2px 0 #fff, inset 0 -3px 0 #93c69e, 0 4px 0 #438d89, 0 6px 7px #061e3277, 0 0 12px #68e8b71f; }
+.renewal-die.has-sword .renewal-pip { background: #14576c; }
+.renewal-die-caption { height: 13px; font-size: 9px; line-height: 1.4; font-weight: 800; color: #c5eee1; white-space: nowrap; }
+.renewal-die:not(:disabled):active .renewal-die-face { transform: translateY(3px); box-shadow: inset 0 2px #fff, inset 0 -2px #b1b57d, 0 1px 0 #438d89; }
+.renewal-die:disabled:not(.is-locked) .renewal-die-face { filter: saturate(.78); }
+.renewal-die.is-locked { cursor: default; }
+.renewal-die.is-locked .renewal-die-number { background: #315368; border-color: #54768a; color: #9ab7c0; }
+.renewal-die-lock { position: relative; display: block; width: 100%; max-width: 70px; aspect-ratio: 1; border: 1px solid #5f819069; border-radius: 12px; background: linear-gradient(145deg,#234758,#183748); box-shadow: inset 0 2px 0 #6d929333, inset 0 -3px 0 #112c40, 0 4px 0 #0b273a; }
+.renewal-die-lock::before { content: ''; position: absolute; left: calc(50% - 9px); top: calc(50% - 12px); width: 18px; height: 18px; border: 3px solid #789995; border-radius: 9px 9px 4px 4px; }
+.renewal-die-lock::after { content: ''; position: absolute; top: calc(50% - 2px); left: calc(50% - 12px); width: 24px; height: 18px; border-radius: 4px; background: radial-gradient(circle at 50% 45%, #294f5e 0 2px, transparent 2.4px), linear-gradient(#8baaa1,#638c89); box-shadow: 0 2px 0 #102e40; }
+.renewal-die.is-locked .renewal-die-caption { font-size: 8px; color: #85a8ad; }
+.renewal-action-row { display: grid; grid-template-columns: minmax(0,.86fr) minmax(0,1.14fr); align-items: center; gap: 12px; margin-top: 15px; }
+.renewal-hand { padding-left: 4px; }
+.renewal-hand-top { display: flex; align-items: baseline; gap: 8px; }
+.renewal-hand-name { color: #fff1bd; font-size: 22px; line-height: 1; font-weight: 900; text-shadow: 0 2px 0 #071d2d; letter-spacing: 1px; }
+.renewal-multiplier { color: #68e5c1; font-size: 23px; font-weight: 900; line-height: 1; text-shadow: 0 2px 0 #123244; font-variant-numeric: tabular-nums; }
+.renewal-damage-line { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; }
+.renewal-damage-line>span { color: #bad6d3; font-size: 10px; font-weight: 700; }
+.renewal-damage { color: #fff9dc; font-size: 21px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.renewal-attack { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 67px; padding: 6px 10px 8px; overflow: hidden; border: 2px solid #ffe397; border-radius: 18px; color: #f6ffde; background: linear-gradient(175deg, #40e6c1 0%, #1db5a3 45%, #087e8c 100%); text-shadow: 0 2px 0 #076a78; box-shadow: inset 0 2px 0 #d6ffd48c, inset 0 -4px 0 #097585, 0 5px 0 #d8a94e, 0 8px 0 #163346, 0 10px 12px #051d2d66; }
+.renewal-attack::before { content: ''; position: absolute; inset: 3px; z-index: -1; border: 1px solid #c9fff54f; border-radius: 13px; }
+.renewal-attack::after { content: ''; position: absolute; z-index: -1; top: -10px; left: -30px; width: 55px; height: 120px; transform: rotate(25deg); background: #e4ffe91c; }
+.renewal-attack-icon { display: grid; place-items: center; width: 35px; height: 37px; border: 1px solid #f6ecb085; border-radius: 50%; background: linear-gradient(#11697966,#11506877); font-size: 21px; font-weight: 900; box-shadow: inset 0 1px 0 #e5ffe75e, 0 1px 0 #eaffd55e; }
+.renewal-attack-copy { display: flex; flex-direction: column; align-items: center; }
+.renewal-attack-copy strong { font-size: 27px; line-height: 1.1; font-weight: 950; letter-spacing: 3px; }
+.renewal-attack-copy small { margin-top: 4px; color: #ddffe5; font-size: 9px; line-height: 1; font-weight: 800; letter-spacing: .6px; }
+.renewal-attack:not(:disabled):active { transform: translateY(4px); box-shadow: inset 0 2px 0 #d6ffd48c, inset 0 -2px 0 #097585, 0 1px 0 #d8a94e, 0 4px 0 #163346; }
+.renewal-attack:disabled { filter: saturate(.4); opacity: .78; }
+.renewal-overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: max(14px,env(safe-area-inset-top)) 14px max(14px,var(--renewal-safe-bottom)); background: #102f47a6; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.renewal-overlay h2 { margin: 7px 0; color: #fff0c5; font-size: 27px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 2px 0 #0b2335; }
+.renewal-reward-panel, .renewal-settings-panel, .renewal-result-panel { width: 100%; max-height: 100%; padding: 22px 17px 18px; overflow: auto; border: 1.5px solid #f1d58d; border-radius: 24px; background: radial-gradient(ellipse at top, #285f6a, #163e51 40%, #123347); box-shadow: inset 0 1px 0 #fff3c64d, inset 0 0 0 5px #082a3d55, 0 10px 35px #051c4288; scrollbar-width: thin; }
+.renewal-reward-header { text-align: center; margin-bottom: 16px; }
+.renewal-eyebrow { color: #6fe4bf; font-size: 10px; font-weight: 800; line-height: 1; letter-spacing: 4px; }
+.renewal-reward-subtitle { margin: 7px 0 0; color: #cce6da; font-size: 11px; font-weight: 650; }
+.renewal-reward-cards { display: grid; gap: 9px; }
+.renewal-reward-card { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; min-height: 91px; padding: 12px 10px; overflow: hidden; border: 1.5px solid #769c8c; border-radius: 14px; color: var(--renewal-ink); text-align: left; background: linear-gradient(115deg,#fffbe6,#ecedcf); box-shadow: inset 0 2px 0 #fff9, 0 3px 0 #092f42; }
+.renewal-reward-card::before { content: ''; position: absolute; right: -8px; bottom: -13px; width: 100px; height: 100px; border: 10px solid #9cb69217; border-radius: 50%; }
+.renewal-reward-card.is-selected { border-color: #ffe18b; background: linear-gradient(115deg,#fffce8,#e9f5cf); box-shadow: inset 0 0 0 2px #d7ac59, 0 0 0 2px #ffe18b33, 0 3px 0 #092f42; }
+.renewal-reward-glyph { flex: 0 0 43px; display: grid; place-items: center; width: 43px; height: 49px; padding-bottom: 1px; border: 1.5px solid #d3b266; border-radius: 14px 14px 19px 19px; color: #fff7ca; background: linear-gradient(155deg,#3bbfac,#186074); font-size: 25px; font-weight: 900; text-shadow: 0 2px 0 #125566; box-shadow: inset 0 1px #fff8, 0 2px #2d665b66; }
+.renewal-reward-card-face .renewal-reward-glyph { color: #4b3a16; background: linear-gradient(155deg,#ffe6a8,#d1aa59); text-shadow: 0 1px #fff5; }
+.renewal-reward-card-vitality .renewal-reward-glyph { color: #fff5c6; background: linear-gradient(155deg,#d89a6b,#8c5148); text-shadow: 0 2px #75483c; }
+.renewal-reward-card-body { position: relative; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.renewal-reward-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 5px; padding-right: 5px; }
+.renewal-reward-card-top strong { font-size: 16px; font-weight: 900; line-height: 1; letter-spacing: .5px; }
+.renewal-reward-kind { color: #516f69; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.renewal-reward-description { font-size: 10px; line-height: 1.35; font-weight: 650; color: #486962; }
+.renewal-card-preview { color: #1f695e; font-size: 10px; line-height: 1.25; font-weight: 850; }
+.renewal-reward-check { position: absolute; top: 0; right: 0; padding: 0 2px 2px 6px; color: #68491b; background: #f2d180; border-radius: 0 12px 0 12px; font-size: 13px; font-weight: 900; }
+.renewal-reward-target { margin-top: 15px; }
+.renewal-target-title { display: block; margin-bottom: 8px; color: #e9edce; font-size: 11px; font-weight: 800; text-align: center; }
+.renewal-reward-dice { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
+.renewal-reward-die { display: flex; flex-direction: column; gap: 7px; align-items: center; padding: 3px; color: #c5e5d6; border: 1.5px solid transparent; border-radius: 11px; background: transparent; font-size: 9px; font-weight: 800; }
+.renewal-reward-die .renewal-die-face { padding: 8px; gap: 2px; border-radius: 9px; border-width: 1px; box-shadow: inset 0 1px #fff, inset 0 -2px #d6b776, 0 3px 0 #99874c; }
+.renewal-reward-die.is-selected { color: #fff1ba; background: #68d9a629; border-color: #ffe29a; box-shadow: 0 0 0 2px #ffe29a14; }
+.renewal-reward-die.is-locked { opacity: .32; }
+.renewal-reward-preview { min-height: 27px; margin: 13px 0 10px; color: #f8e4ac; font-size: 11px; font-weight: 750; line-height: 1.5; text-align: center; }
+.renewal-dialog-actions { display: grid; grid-template-columns: .75fr 1.25fr; gap: 8px; }
+.renewal-primary-button, .renewal-secondary-button, .renewal-setting-button { min-height: 44px; padding: 11px 10px; border: 1px solid #dfc887; border-radius: 11px; color: #fff5d7; background: linear-gradient(#367e89,#1c5369); box-shadow: inset 0 1px #fff2, 0 3px 0 #08283d; font-size: 12px; font-weight: 850; }
+.renewal-primary-button { border-color: #ffe295; color: #f8ffe3; background: linear-gradient(#35cda9,#128b93); text-shadow: 0 1px #0c7a83; box-shadow: inset 0 1px #fff7, 0 3px 0 #b98d4e; }
+.renewal-secondary-button { color: #c5ddd5; border-color: #577f83; background: linear-gradient(#275668,#214757); }
+.renewal-primary-button:disabled, .renewal-secondary-button:disabled { opacity: .4; filter: saturate(.3); box-shadow: inset 0 1px #fff1, 0 2px 0 #08283d; }
+.renewal-settings-overlay { z-index: 20; }
+.renewal-settings-panel { display: flex; flex-direction: column; gap: 13px; max-width: 330px; padding: 30px 25px 21px; text-align: center; }
+.renewal-settings-panel h2 { margin: 0 0 7px; }
+.renewal-setting-button { display: block; text-align: left; border-color: #70969288; background: #174252; font-size: 13px; }
+.renewal-settings-panel .renewal-primary-button { margin-top: 8px; }
+.renewal-text-button { align-self: center; min-height: 35px; padding: 8px; border: 0; color: #b6dcd0; background: transparent; font-size: 11px; font-weight: 700; }
+.renewal-result-panel { display: flex; flex-direction: column; align-items: stretch; max-width: 350px; padding: 30px 22px 20px; text-align: center; }
+.renewal-result-seal { align-self: center; display: grid; place-items: center; width: 78px; height: 85px; margin: 0 0 15px; border: 3px double #ffdda2; border-radius: 28px 28px 35px 35px; color: #fff1c5; background: linear-gradient(#2abca2,#176578); font-size: 44px; font-weight: 900; text-shadow: 0 3px #155369; box-shadow: 0 4px #102e42, 0 0 25px #58e2bd33; }
+.renewal-result-panel h2 { font-size: 24px; }
+.renewal-result-text { margin: 8px 0 22px; color: #d8e7d5; font-size: 13px; line-height: 1.7; }
+.renewal-result-stats { margin-bottom: 25px; color: #f4d996; font-size: 11px; font-weight: 800; }
+.renewal-result-panel .renewal-text-button { margin-top: 13px; }
+.renewal-game.is-reduced-motion *, .renewal-game.is-reduced-motion *::before, .renewal-game.is-reduced-motion *::after { animation: none !important; transition: none !important; }
+@media (max-width: 374px) {
+  .renewal-header { left: 12px; right: 12px; }
+  .renewal-controls { padding-left: 12px; padding-right: 12px; }
+  .renewal-dice-tray { gap: 6px; }
+  .renewal-die-face { padding: 10px; gap: 3px; }
+  .renewal-dice-hint { font-size: 9px; }
+  .renewal-dice-heading { gap: 2px; }
+  .renewal-action-row { gap: 8px; }
+  .renewal-attack { gap: 6px; }
+  .renewal-attack-copy strong { font-size: 25px; }
+  .renewal-hand-name { font-size: 20px; }
+  .renewal-multiplier { font-size: 21px; }
+  .renewal-reward-panel { padding-left: 13px; padding-right: 13px; }
+  .renewal-reward-card { gap: 8px; padding: 11px 8px; }
+  .renewal-reward-glyph { width: 37px; height: 46px; flex-basis: 37px; font-size: 23px; }
+  .renewal-reward-kind { font-size: 7px; }
+  .renewal-reward-card-top strong { font-size: 15px; }
+}
+@media (max-height: 700px) {
+  .renewal-game { --controls-height: 206px; }
+  .renewal-header { top: max(10px,env(safe-area-inset-top)); }
+  .renewal-chapter-seal { width: 35px; height: 39px; font-size: 23px; border-radius: 12px 12px 15px 15px; }
+  .renewal-chapter-text h1 { font-size: 20px; }
+  .renewal-progress { top: 65px; }
+  .renewal-targets { top: 14%; }
+  .renewal-enemy-target { min-height: 40px; padding: 4px 7px; }
+  .renewal-enemy-target::after { content: ''; position: absolute; inset: -2px 0; }
+  .renewal-enemy-name { font-size: 10px; }
+  .renewal-enemy-health { padding: 3px 0 2px; }
+  .renewal-enemy-numbers { font-size: 8px; }
+  .renewal-controls { padding-top: 11px; padding-bottom: calc(10px + var(--renewal-safe-bottom)); }
+  .renewal-dice-heading { margin-bottom: 5px; }
+  .renewal-die-face, .renewal-die-lock { max-width: 60px; }
+  .renewal-action-row { margin-top: 13px; }
+  .renewal-attack { min-height: 61px; }
+  .renewal-attack-copy strong { font-size: 25px; }
+  .renewal-overlay { padding-top: 10px; padding-bottom: max(10px,var(--renewal-safe-bottom)); }
+  .renewal-reward-panel { padding-top: 16px; padding-bottom: 15px; border-radius: 20px; }
+  .renewal-reward-header { margin-bottom: 11px; }
+  .renewal-overlay h2 { margin: 5px 0; font-size: 24px; }
+  .renewal-reward-subtitle { margin-top: 5px; font-size: 10px; }
+  .renewal-reward-card { min-height: 76px; padding-top: 9px; padding-bottom: 9px; }
+  .renewal-reward-cards { gap: 7px; }
+  .renewal-reward-card-body { gap: 4px; }
+  .renewal-reward-description, .renewal-card-preview { font-size: 9px; }
+  .renewal-reward-target { margin-top: 10px; }
+  .renewal-target-title { margin-bottom: 6px; }
+  .renewal-reward-die .renewal-die-face { max-width: 46px; }
+  .renewal-reward-preview { min-height: 20px; margin: 10px 0 8px; font-size: 10px; }
+  .renewal-primary-button,.renewal-secondary-button { min-height: 40px; font-size: 11px; padding: 10px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .renewal-game *, .renewal-game *::before, .renewal-game *::after { animation: none !important; transition: none !important; }
+}
