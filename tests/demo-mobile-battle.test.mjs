@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createUI} from '../demo/ui.mjs';
 import {createRun,rollDice,toggleHold} from '../demo/model.mjs';
-import {startBattle,previewAttack} from '../demo/combat.mjs';
+import {startBattle,previewAttack,resolveRound,prepareRound} from '../demo/combat.mjs';
 import {NODES} from '../demo/config.mjs';
 
 // A small DOM boundary: replacing innerHTML detaches descendants and drops focus,
@@ -58,20 +58,41 @@ test('user disclosure choices survive dice, target, busy playback and next round
  run=toggleHold(run,1);show(ui,run);assert.equal(detail('supplies').open,true);assert.equal(detail('forecast').open,true);
  run={...run,combat:{...run.combat,targetId:run.combat.enemies.at(-1).id}};show(ui,run);
  assert.equal(detail('forecast').open,true);
- show(ui,run,{busy:true,playback:{index:1,total:2,text:'飞剑'}});
- assert.equal(detail('supplies').open,true);assert.equal(detail('forecast').open,true);
- run={...run,seed:888,combat:{...run.combat,round:2,dice:[6,5,4,3,2]}};show(ui,run);
- assert.equal(detail('supplies').open,true);assert.equal(detail('forecast').open,true);
+ const result=resolveRound(run);let forecastOpen=true;
+ for(const [index,event] of result.events.entries()){
+  assert.equal(event.snapshot.combat.phase,'resolved');
+  show(ui,event.snapshot,{busy:true,playback:{index:index+1,total:result.events.length,text:event.text}});
+  assert.equal(detail('supplies').open,true);assert.ok(detail('forecast'),`${event.type} keeps the complete forecast available`);assert.equal(detail('forecast').open,forecastOpen);
+  if(index===1){detail('forecast').open=false;forecastOpen=false;}
+ }
+ run=rollDice(prepareRound(result.state));show(ui,run);
+ assert.equal(detail('supplies').open,true);assert.equal(detail('forecast').open,false,'an explicit close during playback survives the next round');
  detail('forecast').open=false;show(ui,toggleHold(run,0));assert.equal(detail('forecast').open,false);
 }));
 
-test('focused native summaries are restored after HUD replacement through selection, playback and next round',()=>withUI(({ui,detail,summary})=>{
+test('focused forecast summaries and paired pre-attack numbers survive every real resolved snapshot and the next round',()=>withUI(({ui,detail,summary,section,button})=>{
  let run=battle();show(ui,run);assert.ok(detail('forecast'),'forecast is available');
  detail('forecast').open=true;summary('forecast').focus();
- for(const options of [{},{busy:true,playback:{index:1,total:2,text:'出招'}},{busy:true,playback:{index:2,total:2,text:'回应'}},{}]){
-  run={...run,combat:{...run.combat,round:options.busy?1:2}};show(ui,run,options);
+ const preview=previewAttack(run),beforeHp=run.hero.hp,result=resolveRound(run);
+ assert.notEqual(result.state.hero.hp,beforeHp,'the fixture must distinguish current from pre-attack health');
+ show(ui,run,{busy:true});
+ for(const [index,event] of result.events.entries()){
+  assert.equal(event.snapshot.combat.phase,'resolved');
+  show(ui,event.snapshot,{busy:true,playback:{index:index+1,total:result.events.length,text:event.text}});
+  assert.ok(detail('forecast'),`${event.type} retains the forecast disclosure`);
   assert.equal(document.activeElement,summary('forecast'),'summary focus survives every replacement');assert.equal(detail('forecast').open,true);
+  assert.ok(section('#hud').innerHTML.includes(`侠客气血 ${beforeHp} → ${preview.forecast.heroHpAfter}`),'forecast numbers remain paired with the pre-attack run');
+  assert.ok(summary('forecast').textContent.includes(`气血 ${beforeHp} → ${preview.forecast.heroHpAfter}`));
+  for(const foe of run.combat.enemies){const after=preview.forecast.enemies.find(enemy=>enemy.id===foe.id);assert.ok(section('#hud').innerHTML.includes(`气血 ${foe.hp} → ${after.hpAfter}`),'enemy outcomes also retain their pre-attack health');}
+  assert.ok(section('#hud').innerHTML.includes('以下为本次出招前推演'));
+  assert.equal(button('roll').disabled,true,'resolved snapshots cannot enable rolling while playback is busy');
+  assert.equal(button('use-item','potion').disabled,true);
  }
+ run=rollDice(prepareRound(result.state));assert.equal(run.combat.phase,'pick');show(ui,run);
+ assert.equal(detail('forecast').open,true);assert.equal(document.activeElement,summary('forecast'));
+ assert.ok(section('#hud').innerHTML.includes(`侠客气血 ${run.hero.hp} → ${previewAttack(run).forecast.heroHpAfter}`),'next round refreshes the entire run/preview pair');
+ assert.equal(section('#hud').innerHTML.includes('以下为本次出招前推演'),false);
+ assert.equal(button('attack').disabled,false);
 }));
 
 test('item focus remains in its open disclosure when busy disables the item, and dispatch still guards actions',()=>withUI(({ui,detail,summary,button,click,actions})=>{

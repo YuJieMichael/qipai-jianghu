@@ -7,6 +7,20 @@ const W=1000,H=540,TAU=Math.PI*2,colors={sword:'#baffed',poison:'#c6a6ef',guard:
 const clamp=n=>Math.max(0,Math.min(1,n));
 export function createScene(canvas,{reducedMotion=false,playbackSpeed=1}={}){
  const c=canvas.getContext('2d'),options={reducedMotion,playbackSpeed};let run=null,active=null,dead=false,raf=0,timer=0;const started=performance.now();
+ // Presentation history belongs to the battle, never the simulation/save data.
+ const completedDeaths=new Set();
+ const battleKey=state=>state?JSON.stringify([state.runId,state.nodeIndex,state.mode,state.build]):null;
+ function setState(next){
+  const changed=battleKey(next)!==battleKey(run);
+  if(changed){clearTimeout(timer);timer=0;const previous=active;active=null;previous?.resolve();completedDeaths.clear();}
+  run=next;
+  // Restore/skip ends at a stable decision or result boundary. Resolved event
+  // snapshots instead wait for their explicit death event to finish.
+  const settled=changed||next?.flow!=='battle'||next?.combat?.phase!=='resolved';
+  for(const [id,entity] of [['hero',next?.hero],...(next?.combat?.enemies||[]).map(entity=>[entity.id,entity])]){
+   if(entity?.hp>0)completedDeaths.delete(id);else if(settled&&entity?.hp<=0)completedDeaths.add(id);
+  }
+ }
  const poly=(pts,fill,stroke,width=1)=>{c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
  const line=(x,y,X,Y,color,width=2)=>{c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke()};
  const ellipse=(x,y,rx,ry,color,stroke,width=1)=>{c.beginPath();c.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,TAU);if(color){c.fillStyle=color;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
@@ -194,14 +208,19 @@ export function createScene(canvas,{reducedMotion=false,playbackSpeed=1}={}){
  }
  function character(entity,hero,t,p){
   const id=hero?'hero':entity.id,role=actorRole(entity,hero),pose=sampleActorPose(role,eventActorAction(id,active?.event),p,{...options,weaponType:hero?run?.loadout?.weaponType:undefined});
-  drawActor(c,entity,{x:pos(id),hero,time:t,pose,reducedMotion:options.reducedMotion,weaponType:hero?run?.loadout?.weaponType:undefined});
+  drawActor(c,entity,{x:pos(id),hero,time:t,pose,reducedMotion:options.reducedMotion,weaponType:hero?run?.loadout?.weaponType:undefined,deathComplete:entity.hp<=0&&completedDeaths.has(id)});
   const x=pos(id),hp=Math.max(0,entity.hp||0),max=entity.maxHp||hp||1;
   c.save();c.textAlign='center';c.font='13px serif';c.fillStyle=hero?'#d5e5c8':'#c7d5c3';c.fillText(hero?'无名侠客':entity.name||'江湖客',x,466);
   c.fillStyle='#071f26bb';c.fillRect(x-34,475,68,4);c.fillStyle=hero?'#9cd7bd':'#c5a77c';c.fillRect(x-34,475,68*clamp(hp/max),4);
   if(!hero&&run?.combat?.targetId===id&&hp>0){poly([[x-6,489],[x,484],[x+6,489]],'#e1cb8e');}
   c.restore();
  }
- function complete(current){if(!current||active!==current)return;clearTimeout(timer);timer=0;run=current.event.snapshot||run;active=null;current.resolve();}
+ function complete(current){
+  if(!current||active!==current)return;
+  clearTimeout(timer);timer=0;run=current.event.snapshot||run;
+  if(normalizeEventType(current.event)==='death')for(const id of current.event.targetIds||[])completedDeaths.add(id);
+  active=null;current.resolve();
+ }
  function frame(now){
   if(dead)return;const rect=canvas.getBoundingClientRect(),dpr=Math.min(globalThis.devicePixelRatio||1,2),width=Math.max(1,Math.round((rect.width||W)*dpr)),height=Math.max(1,Math.round(width*H/W));
   if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
@@ -216,13 +235,13 @@ export function createScene(canvas,{reducedMotion=false,playbackSpeed=1}={}){
  }
  raf=requestAnimationFrame(frame);
  return {
-  setState(next){run=next;},
+  setState,
   play(event,context){
    if(dead||!event)return Promise.resolve();if(active)complete(active);
    return new Promise(resolve=>{const duration=eventDuration(event,context,options),current={event,time:performance.now(),duration,resolve};active=current;timer=setTimeout(()=>complete(current),duration);});
   },
   setOptions(next){Object.assign(options,next);},
   skip(){complete(active);},
-  destroy(){if(dead)return;dead=true;cancelAnimationFrame(raf);clearTimeout(timer);const current=active;active=null;current?.resolve();run=null;}
+  destroy(){if(dead)return;dead=true;cancelAnimationFrame(raf);clearTimeout(timer);const current=active;active=null;current?.resolve();run=null;completedDeaths.clear();}
  };
 }

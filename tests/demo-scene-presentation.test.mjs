@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createScene} from '../demo/scene.mjs';
 import {createAudio} from '../demo/audio.mjs';
+import {createRun,rollDice} from '../demo/model.mjs';
+import {startBattle,resolveRound} from '../demo/combat.mjs';
 
 // Missing exports are assertions, so the initial RED describes the absent behavior.
 const presentation=await import('../demo/scene-effects.mjs').catch(()=>({}));
@@ -89,15 +91,55 @@ test('bamboo rain ripples stay within water and reduced motion freezes atmospher
 
 function sceneHarness(t){
  const originals=Object.fromEntries(['performance','requestAnimationFrame','cancelAnimationFrame','setTimeout','clearTimeout'].map(k=>[k,globalThis[k]]));
- let now=0,next=0;const frames=new Map(),timers=new Map(),calls=[],labels=[],scenes=[];
+ let now=0,next=0;const frames=new Map(),timers=new Map(),calls=[],labels=[],faces=[],scenes=[];
  const gradient={addColorStop(){}};
- const context=new Proxy({measureText:text=>({width:String(text).length*17}),createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(object,key)=>key in object?object[key]:(...args)=>{for(const value of args)if(typeof value==='number')assert.ok(Number.isFinite(value),`${key} received ${value}`);calls.push({key,args});if(key==='fillText')labels.push(args[0]);}});
+ const context=new Proxy({measureText:text=>({width:String(text).length*17}),createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(object,key)=>key in object?object[key]:(...args)=>{for(const value of args)if(typeof value==='number')assert.ok(Number.isFinite(value),`${key} received ${value}`);calls.push({key,args});if(key==='fillText')labels.push(args[0]);if(key==='fill'&&object.fillStyle==='#c1a785')faces.push(object.globalAlpha);}});
  globalThis.performance={now:()=>now};globalThis.requestAnimationFrame=callback=>{frames.set(++next,callback);return next;};globalThis.cancelAnimationFrame=id=>frames.delete(id);
  globalThis.setTimeout=(callback,delay)=>{timers.set(++next,{callback,delay});return next;};globalThis.clearTimeout=id=>timers.delete(id);
  t.after(()=>{for(const scene of scenes)scene.destroy();for(const [k,v] of Object.entries(originals))globalThis[k]=v;});
- return {calls,labels,frames,timers,create(options){const s=createScene({getContext:()=>context,getBoundingClientRect:()=>({width:390})},options);scenes.push(s);return s;},frame(ms=0){now+=ms;const [id,callback]=frames.entries().next().value;frames.delete(id);callback(now);}};
+ return {calls,labels,faces,frames,timers,create(options){const s=createScene({getContext:()=>context,getBoundingClientRect:()=>({width:390})},options);scenes.push(s);return s;},frame(ms=0){now+=ms;const [id,callback]=frames.entries().next().value;frames.delete(id);faces.length=0;calls.length=0;callback(now);},complete(){const [id,entry]=timers.entries().next().value;timers.delete(id);now+=entry.delay;entry.callback();}};
 }
 const run={nodeIndex:0,loadout:{weaponType:'sword'},hero:{hp:17,maxHp:20},combat:{targetId:'a',enemies:[{id:'a',name:'刀客',hp:12,maxHp:20},{id:'b',name:'弓手',kind:'ranged',hp:8,maxHp:10},{id:'c',name:'护卫',kind:'shield',hp:19,maxHp:25}]}};
+
+function lethalRound(variation){
+ const breaking=variation==='break';
+ const before=rollDice(startBattle(createRun('sword',42,{runId:`death-order-${variation}`}),{id:'death-order',enemies:[{kind:breaking?'boss':'melee',hp:breaking?5:200,attack:90,shield:0,stance:breaking?1:0,noSummon:true,...(variation==='vampiric'?{affix:variation}:breaking?{}:{mechanic:variation})}]}));
+ before.diceSkills=[null,null,null,null,null];before.hero.hp=breaking?90:3;before.hero.attack=breaking?20:1;before.combat.dice=[1,2,3,4,6];
+ if(breaking)before.combat.enemies[0].intent={kind:'heavy',damage:90,label:'蓄力重击'};
+ return {before,result:resolveRound(before),face:breaking?1:0};
+}
+
+test('real break → strike → death and lethal hurt → heal/shield → death stay upright until death, then remain collapsed',async t=>{
+ for(const variation of ['break','vampiric','ward','ritual'])await t.test(variation,async t=>{
+  const h=sceneHarness(t);
+  const {before,result,face}=lethalRound(variation),scene=h.create({reducedMotion:true});scene.setState(before);
+  const types=result.events.map(event=>event.type),deathIndex=types.indexOf('death');
+  assert.ok(deathIndex>1);assert.equal(types[deathIndex-1],variation==='break'?'strike':variation==='ward'?'shield':'heal');
+  let deathFinished=false;
+  for(const [eventIndex,event] of result.events.entries()){
+   const pending=scene.play(event,{events:result.events,eventIndex});h.frame();
+   assert.ok(Math.abs(h.faces[face]-(deathFinished ? .2 : 1))<1e-8,`${variation}/${event.type}: no premature collapse or first-frame resurrection`);
+   if(event.type==='death'){h.frame([...h.timers.values()][0].delay*.5);assert.ok(h.faces[face]>.2&&h.faces[face]<1,'death itself interpolates from the upright hurt pose');}
+   h.complete();await pending;scene.setState(event.snapshot);if(event.type==='death')deathFinished=true;
+   h.frame();assert.ok(Math.abs(h.faces[face]-(deathFinished ? .2 : 1))<1e-8,`${variation}/${event.type}: completed pose persists between events`);
+  }
+  const replay=scene.play(result.events[deathIndex]);h.frame();assert.ok(h.faces[face]<.3,'a replacement death event cannot raise an already collapsed actor');scene.skip();await replay;scene.destroy();
+ });
+});
+
+test('restored or skipped final states settle deaths, while a different run or node cancels old presentation state and timers',async t=>{
+ const h=sceneHarness(t),{before,result,face}=lethalRound('break'),scene=h.create({reducedMotion:true});
+ scene.setState(result.state);h.frame();assert.ok(h.faces[face]<.3,'restoring a final snapshot starts with a settled corpse');
+ scene.setState(before);h.frame();assert.equal(h.faces[face],1,'resuming the saved decision boundary clears stale completed deaths');
+ const pending=scene.play(result.events[0],{events:result.events,eventIndex:0});scene.skip();await pending;
+ scene.setState({...result.state,flow:'reward'});h.frame();assert.ok(h.faces[face]<.3,'skipping the remainder reconciles the final battle outcome');
+ scene.setState(before);const replacedDeath=scene.play(result.events.find(event=>event.type==='death'));
+ const replacement=scene.play(result.events.at(-1));await replacedDeath;h.frame();assert.ok(h.faces[face]<.3,'replacing an active death commits its completed presentation');scene.skip();await replacement;
+ for(const next of [{...before,runId:'new-run'},{...before,nodeIndex:1}]){
+  scene.setState(before);const deathEvent=result.events.find(event=>event.type==='death'),death=scene.play(deathEvent),oldTimer=[...h.timers.values()][0];
+  scene.setState(next);assert.equal(h.timers.size,0,'changing battle cancels the previous presentation timer');await death;oldTimer.callback();h.frame();assert.equal(h.faces[face],1,'late death completion cannot collapse the new battle');
+ }
+});
 
 test('all real scene event paths draw finite Canvas frames without revealing future health or changing state or RNG',async t=>{
  const h=sceneHarness(t),scene=h.create(),before=JSON.stringify(run),random=Math.random;

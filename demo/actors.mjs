@@ -3,13 +3,13 @@ import {sampleActorPose} from './choreography.mjs';
 const TAU=Math.PI*2;
 export function actorRole(entity={},hero=false){return hero?'hero':(['ranged','shield','elite','boss'].includes(entity.kind)?entity.kind:'melee');}
 const palettes={hero:{cloth:'#e3dfbd',shade:'#b5bea8',cape:'#226b73',edge:'#8bcbc1',metal:'#d5e4d7'},melee:{cloth:'#384650',shade:'#1c2d37',cape:'#57433f',edge:'#aa8b76',metal:'#a8bab7'},ranged:{cloth:'#7a8362',shade:'#344e40',cape:'#263d36',edge:'#c2bb89',metal:'#c9cbaa'},shield:{cloth:'#637579',shade:'#253c44',cape:'#384d4e',edge:'#9baaa0',metal:'#8dacae'},elite:{cloth:'#665153',shade:'#2c313b',cape:'#8a4141',edge:'#cea474',metal:'#b8c1b2'},boss:{cloth:'#927d5b',shade:'#393e44',cape:'#8d3a3c',edge:'#e1bd78',metal:'#c4b996'}};
-export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion=false,weaponType='sword'}={}){
+export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion=false,weaponType='sword',deathComplete}={}){
  const role=actorRole(entity,hero),pal=hero?{...palettes.hero,...({staff:{cape:'#4d637d',edge:'#b4d9cd',metal:'#c7dfbd'},hammer:{cape:'#796047',edge:'#d7bc86',metal:'#d3c19a'}}[weaponType]||{})}:palettes[role],scale=({hero:1.25,melee:1.08,ranged:1.1,shield:1.13,elite:1.25,boss:1.4})[role],face=hero?1:-1;
- // Older callers may supply only some pose fields. A death pose is explicitly
- // marked even at progress zero, so an unrelated event cannot raise a corpse.
+ // Standalone drawings default to a settled zero-HP portrait. Playback supplies
+ // deathComplete explicitly: HP may reach zero before the death event begins.
  const rest=sampleActorPose(role,'idle',0,{weaponType});
  pose={...rest,...Object.fromEntries(Object.entries(pose||{}).filter(([,value])=>Number.isFinite(value)))};
- if(entity.hp<=0&&pose.deathProgress<0)pose=sampleActorPose(role,'death',1,{weaponType,reducedMotion});
+ if(deathComplete===true||(entity.hp<=0&&deathComplete!==false&&pose.deathProgress<0))pose=sampleActorPose(role,'death',1,{weaponType,reducedMotion});
  const fallen=pose.deathProgress>=0;
  const poly=(points,fill,stroke=undefined,width=1)=>{c.beginPath();points.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
  const line=(a,b,color,width=2)=>{c.beginPath();c.moveTo(...a);c.lineTo(...b);c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.stroke()};
