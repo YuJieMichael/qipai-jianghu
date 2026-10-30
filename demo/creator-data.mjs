@@ -19,7 +19,8 @@ export function patchContent(content,changes){
  const checked=validateContent(copy);return checked.valid?{valid:true,content:checked.content,errors:[]}:{valid:false,content,errors:checked.errors};
 }
 export function lootProbabilities(content){
- const loot=content.expansion?.loot||{},weights=loot.rarityWeights||{},available=content.rarities.filter(r=>content.equipment.some(e=>e.rarity===r.id));
- const total=available.reduce((sum,r)=>sum+Math.max(0,Number(weights[r.id])||0),0);
- return available.map(r=>{const probability=total?Math.max(0,Number(weights[r.id])||0)/total:0;return {id:r.id,name:r.name,probability,battleChance:probability*(loot.chance||0),affixes:Math.min(loot.affixCount?.[r.id]||0,Array.isArray(content.expansion?.affixes)?new Set(content.expansion.affixes.map(a=>a.key)).size:Infinity)};});
+ const loot=content.expansion?.loot||{},weights=loot.rarityWeights||{common:1},available=content.rarities.filter(r=>content.equipment.some(e=>e.rarity===r.id));
+ let entries=Object.entries(weights).filter(([,w])=>Number.isFinite(w)&&w>0),total=entries.reduce((n,[,w])=>n+w,0);if(!total){entries=[['common',1]];total=1;}
+ const missing=entries.filter(([id])=>!content.equipment.some(e=>e.rarity===id)).reduce((n,[,w])=>n+w,0)/total;
+ return available.map(r=>{const probability=(Number(weights[r.id])>0?Number(weights[r.id])/total:!Object.values(weights).some(w=>w>0)&&r.id==='common'?1:0)+missing*content.equipment.filter(e=>e.rarity===r.id).length/content.equipment.length;return {id:r.id,name:r.name,probability,battleChance:probability*(loot.chance||0),affixes:Math.min(loot.affixCount?.[r.id]??1,Array.isArray(content.expansion?.affixes)?new Set(content.expansion.affixes.map(a=>a.key)).size:Infinity)};});
 }
