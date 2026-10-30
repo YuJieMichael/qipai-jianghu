@@ -1,4 +1,4 @@
-import {DEFAULT_EXPANSION,validateExpansion} from './expansion-content.mjs';
+import {DEFAULT_EXPANSION,LEGACY_DEFAULT_EXPANSION,validateExpansion} from './expansion-content.mjs';
 /** Original, editable offline workshop catalog. This module has no storage or DOM side effects. */
 export const EFFECT_KEYS = ['attack','maxHp','armor','critChance','critDamage','lifesteal','poisonDamage','shieldGain','extraRerolls','openingShield','regen','thorns','fireDamage','freezeChance','comboBonus','goldBonus'];
 const named=(ids,names,extra=()=>({}))=>ids.map((id,i)=>({id,name:names[i],...extra(id,i)}));
@@ -123,4 +123,4 @@ export function validateContent(value){
  const expansion=validateExpansion(c.expansion,c);if(!expansion.valid)errors.push(...expansion.errors);else c.expansion=expansion.expansion;
  return {valid:errors.length===0,content:errors.length?null:c,errors};
 }
-export function getContent(profile){const c=profile?.contentOverrides??CONTENT;return c.expansion?c:{...c,expansion:structuredClone(DEFAULT_EXPANSION)};}
+export function getContent(profile){const c=profile?.contentOverrides??CONTENT;return c.expansion?c:{...c,expansion:structuredClone(LEGACY_DEFAULT_EXPANSION)};}

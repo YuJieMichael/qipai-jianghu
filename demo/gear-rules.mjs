@@ -36,12 +36,19 @@ function factorAt(rules,level){
  const rows=rules.cumulativeFactors,last=rows.length-1;
  return level<=last?rows[level]:rows[last]+(level-last)*(rows[last]-rows[last-1]);
 }
+function rarityCap(rules,content,rarityId){
+ if(own(rules.rarityCaps,rarityId))return rules.rarityCaps[rarityId];
+ // Custom catalogs accept ranks 0..100; ranks above the fourth tier use epic's cap.
+ const rank=content.rarities?.find(r=>r.id===rarityId)?.rank;
+ const tier=Number.isInteger(rank)?Math.max(0,Math.min(3,rank)):0;
+ return rules.rarityCaps[['common','fine','rare','epic'][tier]];
+}
 function itemPercents(rules,quality){const effects=percentBase();for(const rule of rules?.percentRules??[])if(quality>=rule.quality)add(effects,rule.effects);return effects;}
 function slotEffects(content,slotId,level,rules,active){const effects={};if(active)add(effects,content.workshopRules?.slotEffects?.[slotId],factorAt(rules,level));return effects;}
 export function getSlotProgression(profile,content,slotId){
  if(!content.slots.some(s=>s.id===slotId))throw new Error('没有找到所选槽位。');
  const rules=progression(content),{item,template,quality}=equipped(profile,content,slotId),storedLevel=profile.slotLevels[slotId]??0;
- const cap=rules&&template?Math.min(content.economy.maxEnhance,rules.rarityCaps[template.rarity]+quality*rules.qualityCapBonus):content.economy.maxEnhance;
+ const cap=rules&&template?Math.min(content.economy.maxEnhance,rarityCap(rules,content,template.rarity)+quality*rules.qualityCapBonus):content.economy.maxEnhance;
  const effectiveLevel=Math.min(storedLevel,cap),active=Boolean(item&&template);
  const cumulativeEffects=slotEffects(content,slotId,effectiveLevel,rules,active);
  const nextCost=storedLevel<cap?{gold:content.economy.enhanceGold*(storedLevel+1),dust:content.economy.enhanceDust*(storedLevel+1)}:null;

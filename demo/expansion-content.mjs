@@ -5,7 +5,8 @@ import {DEFAULT_GROWTH_SELECTION,validateGrowthSelection} from './growth-pools.m
 const EFFECTS=['attack','maxHp','armor','critChance','critDamage','lifesteal','poisonDamage','shieldGain','extraRerolls','openingShield','regen','thorns','fireDamage','freezeChance','comboBonus','goldBonus'];
 const affixes=[['edge','锋芒','attack',1,4],['heart','根骨','maxHp',4,16],['shell','坚壁','armor',1,3],['acuity','明锐','critChance',1,5],['ward','护元','shieldGain',1,4],['breath','调息','regen',1,2],['flame','余烬','fireDamage',1,3],['fortune','福运','goldBonus',2,8]].map(([id,name,key,min,max])=>({id,name,key,min,max}));
 const task=(id,name,stat,target,reward)=>({id,name,stat,target,reward});
-export const DEFAULT_EXPANSION={
+// Older content omitted expansion entirely; its completion must keep optional rules absent.
+export const LEGACY_DEFAULT_EXPANSION={
  affixes,
  loot:{chance:.32,bossChance:1,rarityWeights:{common:55,fine:28,rare:14,epic:3},affixCount:{common:1,fine:2,rare:3,epic:4},bossExclusive:{bamboo:'weapon-sword-3',temple:'weapon-staff-3',gate:'weapon-hammer-2',desert:'weapon-sword-3',lake:'weapon-staff-3',tomb:'weapon-hammer-2',peak:'weapon-sword-3'}},
  gear:{advanceCost:{gold:120,dust:16,essence:1},rollCost:{gold:40,dust:4},recastCost:{gold:160,dust:18},maxQuality:3,qualityBonus:.2,maxAffixes:4,passiveRules:[{quality:1,effects:{attack:1}},{quality:2,effects:{maxHp:10}},{quality:3,effects:{comboBonus:5}}]},
@@ -16,6 +17,7 @@ export const DEFAULT_EXPANSION={
  encounters:{choices:[{id:'safe',title:'守心调息',description:'回复35气血',heal:35},{id:'blood-oath',title:'歃血取力',description:'失去18气血，攻击+5，之后敌人攻击+2，金币+20%',hpCost:18,attack:5,curseId:'blood-oath',goldBonus:20}],curseRules:{'blood-oath':{enemyAttack:2}}},
  chapterRoutes:CHAPTER_ROUTES
 };
+export const DEFAULT_EXPANSION=structuredClone(LEGACY_DEFAULT_EXPANSION);
 DEFAULT_EXPANSION.gear.progression=structuredClone(DEFAULT_GEAR_PROGRESSION);
 DEFAULT_EXPANSION.rogue.selection=structuredClone(DEFAULT_GROWTH_SELECTION);
 const obj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype;
@@ -24,7 +26,7 @@ const id=v=>typeof v==='string'&&/^[a-zA-Z][a-zA-Z0-9-]{0,63}$/.test(v);
 const STATS=['runs','clears','kills','turns','enhances','purchases','gathers','training','crafts','draws','dailyClaims','sweeps','gifts'];
 export function validateExpansion(value,content){
  const errors=[],fail=(p,m='扩展字段无效')=>{if(errors.length<40)errors.push(`expansion.${p}: ${m}`);};
- let x;try{x=structuredClone(value??DEFAULT_EXPANSION);}catch{return {valid:false,expansion:null,errors:['扩展须为 JSON 数据。']};}
+ let x;try{x=structuredClone(value??LEGACY_DEFAULT_EXPANSION);}catch{return {valid:false,expansion:null,errors:['扩展须为 JSON 数据。']};}
  let nodes=0;function walk(v,p='',d=0){if(++nodes>25000||d>12)return fail(p,'扩展过大或嵌套过深');if(v===null||typeof v==='boolean')return;if(typeof v==='number'){if(!Number.isFinite(v)||v<0||v>100000000)fail(p);return;}if(typeof v==='string'){if(v.length>2000||/[<>\u0000-\u0008]/.test(v))fail(p);return;}if(!obj(v)&&!Array.isArray(v))return fail(p);for(const [k,n]of Object.entries(v)){if(['__proto__','constructor','prototype'].includes(k))fail(p,'不允许的键');else walk(n,`${p}.${k}`,d+1);}}walk(x);
  if(!obj(x))return {valid:false,expansion:null,errors:['扩展须为对象。']};
  const hasId=(rows,value)=>Array.isArray(rows)&&rows.some(row=>obj(row)&&row.id===value);
