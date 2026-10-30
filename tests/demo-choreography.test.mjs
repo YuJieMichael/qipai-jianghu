@@ -65,3 +65,25 @@ test('scene promises resolve on replacement, destruction and timer completion wi
   await timedScene.play({type:'unknown'});timedScene.destroy();
  }finally{globalThis.requestAnimationFrame=previousRAF;globalThis.cancelAnimationFrame=previousCancel;}
 });
+
+test('weapon attacks have different anticipation and release while recovering to rest',()=>{
+ const sword=sampleActorPose('hero','attack',.5,{weaponType:'sword'}),staff=sampleActorPose('hero','attack',.5,{weaponType:'staff'}),hammer=sampleActorPose('hero','attack',.5,{weaponType:'hammer'});
+ assert.ok(staff.x<sword.x,'staff casts from a planted stance');
+ assert.ok(hammer.crouch>sword.crouch,'hammer lands in a low weight-bearing stance');
+ assert.notEqual(staff.weapon,hammer.weapon);
+ for(const weaponType of ['sword','staff','hammer']){
+  assert.deepEqual(sampleActorPose('hero','attack',1,{weaponType}),sampleActorPose('hero','idle',0,{weaponType}));
+  assert.equal(sampleActorPose('hero','attack',.5,{weaponType,reducedMotion:true}).x,0);
+  const nearlyRest=sampleActorPose('hero','attack',.999,{weaponType}),rest=sampleActorPose('hero','idle',0,{weaponType});
+  assert.ok(Math.abs(nearlyRest.frontUpper-rest.frontUpper)<.01,'arm eases into rest without an endpoint snap');
+ }
+});
+test('phase, mechanic and break events map roles without depending on enemy names',async()=>{
+ const {eventActorAction}=await import('../demo/choreography.mjs');
+ assert.equal(typeof eventActorAction,'function');
+ assert.equal(eventActorAction('captain',{type:'phase',sourceId:'captain',targetIds:['captain']}),'guard');
+ assert.equal(eventActorAction('captain',{type:'mechanic',sourceId:'captain',targetIds:['captain']}),'prepare');
+ assert.equal(eventActorAction('captain',{type:'break',sourceId:'hero',targetIds:['captain']}),'hurt');
+ assert.equal(eventActorAction('hero',{type:'break',sourceId:'hero',targetIds:['captain']}),'attack');
+ assert.equal(eventActorAction('other',{type:'break',sourceId:'hero',targetIds:['captain']}),'idle');
+});

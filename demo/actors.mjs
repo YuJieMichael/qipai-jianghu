@@ -3,7 +3,7 @@ const TAU=Math.PI*2;
 export function actorRole(entity={},hero=false){return hero?'hero':(['ranged','shield','elite','boss'].includes(entity.kind)?entity.kind:'melee');}
 const palettes={hero:{cloth:'#e3dfbd',shade:'#b5bea8',cape:'#226b73',edge:'#8bcbc1',metal:'#d5e4d7'},melee:{cloth:'#384650',shade:'#1c2d37',cape:'#57433f',edge:'#aa8b76',metal:'#a8bab7'},ranged:{cloth:'#7a8362',shade:'#344e40',cape:'#263d36',edge:'#c2bb89',metal:'#c9cbaa'},shield:{cloth:'#637579',shade:'#253c44',cape:'#384d4e',edge:'#9baaa0',metal:'#8dacae'},elite:{cloth:'#665153',shade:'#2c313b',cape:'#8a4141',edge:'#cea474',metal:'#b8c1b2'},boss:{cloth:'#927d5b',shade:'#393e44',cape:'#8d3a3c',edge:'#e1bd78',metal:'#c4b996'}};
 export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion=false,weaponType='sword'}={}){
- const role=actorRole(entity,hero),pal=palettes[role],scale=({hero:1.25,melee:1.08,ranged:1.1,shield:1.13,elite:1.25,boss:1.4})[role],face=hero?1:-1;
+ const role=actorRole(entity,hero),pal=hero?{...palettes.hero,...({staff:{cape:'#4d637d',edge:'#b4d9cd',metal:'#c7dfbd'},hammer:{cape:'#796047',edge:'#d7bc86',metal:'#d3c19a'}}[weaponType]||{})}:palettes[role],scale=({hero:1.25,melee:1.08,ranged:1.1,shield:1.13,elite:1.25,boss:1.4})[role],face=hero?1:-1;
  const poly=(points,fill,stroke=undefined,width=1)=>{c.beginPath();points.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
  const line=(a,b,color,width=2)=>{c.beginPath();c.moveTo(...a);c.lineTo(...b);c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.stroke()};
  const ellipse=(x,y,rx,ry,color,stroke)=>{c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);if(color){c.fillStyle=color;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=1.5;c.stroke()}};
@@ -14,8 +14,8 @@ export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion
  // Capes have their own delayed edge and split hems, behind the articulated body.
  if(role==='hero'){
   poly([[-15,-113],[-31,-108],[-40-wind*.5,-71],[-56-wind,-24],[-31-wind,-40],[-22,-27],[-6,-48]],pal.cape,pal.edge);
-  poly([[-23,-102],[-34-wind*.5,-69],[-45-wind,-40],[-28-wind*.5,-49]],'#174b58');
-  poly([[-6,-119],[-24,-122],[-57-wind,-109],[-78-wind,-113],[-64-wind,-99],[-37,-102]],'#5b9d98');
+  poly([[-23,-102],[-34-wind*.5,-69],[-45-wind,-40],[-28-wind*.5,-49]],weaponType==='staff'?'#34445e':weaponType==='hammer'?'#4d4336':'#174b58');
+  poly([[-6,-119],[-24,-122],[-57-wind,-109],[-78-wind,-113],[-64-wind,-99],[-37,-102]],pal.edge);
  }else if(role==='boss'){
   poly([[-28,-120],[18,-122],[31,-96],[42-wind*.5,-18],[9,-29],[-8,-17],[-29,-31],[-56-wind,-15],[-44,-71]],pal.cape,'#c18460');
   for(let i=0;i<3;i++)poly([[-20+i*15,-95],[-28+i*18-wind*.3,-27],[-17+i*18-wind*.3,-33],[-12+i*13,-96]],'#b154452f');
@@ -93,7 +93,7 @@ export function drawActor(c,entity,{x,y=426,hero=false,time=0,pose,reducedMotion
  // Every weapon uses the front-hand joint, but has its own weight and silhouette.
  c.save();c.translate(...frontHand);
  if(role==='hero'&&weaponType==='staff'){
-  c.rotate(pose.weapon);line([-36,0],[73,0],'#a89b6d',5);line([-29,-2],[62,-2],'#d4d5ab',1);poly([[63,-13],[80,0],[63,13],[54,0]],'#7bbbad','#c0f1d6',2);ellipse(65,0,5,5,'#d5fae1');
+  c.rotate(pose.weapon);line([-36,0],[73,0],'#a89b6d',5);line([-29,-2],[62,-2],'#d4d5ab',1);poly([[63,-13],[80,0],[63,13],[54,0]],'#7bbbad','#c0f1d6',2);ellipse(65,0,5,5,'#d5fae1');line([58,-17],[58,17],pal.edge,2);
  }else if(role==='hero'&&weaponType==='hammer'){
   c.rotate(pose.weapon);line([-25,0],[63,0],'#786752',7);poly([[47,-19],[76,-19],[85,-10],[85,13],[76,21],[47,21],[40,12],[40,-11]],'#7d9b91','#e1d3a6',2);line([52,-14],[52,15],'#c4b47f',3);
  }else if(role==='ranged'){

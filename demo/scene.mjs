@@ -1,6 +1,6 @@
 import {getRunNode} from './journey.mjs';
 import {actorRole,drawActor} from './actors.mjs';
-import {eventDuration,normalizeEventType,sampleActorPose,sampleSceneFeedback} from './choreography.mjs';
+import {eventActorAction,eventDuration,normalizeEventType,sampleActorPose,sampleSceneFeedback} from './choreography.mjs';
 const W=1000,H=540,TAU=Math.PI*2,colors={sword:'#baffed',poison:'#c6a6ef',guard:'#ffe0a0'};
 const clamp=n=>Math.max(0,Math.min(1,n));
 export function createScene(canvas,{reducedMotion=false}={}){
@@ -60,23 +60,82 @@ export function createScene(canvas,{reducedMotion=false}={}){
   for(const x of [210,788]){line(x,146,x,376,'#222f2c',6);const sway=options.reducedMotion?0:Math.sin(t*1.7+x)*5;poly([[x,155],[x+49,169],[x+45+sway,263],[x+23,253],[x+3+sway,274]],'#743b3d','#bf9663');line(x+18,179,x+16,232,'#c0a371',4);line(x+8,197,x+33,202,'#c0a371',3);}
   lantern(105,336);lantern(917,336);
  }
+ function desert(t){
+  glow(770,116,190,'#d6985736');ellipse(770,116,42,42,'#dbb985');
+  // Layered wind-cut dunes and an excavated caravan ruin occupy different depths.
+  poly([[0,262],[112,234],[298,268],[505,202],[728,246],[1000,183],[1000,H],[0,H]],'#73584d');
+  poly([[0,331],[220,267],[400,306],[632,253],[822,310],[1000,274],[1000,H],[0,H]],'#a47b57');
+  poly([[0,379],[179,341],[416,366],[651,316],[1000,369],[1000,H],[0,H]],'#b99166');
+  for(const [x,h] of [[97,191],[204,149],[841,225],[921,169]]){poly([[x,380],[x+6,380-h],[x+37,379-h],[x+45,380]],'#594b44','#c0a073',2);poly([[x-5,378-h],[x+17,365-h],[x+43,376-h],[x+46,390-h],[x-7,390-h]],'#8d7456','#c3aa7c');line(x+16,400-h,x+13,362,'#af8c61',2);}
+  poly([[78,194],[116,179],[258,215],[267,240],[195,221],[144,214],[113,226]],'#80644d','#b89568',2);
+  poly([[804,176],[846,148],[887,169],[888,189],[849,181],[808,198]],'#84674d','#c4a171',2);
+  poly([[0,430],[181,405],[420,422],[686,395],[1000,422],[1000,H],[0,H]],'#8c7355');
+  for(let i=0;i<13;i++){const y=432+i*9;line(15+(i%3)*23,y,320+i*48,y-7,'#d5b78339',1);}
+  for(const [x,y] of [[52,467],[895,470],[730,415]]){poly([[x-24,y],[x-8,y-22],[x+18,y-15],[x+29,y+6]],'#65584b','#baa17a');}
+  // A torn red expedition pennant is the one saturated foreground accent.
+  line(947,278,942,445,'#4b443a',5);const sway=options.reducedMotion?0:Math.sin(t*1.5)*8;poly([[947,283],[886,290+sway],[901,314],[885,338+sway],[945,323]],'#7e3e3e','#c49a71');
+ }
+ function lake(t){
+  poly([[0,263],[98,199],[241,254],[378,170],[535,258],[731,201],[1000,258],[1000,H],[0,H]],'#234b61');
+  poly([[0,310],[179,265],[319,289],[518,250],[707,286],[1000,260],[1000,H],[0,H]],'#316374');
+  c.fillStyle='#28586a';c.fillRect(0,305,W,235);
+  for(let i=0;i<24;i++){const x=(i*163)%1000,y=315+i*9,drift=options.reducedMotion?0:Math.sin(t*.65+i)*10;line(x+drift,y,x+46+i%4*21+drift,y,'#9bc9bd30',1);}
+  for(let i=0;i<8;i++)ellipse(745,323+i*10,12+i*9,1.3,'#c9dcc241');
+  // A broad arched stone bridge supports the fighting plane over open water.
+  poly([[0,454],[79,424],[253,395],[500,388],[754,395],[922,424],[1000,454],[1000,H],[0,H]],'#264b56','#7ca294',2);
+  for(const x of [106,401,697]){c.fillStyle='#183b4f';c.beginPath();c.moveTo(x,540);c.lineTo(x,479);c.bezierCurveTo(x+15,418,x+137,418,x+155,479);c.lineTo(x+155,540);c.fill();}
+  poly([[0,419],[244,392],[503,386],[764,392],[1000,418],[1000,449],[750,422],[505,416],[250,422],[0,450]],'#789384','#a4b7a0',2);
+  for(let i=0;i<16;i++){const x=i*68,y=417-Math.sin(i/15*Math.PI)*30;line(x,y,x+9,y+28,'#476d69',1);}
+  for(const x of [27,136,869,977]){const y=x<500?402-x*.055:354+x*.055;line(x,y-31,x,y,'#b0bba0',9);ellipse(x,y-36,8,7,'#d1d2af');}
+  for(const x of [41,934]){line(x,462,x+9,405,'#4c7a6f',3);for(let j=0;j<3;j++)poly([[x+4,439-j*8],[x-15-j*3,425-j*8],[x+2,447-j*8]],'#557e68');}
+  lantern(83,358);lantern(929,358);glow(743,320,115,'#bfdccc0b');
+ }
+ function tomb(t){
+  // Jagged grotto vault, sunken funerary door and warm braziers: no open horizon.
+  poly([[0,0],[1000,0],[1000,345],[948,229],[894,254],[861,156],[795,205],[727,99],[659,149],[613,70],[523,130],[441,71],[366,157],[294,119],[215,239],[144,181],[71,303],[0,328]],'#151b29','#514856',2);
+  poly([[105,377],[176,193],[320,133],[645,119],[822,208],[909,388]],'#3b3544','#6c6263',2);
+  poly([[332,369],[337,210],[401,153],[603,151],[666,211],[668,369]],'#655348','#9a8061',2);
+  poly([[371,369],[372,225],[419,183],[582,181],[628,226],[626,369]],'#111f2d','#b09773',3);
+  for(let i=0;i<7;i++){const x=410+i*30;line(x,205,x,369,'#473e42',3);poly([[x-4,249],[x+4,240],[x+8,260],[x,273],[x-7,260]],'#7d6858','#bc9367');}
+  for(const x of [207,746]){poly([[x-20,220],[x+29,218],[x+34,378],[x-29,378]],'#594a4b','#8d7460');for(let j=0;j<3;j++){line(x-12,249+j*34,x+16,249+j*34,'#a88a65',2);poly([[x,255+j*34],[x+8,265+j*34],[x,274+j*34],[x-8,265+j*34]],'#332d39','#8d7459');}}
+  poly([[0,406],[205,380],[797,379],[1000,407],[1000,H],[0,H]],'#292c3b');
+  for(let row=0;row<5;row++)for(let col=0;col<9;col++){const x=col*130+(row%2)*50,y=407+row*29;poly([[x,y],[x+120,y],[x+133,y+25],[x-9,y+25]],(row+col)%3?'#3b3946':'#49414a','#1d2835');}
+  for(const x of [90,899]){poly([[x-20,401],[x-12,349],[x+13,349],[x+21,401]],'#5b4941','#b78c58');ellipse(x,345,27,9,'#9b744e','#cca469');const flicker=options.reducedMotion?0:Math.sin(t*9+x)*5;glow(x,321,112,'#db853b35');poly([[x-18,339],[x-15,319],[x-7,321],[x+flicker,282],[x+12,311],[x+14,302],[x+22,339]],'#cc713e');poly([[x-10,338],[x-3,305],[x+6,321],[x+12,338]],'#f1cc7c');}
+  for(const x of [27,962])poly([[x-30,H],[x-20,257],[x+11,302],[x+25,443],[x+50,H]],'#181f2b','#423c47');
+ }
+ function peak(t){
+  glow(721,89,130,'#d4e5e526');
+  // Tall snow-spines and an isolated terrace above the cloud sea.
+  for(const [x,y,w] of [[-60,188,260],[209,109,270],[493,143,242],[747,61,304]]){poly([[x-90,430],[x+w*.48,y],[x+w+90,430]],'#3b596e');poly([[x+w*.48,y],[x+w*.76,y+153],[x+w*.57,y+116],[x+w*.5,y+140],[x+w*.35,y+104],[x+w*.15,y+177]],'#b7c9ce','#d9e0d4');line(x+w*.48,y+140,x+w*.58,409,'#78909b',3);}
+  for(let i=0;i<4;i++){const y=320+i*26;ellipse(140+i*244+Math.sin(t*.1+i)*10,y,310,30,'#9fb9bb31');}
+  poly([[0,439],[112,403],[340,404],[410,430],[621,404],[870,398],[1000,434],[1000,H],[0,H]],'#2c424e','#9aa8a1',2);
+  poly([[0,417],[115,387],[336,390],[424,413],[641,389],[880,383],[1000,416],[1000,445],[853,423],[641,430],[423,442],[327,427],[109,425],[0,448]],'#aebbb6','#d6ded0',2);
+  for(const x of [74,416,840]){poly([[x,451],[x+18,478],[x+3,515],[x+23,H]],null,'#61717b',2);}
+  // Wind-bent alpine pine and hanging talisman mark the summit.
+  line(933,411,940,244,'#313f47',13);line(940,292,873,265,'#313f47',7);line(940,323,981,289,'#313f47',6);
+  for(const [x,y,w] of [[922,259,68],[874,270,73],[959,292,63],[928,311,83]]){poly([[x-w,y+11],[x-12,y-18],[x+w*.7,y+11]],'#325658','#81988b');line(x-w,y+9,x+w*.6,y+9,'#ccd6ca',4);}
+  line(110,301,110,409,'#53646a',5);const sway=options.reducedMotion?0:Math.sin(t*2)*6;poly([[111,306],[150,310],[150+sway,370],[131,359],[111,373]],'#7d464b','#c9ae89');line(124,322,138,345,'#dcc39a',3);
+ }
  function background(t){
-  const stage=getRunNode(run||{nodeIndex:0})?.scene||'bamboo',gradient=c.createLinearGradient(0,0,0,H);gradient.addColorStop(0,stage==='bamboo'?'#081e2c':stage==='temple'?'#19232f':'#172632');gradient.addColorStop(1,'#456051');c.fillStyle=gradient;c.fillRect(0,0,W,H);
-  const moonX=stage==='bamboo'?694:stage==='temple'?797:501;glow(moonX,99,88,'#d1dbc920');ellipse(moonX,99,stage==='gate'?25:32,stage==='gate'?25:32,'#c6d6c5');
-  if(stage==='bamboo')forest(t);else if(stage==='temple')temple();else gate(t);
-  for(let i=0;i<3;i++){const fog=c.createLinearGradient(0,0,W,0);fog.addColorStop(0,'#c4dfcb00');fog.addColorStop(.5,'#c4dfcb0c');fog.addColorStop(1,'#c4dfcb00');c.fillStyle=fog;c.fillRect(Math.sin(t*.13+i)*100,300+i*55,W,23);}
-  if(!options.reducedMotion)for(let i=0;i<64;i++){const x=(i*113+t*72)%1100,y=(i*73+t*270)%570;line(x,y,x-6,y+17,'#b7d6cf22',1);}
+  const stage=getRunNode(run||{nodeIndex:0})?.scene||'bamboo',palettes={bamboo:['#081e2c','#456051'],temple:['#19232f','#456051'],gate:['#172632','#456051'],desert:['#3c303e','#c9a571'],lake:['#0e3048','#7ba39b'],tomb:['#111622','#42333e'],peak:['#253d5a','#9db8c1']},palette=palettes[stage]||palettes.bamboo,gradient=c.createLinearGradient(0,0,0,H);gradient.addColorStop(0,palette[0]);gradient.addColorStop(1,palette[1]);c.fillStyle=gradient;c.fillRect(0,0,W,H);
+  if(!['tomb','desert'].includes(stage)){const moonX=stage==='bamboo'?694:stage==='temple'?797:stage==='lake'?745:stage==='peak'?721:501;glow(moonX,99,88,'#d1dbc920');ellipse(moonX,99,stage==='gate'?25:32,stage==='gate'?25:32,'#c6d6c5');}
+  ({bamboo:forest,temple,gate,desert,lake,tomb,peak}[stage]||forest)(t);
+  if(stage!=='desert'&&stage!=='tomb')for(let i=0;i<3;i++){const fog=c.createLinearGradient(0,0,W,0);fog.addColorStop(0,'#c4dfcb00');fog.addColorStop(.5,'#c4dfcb0c');fog.addColorStop(1,'#c4dfcb00');c.fillStyle=fog;c.fillRect(Math.sin(t*.13+i)*100,300+i*55,W,23);}
+  if(!options.reducedMotion)for(let i=0;i<(stage==='tomb'?15:64);i++){const x=(i*113+t*(stage==='desert'?120:stage==='peak'?40:72))%1100,y=(i*73+t*(stage==='tomb'?-28:stage==='peak'?37:stage==='desert'?20:270)+570)%570;if(stage==='peak')ellipse(x,y,1.4,1.4,'#e4eee68a');else if(stage==='tomb')ellipse(x,y,1,2,'#d8995d66');else if(stage==='desert')line(x,y,x+12,y-1,'#e2c59a33',1);else line(x,y,x-6,y+17,'#b7d6cf22',1);}
  }
  const blade=(x,y,angle,length=53,color='#cffff0')=>{c.save();c.translate(x,y);c.rotate(angle);poly([[-length*.6,-3],[length*.4,-3],[length*.62,0],[length*.4,3],[-length*.6,3]],color);line(-length*.56,-6,-length*.56,6,'#6ba9a3',2);c.restore();};
  function ring(x,y,rx,ry,color,alpha=1,width=2){c.save();c.globalAlpha=clamp(alpha);ellipse(x,y,rx,ry,null,color,width);c.restore();}
  function sparks(x,y,p,color,count=12,radius=60){for(let i=0;i<count;i++){const a=i*TAU/count+.2,r=radius*p;line(x+Math.cos(a)*r,y+Math.sin(a)*r*.8,x+Math.cos(a)*(r+10),y+Math.sin(a)*(r+10)*.8,color,2);}}
  function seal(x,y,p,color){c.save();c.globalAlpha=Math.sin(p*Math.PI)*.75;ellipse(x,y,75,22,null,color,2);ellipse(x,y,57,16,null,color,1);for(let i=0;i<8;i++){const a=i*TAU/8;line(x+Math.cos(a)*58,y+Math.sin(a)*16,x+Math.cos(a)*81,y+Math.sin(a)*24,color,2);}c.restore();}
  function effects(p,layer){
-  if(!active)return;const e=active.event,type=normalizeEventType(e),sx=pos(e.sourceId),targets=e.targetIds?.length?e.targetIds:['hero'],col=colors[e.build]||'#eaddb8',impact=clamp((p-.43)/.57),motion=options.reducedMotion?.2:1;
+  if(!active)return;const e=active.event,type=normalizeEventType(e),sx=pos(e.sourceId),targets=e.targetIds?.length?e.targetIds:['hero'],col=colors[e.build]||'#eaddb8',impact=clamp((p-.43)/.57),motion=options.reducedMotion?.2:1,weapon=e.snapshot?.loadout?.weaponType||run?.loadout?.weaponType||'sword',foe=e.snapshot?.combat?.enemies?.find(unit=>unit.id===e.sourceId)||enemies().find(unit=>unit.id===e.sourceId),mechanic=foe?.mechanic,mechanicColor=mechanic==='assault'?'#f1ad85':mechanic==='ward'?'#e7ce91':'#c4a6e5';
   c.save();
   if(layer==='ground'){
    if(['swordArray','swordEcho','ascension'].includes(type))seal(type==='swordEcho'?pos(targets[0]):sx,436,p,col);
    if(type==='shield'&&e.value>=0)seal(220,436,p,'#e2b765');
+   if(['phase','mechanic'].includes(type))seal(sx,434,p,mechanicColor);
+   if(type==='break')for(const id of targets)ring(pos(id),431,30+impact*65,10+impact*19,'#e5d4a2',1-impact,3);
+   if(type==='strike'&&e.sourceId==='hero'&&weapon==='hammer')for(const id of targets){ring(pos(id),430,15+impact*92,5+impact*25,'#ead1a0',1-impact,4);if(impact>0)for(let i=0;i<5;i++){const x=pos(id)+(i-2)*26*impact;poly([[x,435],[x-9,424-impact*18*motion],[x+9,418-impact*34*motion],[x+14,434]],'#ad9d7e');}}
    if(type==='burst')for(const id of targets)ring(pos(id),430,18+impact*80,6+impact*23,'#ad83d4',1-impact,3);
    c.restore();return;
   }
@@ -84,6 +143,11 @@ export function createScene(canvas,{reducedMotion=false}={}){
    if(['strike','hurt','counter'].includes(type)){
     if(type==='hurt'&&enemies().find(foe=>foe.id===e.sourceId)?.kind==='ranged'){
      const q=clamp((p-.2)*1.6),x=sx+(tx-sx)*q;line(x+27,330,x-10,330,'#e2d6a0',2);poly([[x-14,330],[x-3,326],[x-3,334]],'#fff0b9');
+    }else if(type==='strike'&&e.sourceId==='hero'&&weapon==='staff'){
+     const q=clamp((p-.22)*1.8),x=sx+48+(tx-sx-48)*q,y=325-Math.sin(q*Math.PI)*23*motion;c.globalAlpha=1-impact*.8;glow(x,y,36,'#acddc559');ellipse(x,y,9,9,'#ddf5c5','#8bd7c4',2);line(x-40,y,x-12,y,'#91d9bd',4);for(let i=0;i<3;i++)ring(x-i*11,y,12+i*2,17+i*2,'#b8e8d1',.6-i*.12,1);
+    }else if(type==='strike'&&e.sourceId==='hero'&&weapon==='hammer'){
+     if(p<.48){const q=clamp(p/.48);c.globalAlpha=q*.65;line(tx-22,ty-70+q*53,tx+9,ty-20+q*58,'#ead6a3',7);}
+     else{c.globalAlpha=1-impact;ring(tx,385,16+impact*55,28+impact*44,'#f7db9a',1-impact,4);for(let i=0;i<6;i++){const a=i*TAU/6;line(tx+Math.cos(a)*20,402+Math.sin(a)*12,tx+Math.cos(a)*(28+impact*57),402+Math.sin(a)*(18+impact*28),'#d1bd8a',3);}}
     }else if(type!=='counter'){
      c.globalAlpha=Math.sin(p*Math.PI);c.strokeStyle='#f5e5b3';c.lineWidth=options.reducedMotion?2:6;c.beginPath();c.ellipse(tx,ty,49,76,-.65,-2.2+p*1.2,.9+p*1.2);c.stroke();
     }
@@ -125,33 +189,33 @@ export function createScene(canvas,{reducedMotion=false}={}){
    }
    if(type==='death'){c.globalAlpha=1-p;for(let i=0;i<7;i++)ellipse(tx+(i-3)*12,427-p*12*motion,4+p*5,2,'#a2b09a');}
    if(type==='heal'){c.globalAlpha=Math.sin(p*Math.PI);ring(tx,340,38,75,'#c5e7b0',1,2);for(let i=0;i<6;i++){const x=tx-30+i*12,y=390-p*80*motion;line(x-3,y,x+3,y,'#c2e8b2',2);line(x,y-3,x,y+3,'#c2e8b2',2);}}
-   if(e.value&&p>.33&&!['intent','windup','death'].includes(type)){
+   if(e.value&&p>.33&&!['intent','windup','death','phase','mechanic','break'].includes(type)){
     c.globalAlpha=Math.min(1,(p-.33)*5)*(1-impact*.45);c.fillStyle=type==='heal'?'#c5edb0':col;c.font='bold 27px Georgia';c.textAlign='center';c.shadowColor='#061d22';c.shadowBlur=8;
     const sign=type==='shield'?(e.value>=0?'+':'挡 '):type==='heal'?'+':'−';c.fillText(sign+Math.abs(e.value),tx,222-impact*20*motion);c.shadowBlur=0;
    }
   }
-  if(['ascension','phase'].includes(type)){
-   const x=type==='phase'?sx:220;c.globalAlpha=Math.sin(p*Math.PI)*.7;ring(x,325,45+p*16,92,col,.75,2);
-   for(let i=0;i<5;i++){const X=x+(i-2)*24;line(X,410,X,290-Math.sin(p*Math.PI)*69*motion,col,1);}
+  if(type==='break')for(const id of targets){
+   const x=pos(id);c.globalAlpha=Math.sin(p*Math.PI);glow(x,335,78,'#e8cd8e24');
+   // An interrupted stance fractures into angular gold plates, distinct from poison bursts.
+   for(let i=0;i<6;i++){const a=i*TAU/6,r=29+impact*53*motion;poly([[x+Math.cos(a)*r,334+Math.sin(a)*r],[x+Math.cos(a+.2)*(r+21),334+Math.sin(a+.2)*(r+21)],[x+Math.cos(a-.13)*(r+11),334+Math.sin(a-.13)*(r+11)]],'#e5d3a1','#fff0c5');}
+   line(x-40,297,x+39,374,'#fff0c5',3);line(x-35,378,x+40,294,'#fff0c5',2);
+  }
+  if(['ascension','phase','mechanic'].includes(type)){
+   const x=type==='ascension'?220:sx,tint=type==='ascension'?col:mechanicColor;c.globalAlpha=Math.sin(p*Math.PI)*.8;ring(x,325,45+p*16,92,tint,.75,2);
+   if(mechanic==='assault')for(let i=0;i<5;i++){const X=x+(i-2)*23;poly([[X-8,420],[X+9,420],[X+4,311-p*55*motion],[X-3,324-p*40*motion]],'#de906e44',tint);}
+   else if(mechanic==='ward')for(let i=0;i<6;i++){const a=i*TAU/6;poly([[x+Math.cos(a)*57,326+Math.sin(a)*88],[x+Math.cos(a+.7)*57,326+Math.sin(a+.7)*88],[x+Math.cos(a+.7)*65,326+Math.sin(a+.7)*100],[x+Math.cos(a)*65,326+Math.sin(a)*100]],'#dfc78d24',tint,2);}
+   else if(mechanic==='ritual')for(let i=0;i<7;i++){const a=i*TAU/7+p*motion*.8,X=x+Math.cos(a)*75,Y=331+Math.sin(a)*72;poly([[X,Y-12],[X+7,Y],[X,Y+12],[X-7,Y]],'#a583cc55',tint);line(x,331,X,Y,'#ba9bdf44',1);}
+   else for(let i=0;i<5;i++){const X=x+(i-2)*24;line(X,410,X,290-Math.sin(p*Math.PI)*69*motion,tint,1);}
   }
   // Readable event callout, grounded in the event rather than a future snapshot.
-  const callouts={swordArray:'万 剑 归 宗',swordEcho:'回 响 剑 阵',swordFocus:'凝 锋',poisonApply:'毒 针 · 附 毒',poisonTick:'蚀 骨 · 余 毒',burst:'百 毒 · 引 爆',counter:'借 力 · 反 震',ascension:'武 学 · 质 变',phase:'守 将 · 变 阵'};
+  const callouts={swordArray:'万 剑 归 宗',swordEcho:'回 响 剑 阵',swordFocus:'凝 锋',poisonApply:'毒 针 · 附 毒',poisonTick:'蚀 骨 · 余 毒',burst:'百 毒 · 引 爆',counter:'借 力 · 反 震',ascension:'武 学 · 质 变',phase:e.text||'守 将 · 变 阵',mechanic:e.text||'敌 势 · 初 现',break:'破 招 · 失 衡'};
   if(callouts[type]||type==='finish'){
-   c.globalAlpha=Math.min(1,p*5,(1-p)*5);c.textAlign='center';c.fillStyle=col;c.font='bold 22px serif';c.shadowColor='#051b24';c.shadowBlur=10;c.fillText(callouts[type]||e.text||'战斗结束',500,85);
+   c.globalAlpha=Math.min(1,p*5,(1-p)*5);c.textAlign='center';c.fillStyle=col;c.font=type==='mechanic'||type==='phase'?'bold 18px serif':'bold 22px serif';c.shadowColor='#051b24';c.shadowBlur=10;c.fillText(callouts[type]||e.text||'战斗结束',500,85);
   }
   c.restore();
  }
- function actionFor(id,event){
-  if(!event)return'idle';const type=normalizeEventType(event),source=event.sourceId===id,target=event.targetIds?.includes(id);
-  if(target&&type==='death')return'death';
-  if(target&&['strike','sword','swordFocus','swordEcho','swordArray','counter','hurt','burst','poisonTick'].includes(type))return'hurt';
-  if(target&&type==='shield')return'guard';
-  if(source&&['intent','windup'].includes(type))return'prepare';
-  if(source&&['strike','sword','swordFocus','swordEcho','swordArray','counter','hurt','poisonApply','burst'].includes(type))return'attack';
-  if(source&&['shield','ascension'].includes(type))return'guard';return'idle';
- }
  function character(entity,hero,t,p){
-  const id=hero?'hero':entity.id,role=actorRole(entity,hero),pose=sampleActorPose(role,actionFor(id,active?.event),p,options);
+  const id=hero?'hero':entity.id,role=actorRole(entity,hero),pose=sampleActorPose(role,eventActorAction(id,active?.event),p,{...options,weaponType:hero?run?.loadout?.weaponType:undefined});
   drawActor(c,entity,{x:pos(id),hero,time:t,pose,reducedMotion:options.reducedMotion,weaponType:hero?run?.loadout?.weaponType:undefined});
   const x=pos(id),hp=Math.max(0,entity.hp||0),max=entity.maxHp||hp||1;
   c.save();c.textAlign='center';c.font='13px serif';c.fillStyle=hero?'#d5e5c8':'#c7d5c3';c.fillText(hero?'无名侠客':entity.name||'江湖客',x,466);

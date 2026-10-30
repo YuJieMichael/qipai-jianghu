@@ -20,7 +20,8 @@ export function createAudio(){
   case'hold':case'lock':tone(680,.055,'sine',.035,910);break;
   case'windup':air(.09,550,.014);break;
   case'intent':tone(130,.09,'triangle',.025,170);break;
-  case'strike':case'hurt':air(.075,1100,.037);tone(135,.095,'triangle',.055,43,.018);tone(1900,.035,'sine',.018,450,.02);break;
+  case'strike':if(event?.sourceId==='hero'&&event?.snapshot?.loadout?.weaponType==='staff'){tone(440,.16,'sine',.03,1047);tone(880,.15,'sine',.018,1320,.025);air(.13,2300,.018);break;}if(event?.sourceId==='hero'&&event?.snapshot?.loadout?.weaponType==='hammer'){tone(90,.23,'triangle',.06,28);air(.16,560,.05);tone(185,.12,'sine',.025,62,.035);break;}
+  case'hurt':air(.075,1100,.037);tone(135,.095,'triangle',.055,43,.018);tone(1900,.035,'sine',.018,450,.02);break;
   case'sword':air(.14,2700,.025);tone(550,.13,'sine',.03,1500);tone(1500,.12,'triangle',.014,700,.035);break;
   case'swordFocus':air(.17,3600,.03);tone(1600,.18,'sine',.035,2200);tone(270,.09,'triangle',.04,70,.055);break;
   case'swordEcho':for(let i=0;i<3;i++){tone(790+i*130,.15,'sine',.022,1450+i*100,i*.035);air(.08,2100,.016,i*.035);}break;
@@ -31,6 +32,8 @@ export function createAudio(){
   case'shield':if(typeof event==='object'&&event.value<0){tone(330,.12,'triangle',.04,220);tone(1320,.16,'sine',.026,1047);air(.045,2700,.015);}else{tone(294,.22,'sine',.04,294);tone(588,.2,'triangle',.018,660);}break;
   case'counter':air(.1,1400,.035);tone(220,.16,'triangle',.045,440);tone(880,.21,'sine',.024,660,.035);break;
   case'ascension':for(const [i,f]of [294,440,587].entries())tone(f,.3,'sine',.025,f*1.05,i*.055);air(.25,1500,.015);break;
+  case'break':air(.14,2900,.045);tone(1370,.17,'triangle',.024,440);tone(96,.2,'triangle',.045,36,.02);break;
+  case'mechanic':{const mechanic=event?.snapshot?.combat?.enemies?.find(foe=>foe.id===event.sourceId)?.mechanic;if(mechanic==='ward'){tone(294,.3,'sine',.028,294);tone(587,.25,'sine',.018,440,.04);}else if(mechanic==='ritual'){tone(220,.3,'sine',.026,330);tone(659,.24,'sine',.018,440,.06);air(.18,1700,.012);}else{tone(105,.2,'triangle',.035,65);air(.12,650,.022);}break;}
   case'phase':case'boss':tone(70,.35,'triangle',.05,45);tone(105,.33,'sine',.03,70);air(.19,470,.025);break;
   case'heal':tone(523,.2,'sine',.03,659);tone(784,.25,'sine',.02,880,.07);break;
   case'victory':case'finish':for(const [i,f]of [392,523,659,784].entries())tone(f,.3,'sine',.028,f,i*.08);break;
