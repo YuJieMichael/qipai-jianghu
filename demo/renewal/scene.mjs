@@ -7,14 +7,14 @@ const columns = {hero: 0, bandit: 1, archer: 2, sentinel: 3, boss: 3};
 /** Portrait battle presentation. Simulation remains entirely in model.mjs. */
 export function createAdventureScene(canvas, {
   backgroundUrl = new URL('./assets/forest-path.png', import.meta.url).href,
-  spritesUrl = new URL('./assets/characters.png', import.meta.url).href,
+  spritesUrl = new URL('./assets/characters-polished-v2.png', import.meta.url).href,
 } = {}) {
   const context = canvas.getContext('2d');
   let state = null, dead = false, raf = 0, timer = 0, sequence = null, active = null;
   let background = null, sprites = null, spriteCrops = [], reducedMotion = false, inCallback = false;
   const completedDeaths = new Set(), pendingImages = new Set();
   const heroHealth = canvas.parentElement?.querySelector?.('.renewal-hero-health');
-  const layout = {heroY: HEIGHT * .60, enemyY: HEIGHT * .34, heroHeight: .21, enemyHeight: .17, bossHeight: .185};
+  const layout = {heroY: HEIGHT * .60, enemyY: HEIGHT * .34, heroHeight: .21, enemyHeight: .17, bossHeight: .185, spriteAspect: 1};
   const clock = () => globalThis.performance?.now?.() ?? Date.now();
   const began = clock();
   const schedule = callback => typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame(callback) : 0;
@@ -159,7 +159,9 @@ export function createAdventureScene(canvas, {
     const crop = spriteCrops[column];
     const sourceWidth = crop?.width || (sprites ? sprites.naturalWidth / 4 : 400);
     const sourceHeight = crop?.height || (sprites ? sprites.naturalHeight : 600);
-    const width = height * sourceWidth / sourceHeight;
+    // Positions use a normalized battlefield, but artwork keeps its own aspect
+    // after the viewport's independent horizontal and vertical transforms.
+    const width = height * sourceWidth / sourceHeight * layout.spriteAspect;
     context.save(); context.globalAlpha = pose.alpha;
     ellipse(pose.x, actor.y + height * .46, Math.max(19, width * .36), 6.5, '#173c2848');
     if (sprites) {
@@ -300,7 +302,10 @@ export function createAdventureScene(canvas, {
     const dpr = Math.min(2, globalThis.devicePixelRatio || 1), width = Math.max(1, Math.round((rect.width || WIDTH) * dpr));
     const height = Math.max(1, Math.round((rect.height || HEIGHT) * dpr));
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    layout.spriteAspect = (height / HEIGHT) / (width / WIDTH);
     context.setTransform(width / WIDTH, 0, 0, height / HEIGHT, 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
     const current = active, progress = current ? clamp((now - current.time) / current.duration) : 0;
     const time = reducedMotion ? 0 : (now - began) / 1000;
     context.clearRect(0, 0, WIDTH, HEIGHT);

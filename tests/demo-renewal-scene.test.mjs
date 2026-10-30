@@ -47,10 +47,10 @@ function harness(t) {
         }}; }};
       }};
     },
-    create({height = 844, heroHealthTop} = {}) {
+    create({width = 390, height = 844, heroHealthTop} = {}) {
       assert.equal(typeof sceneModule.createAdventureScene, 'function', 'portrait adventure scene factory exists');
       const scene = sceneModule.createAdventureScene({width: 0, height: 0, getContext: () => context,
-        getBoundingClientRect: () => ({width: 390, height, top: 0}),
+        getBoundingClientRect: () => ({width, height, top: 0}),
         parentElement: heroHealthTop === undefined ? null : {querySelector: selector => selector === '.renewal-hero-health' ? {getBoundingClientRect: () => ({top: heroHealthTop})} : null}}, {backgroundUrl: 'forest.png', spritesUrl: 'characters.png'});
       scenes.push(scene); return scene;
     },
@@ -81,6 +81,24 @@ const state = (enemies = [{id: 'a', kind: 'bandit', hp: 12, maxHp: 12}]) => ({
 });
 const spriteCalls = h => h.calls.filter(call => call.type === 'drawImage' && call.args[0].url === 'characters.png');
 const labels = h => h.calls.filter(call => call.type === 'fillText').map(call => call.args[0]);
+
+// Applying independent X/Y viewport scales to a sprite must not squash its face or weapon.
+test('character images keep their source proportions on wide, tall and compact screens', async t => {
+  const h = harness(t);
+  for (const viewport of [{width: 460, height: 720}, {width: 360, height: 800}, {width: 390, height: 844}, {width: 360, height: 615}]) {
+    const scene = h.create(viewport); h.load(); await scene.ready;
+    scene.update(state(), {reducedMotion: true}); h.frame();
+    const transform = h.calls.find(call => call.type === 'setTransform').args;
+    const actors = spriteCalls(h);
+    assert.equal(actors.length, 2, 'hero and enemy images are painted');
+    for (const call of actors) {
+      const [, , , sw, sh, , , dw, dh] = call.args;
+      const renderedRatio = dw * transform[0] / (dh * transform[3]);
+      assert.ok(Math.abs(renderedRatio - sw / sh) < .000001, `${viewport.width}×${viewport.height}: ${renderedRatio} differs from ${sw / sh}`);
+    }
+    scene.destroy();
+  }
+});
 
 // Removing image rendering or returning to a side-view actor layout breaks this test.
 test('loaded forest and four-column sprites draw a portrait encounter above the hero', async t => {
