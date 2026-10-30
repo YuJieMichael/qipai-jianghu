@@ -132,7 +132,7 @@ export function createScene(canvas,{reducedMotion=false}={}){
   c.save();
   if(layer==='ground'){
    if(['swordArray','swordEcho','ascension'].includes(type))seal(type==='swordEcho'?pos(targets[0]):sx,436,p,col);
-   if(type==='shield'&&e.value>=0)seal(220,436,p,'#e2b765');
+   if(type==='shield'&&e.value>=0)for(const id of targets)seal(pos(id),436,p,'#e2b765');
    if(['phase','mechanic'].includes(type))seal(sx,434,p,mechanicColor);
    if(type==='break')for(const id of targets)ring(pos(id),431,30+impact*65,10+impact*19,'#e5d4a2',1-impact,3);
    if(type==='strike'&&e.sourceId==='hero'&&weapon==='hammer')for(const id of targets){ring(pos(id),430,15+impact*92,5+impact*25,'#ead1a0',1-impact,4);if(impact>0)for(let i=0;i<5;i++){const x=pos(id)+(i-2)*26*impact;poly([[x,435],[x-9,424-impact*18*motion],[x+9,418-impact*34*motion],[x+14,434]],'#ad9d7e');}}

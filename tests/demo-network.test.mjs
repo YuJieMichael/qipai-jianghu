@@ -45,7 +45,7 @@ test('HTTP rejects CSRF, malformed data, traversal, oversized input and untruste
 });
 test('guild membership and messages are real, bounded and persistent',async t=>{
  const h=await harness(t),a=h.browser().client,b=h.browser().client;await a.register('guild-one','safe-password');await b.register('guild-two','safe-password');
- const {guild:g}=await a.createGuild('清风会');await reject(b.sendMessage(g.id,'intruder'),403);await b.joinGuild(g.id);const message=await b.sendMessage(g.id,'一起论剑');assert.equal(message.guild.messages[0].text,'一起论剑');assert.equal((await a.guild(g.id)).guild.members.length,2);await reject(a.createGuild('重复'),409);
+ const {guild:g}=await a.createGuild('清风会');assert.equal((await a.listGuilds()).guilds[0].mine,true);assert.equal((await b.listGuilds()).guilds[0].mine,false);await reject(b.sendMessage(g.id,'intruder'),403);await b.joinGuild(g.id);const message=await b.sendMessage(g.id,'一起论剑');assert.equal(message.guild.messages[0].text,'一起论剑');assert.equal((await a.guild(g.id)).guild.members.length,2);await reject(a.createGuild('重复'),409);
  await b.leaveGuild(g.id);await reject(b.guild(g.id),403);assert.equal((await a.listGuilds()).guilds[0].memberCount,1);
  await h.restart();const c=h.browser().client;await c.login('guild-one','safe-password');assert.equal((await c.guild(g.id)).guild.messages.length,1);
 });

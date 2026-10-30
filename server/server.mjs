@@ -105,7 +105,7 @@ export function createGameServer({dataDir=path.resolve(import.meta.dirname,'data
    user.profile=check.profile;user.revision++;dirty=true;return {profile:user.profile,revision:user.revision};
   }
   if(key==='GET /api/leaderboard')return {entries:state.accounts.filter(u=>u.played>0).map(u=>({userId:u.id,username:u.username,wins:u.wins,losses:u.losses,played:u.played})).sort((a,b)=>b.wins-a.wins||a.losses-b.losses||a.username.localeCompare(b.username)).slice(0,100)};
-  if(key==='GET /api/guilds')return {guilds:state.guilds.map(g=>({id:g.id,name:g.name,memberCount:g.members.length}))};
+  if(key==='GET /api/guilds')return {guilds:state.guilds.map(g=>({id:g.id,name:g.name,memberCount:g.members.length,mine:g.members.includes(user.id)}))};
   if(key==='POST /api/guilds'){
    exact(body,['name']);const name=text(body.name,2,24,'公会名');if(state.guilds.some(g=>g.members.includes(user.id)))fail(409,'ALREADY_IN_GUILD','请先离开当前公会。');if(state.guilds.some(g=>g.name===name))fail(409,'GUILD_NAME_EXISTS','公会名已存在。');if(state.guilds.length>=200)fail(429,'GUILD_QUOTA','公会名额已满。');
    const g={id:`g-${token()}`,name,ownerId:user.id,members:[user.id],messages:[]};state.guilds.push(g);dirty=true;return {guild:guildView(g)};
