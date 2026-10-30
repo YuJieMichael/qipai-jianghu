@@ -87,3 +87,12 @@ test('normal attacks can finish a match and two rerolls are enforced with privat
  }
  assert.equal(s.status,'finished');assert.equal(s.reason,'defeat');const board=(await a.leaderboard()).entries;assert.equal(board.reduce((n,r)=>n+r.wins,0),1);
 });
+test('default entry redirects to demo directory and its actual relative script and stylesheet load',async t=>{
+ const h=await harness(t);
+ const entry=await fetch(h.url+'/',{redirect:'manual'});assert.equal(entry.status,302);assert.equal(entry.headers.get('location'),'/demo/');
+ const page=await fetch(new URL(entry.headers.get('location'),h.url));assert.equal(page.status,200);assert.equal(page.headers.get('content-type'),'text/html; charset=utf-8');
+ const html=await page.text(),script=/<script\b[^>]*\bsrc="([^"]+)"/i.exec(html)?.[1],stylesheet=/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"/i.exec(html)?.[1];assert.ok(script,'entry HTML references script');assert.ok(stylesheet,'entry HTML references stylesheet');
+ for(const [resource,mime]of [[script,'text/javascript; charset=utf-8'],[stylesheet,'text/css; charset=utf-8']]){const response=await fetch(new URL(resource,page.url));assert.equal(response.status,200,resource);assert.equal(response.headers.get('content-type'),mime,resource);assert.ok((await response.text()).length>0,resource);}
+ const head=await fetch(h.url+'/',{method:'HEAD',redirect:'manual'});assert.equal(head.status,302);assert.equal(head.headers.get('location'),'/demo/');assert.equal(await head.text(),'');
+ assert.equal((await fetch(h.url+'/main.mjs')).status,404,'root whitelist remains closed');
+});

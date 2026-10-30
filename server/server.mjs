@@ -155,7 +155,8 @@ export function createGameServer({dataDir=path.resolve(import.meta.dirname,'data
  const mime={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.ico':'image/x-icon'};
  async function serveStatic(req,res,pathname){
   if(!['GET','HEAD'].includes(req.method))fail(404,'NOT_FOUND','资源不存在。');
-  const target=pathname==='/'||pathname==='/demo/'?'/demo/index.html':pathname;
+  if(pathname==='/'){res.writeHead(302,{Location:'/demo/'});res.end();return;}
+  const target=pathname==='/demo/'?'/demo/index.html':pathname;
   if(!/^\/demo\/[a-zA-Z0-9_-]+\.(?:html|mjs|css|svg|png|webp|jpg|ico)$/.test(target))fail(404,'NOT_FOUND','资源不存在。');
   let resolved;try{resolved=await realpath(path.join(rootDir,target));const allowed=await realpath(path.join(rootDir,'demo'));if(!resolved.startsWith(allowed+path.sep))throw new Error();if(!(await stat(resolved)).isFile())throw new Error();}catch{fail(404,'NOT_FOUND','资源不存在。');}
   const body=await readFile(resolved);res.writeHead(200,{'Content-Type':mime[path.extname(resolved)],'Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);
