@@ -1,6 +1,8 @@
 import {NODES,ENEMY_TYPES,BALANCE} from './config.mjs';
 import {CONTENT} from './content.mjs';
 import {createRun} from './model.mjs';
+import {CHAPTER_ROUTES} from './chapter-content.mjs';
+import {initializeRogue} from './rogue.mjs';
 export {getRunNode,getRunNodes} from './journey.mjs';
 
 const MODES=['campaign','boss','tower','dungeon','arena','bounty','escort','worldboss','tournament','resource','totem'];
@@ -33,12 +35,17 @@ export function createExpedition(build,seed=1,{runId,loadout,mode='campaign',cha
   case 'resource':route=[battle('resource-vault','资源挑战 · 铜钱傀儡',[routeEnemy('shield',{name:'聚宝傀儡',hp:100000,attack:2,shield:0,noSummon:true})],{coins:10})];break;
   case 'totem':route=[battle('totem-seal','图腾挑战 · 冰火护阵',[routeEnemy('elite',{name:'玄冰图腾',attack:8,shield:30}),routeEnemy('ranged',{name:'赤焰图腾',attack:12})],{coins:45,modifier:'冰火双阵'})];break;
  }
+ if(mode==='campaign'&&content.expansion){
+  const descriptors=content.expansion.chapterRoutes?.[chapter]||CHAPTER_ROUTES[chapter];
+  if(descriptors)route=descriptors.map(n=>({...copy(n),coins:n.coins??(n.type==='battle'?15:0),enemies:n.enemies.map(e=>{if(typeof e==='string')return routeEnemy(e);const extra=copy(e);for(const key of ['hp','shield','stance'])if(extra[key]!==undefined)extra[key]=Math.ceil(extra[key]*hpScale);for(const key of ['attack','heavyDamage'])if(extra[key]!==undefined)extra[key]=Math.ceil(extra[key]*attackScale);return routeEnemy(e.kind,extra);}),...(n.type==='battle'?{turnLimit}:{} )}));
+ }
  if(mode==='totem'){const cycle=(Number(seed)>>>0)%3;const modifiers=['坚壳 · 护盾 +15','烈焰 · 攻击 +4','残阵 · 气血 -20%'];route[0].modifier=modifiers[cycle];for(const foe of route[0].enemies){if(cycle===0)foe.shield+=15;if(cycle===1)foe.attack+=4;if(cycle===2)foe.hp=Math.ceil(foe.hp*.8);}}
  route=route.map((node,index)=>({...node,index,hpScale,attackScale}));
  const r=createRun(build,seed,{runId:runId??`local-${mode}-${Number(seed)>>>0}`,loadout});
  Object.assign(r,{mode,chapter,floor:level,route,coins:0,bag:{potion:0,reroll:0,antidote:0,tonic:0,...copy(r.loadout?.bag||{})},consumed:{},settled:false,
   results:{completed:false,worldBossDamage:0,worldBossHp:mode==='worldboss'?route[0].enemies[0].hp:0,towerFloorCompleted:0},
   reward:copy(mode==='campaign'?chapterDef.reward:modeDef.reward),completedBattles:[]});
+ if(content.expansion)initializeRogue(r,content);
  if(mode==='tower'&&Number.isFinite(loadout?.progression?.towerHp)&&loadout.progression.towerHp>0)r.hero.hp=Math.min(r.hero.maxHp,loadout.progression.towerHp);
  return r;
 }

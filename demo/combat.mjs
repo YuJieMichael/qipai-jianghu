@@ -1,5 +1,6 @@
 import {BALANCE,ENEMY_TYPES,PERKS} from './config.mjs';
 import {evaluateRunDice,nextRandom,maxRerolls,dieMark} from './model.mjs';
+import {curseAttack} from './rogue.mjs';
 export const COMBAT_RULES=Object.freeze({swordStraightBonus:30,hammerShield:6,hammerBreak:12,markSword:4,markCritChance:10,markFire:5,markLeech:3,markHeal:5,markGuard:4,markColdChance:25,materialFirePerLevel:2,materialFrostChance:5,decorationDamage:2,decorationHeal:2,decorationShield:2,focusDamage:3,fortuneCoins:1});
 const clone=x=>structuredClone(x);
 const alive=e=>e.hp>0;
@@ -10,13 +11,13 @@ function enemy(definition,id){
  const kind=typeof definition==='string'?definition:definition.kind;
  if(!Object.hasOwn(ENEMY_TYPES,kind))throw new RangeError('Unknown enemy');
  const t={...ENEMY_TYPES[kind],...(typeof definition==='object'?definition:{})};
- return {id,kind,name:t.name,hp:t.hp,maxHp:t.hp,shield:t.shield,poison:{stacks:0,turns:0},stance:t.stance,phase:1,intent:{kind:'attack',damage:t.attack,label:'进攻'},summoned:false,...(typeof definition==='object'?{baseAttack:t.attack,heavyDamage:t.heavyDamage??BALANCE.bossHeavyDamage,baseStance:t.stance,noSummon:!!t.noSummon}:{} )};
+ return {id,kind,name:t.name,hp:t.hp,maxHp:t.hp,shield:t.shield,poison:{stacks:0,turns:0},stance:t.stance,phase:1,intent:{kind:'attack',damage:t.attack,label:'进攻'},summoned:false,...(typeof definition==='object'?{baseAttack:t.attack,heavyDamage:t.heavyDamage??BALANCE.bossHeavyDamage,baseStance:t.stance,noSummon:!!t.noSummon,...(t.affix?{affix:t.affix}:{}),...(t.mechanic?{mechanic:t.mechanic}:{})}:{} )};
 }
 function intents(r){
  for(const e of live(r)){
   const heavy=e.kind==='boss'&&r.combat.round%2===0;
   if(heavy)e.stance=e.baseStance??BALANCE.bossStance;
-  e.intent={kind:heavy?'heavy':'attack',damage:heavy?(e.heavyDamage??BALANCE.bossHeavyDamage):(e.baseAttack??ENEMY_TYPES[e.kind].attack),label:heavy?'蓄力重击':'进攻'};
+  e.intent={kind:heavy?'heavy':'attack',damage:(heavy?(e.heavyDamage??BALANCE.bossHeavyDamage):(e.baseAttack??ENEMY_TYPES[e.kind].attack))+curseAttack(r)+(e.mechanic==='assault'&&e.phase===2?6:0),label:heavy?'蓄力重击':e.mechanic==='ritual'?'幽火祭击':e.mechanic==='ward'?'钟盾压阵':e.affix==='vampiric'?'汲血斩':'进攻'};
  }
 }
 export function startBattle(run,node){
@@ -54,8 +55,9 @@ export function resolveRound(run){
  const r=clone(run),events=[],announcedEnemies=[...live(r)],rules={...COMBAT_RULES,...run.loadout?.rules};r.combat.phase='resolved';r.stats.turns++;
  const emit=(type,sourceId,targetIds,value,text,build=r.build,dieIndex)=>events.push({id:`${r.nodeIndex}-${r.combat.round}-${events.length}`,type,sourceId,targetIds,value,build,text,...(dieIndex===undefined?{}:{dieIndex}),snapshot:clone(r)});
  const phase=e=>{
-  if(e.kind==='boss'&&e.hp>0&&e.hp<=e.maxHp/2&&!e.summoned&&!e.noSummon){
-   e.phase=2;e.summoned=true;r.combat.enemies.push(enemy('melee',`${e.id}-aid-1`),enemy('ranged',`${e.id}-aid-2`));emit('phase',e.id,[e.id],0,'守将召来援手');
+  if(e.kind==='boss'&&e.hp>0&&e.hp<=e.maxHp/2&&e.phase===1){
+   if(e.mechanic){e.phase=2;const label=e.mechanic==='assault'?'破军二阶段 · 怒意：每击 +6':e.mechanic==='ward'?'钟盾二阶段 · 获得40护盾':'祭火二阶段 · 召来守灯人';if(e.mechanic==='assault'&&e.intent.damage>0)e.intent.damage+=6;if(e.mechanic==='ward')e.shield+=40;if(e.mechanic==='ritual'){e.summoned=true;const aid=[enemy('melee',`${e.id}-aid-1`),enemy('ranged',`${e.id}-aid-2`)];for(const unit of aid)unit.intent.damage+=curseAttack(r);r.combat.enemies.push(...aid);}emit('phase',e.id,[e.id],e.phase,label);}
+   else if(!e.summoned&&!e.noSummon){e.phase=2;e.summoned=true;const aid=[enemy('melee',`${e.id}-aid-1`),enemy('ranged',`${e.id}-aid-2`)];for(const unit of aid)unit.intent.damage+=curseAttack(r);r.combat.enemies.push(...aid);emit('phase',e.id,[e.id],0,'守将召来援手');}
   }
  };
  const labels={sword:'剑气贯阵',swordFocus:'凝锋',swordEcho:'回响剑阵',swordArray:'万剑归宗',counter:'金刚反击',burst:'毒爆',poisonTick:'毒伤'};
@@ -65,7 +67,7 @@ export function resolveRound(run){
   const absorbed=Math.min(e.shield,amount);e.shield-=absorbed;
   const hp=Math.min(e.hp,Math.max(0,amount-absorbed));e.hp-=hp;r.stats.damage+=hp;
   if(type==='poisonTick')r.stats.poisonDamage+=hp;
-  if(e.stance>0&&hp>0){e.stance=Math.max(0,e.stance-hp);if(e.stance===0&&e.intent.kind==='heavy')e.intent={kind:'stunned',damage:0,label:'破势失衡'};}
+  if(e.stance>0&&hp>0){e.stance=Math.max(0,e.stance-hp);if(e.stance===0&&e.intent.kind==='heavy'){e.intent={kind:'stunned',damage:0,label:'破势失衡'};emit('break','hero',[e.id],0,'破招成功 · 蓄力打断');}}
   emit(type,source,[e.id],hp,label||labels[type]||'出招',build,dieIndex);
   if(!alive(e)){r.stats.kills++;emit('death',source,[e.id],0,'敌人倒下',build);}
   phase(e);
@@ -150,10 +152,14 @@ export function resolveRound(run){
  if(chance(effect(r,'freezeChance')+frost+marks.filter(m=>m==='cold').length*rules.markColdChance)){const foe=live(r)[0];if(foe)foe.intent={kind:'frozen',damage:0,label:'冻结失去行动'};}
  for(const foe of announcedEnemies){
   if(!alive(foe)||r.hero.hp<=0)continue;
+  if(foe.mechanic)emit('mechanic',foe.id,[foe.id],foe.phase,foe.mechanic==='assault'?'破军：偶数回合蓄力，可削尽架势破招':foe.mechanic==='ward'?'钟盾：每轮重建护盾，半血加固':'祭火：每轮疗愈，半血召援');
   const original=foe.intent.damage,armor=Math.min(original,effect(r,'armor'));const amount=original-armor;r.stats.blocked+=armor;emit('intent',foe.id,['hero'],0,foe.intent.label);
   const blocked=Math.min(r.hero.shield,amount);r.hero.shield-=blocked;r.stats.blocked+=blocked;
   if(blocked)emit('shield',foe.id,['hero'],-blocked,'护盾抵挡','guard');
   const hp=Math.min(r.hero.hp,amount-blocked);r.hero.hp-=hp;emit('hurt',foe.id,['hero'],hp,'受到攻击');
+  if(foe.affix==='vampiric'&&hp>0){const heal=Math.min(foe.maxHp-foe.hp,Math.ceil(hp/2));foe.hp+=heal;if(heal)emit('heal',foe.id,[foe.id],heal,'汲血回复');}
+  if(foe.mechanic==='ward'&&foe.intent.damage>0){foe.shield+=8;emit('shield',foe.id,[foe.id],8,'钟盾重建');}
+  if(foe.mechanic==='ritual'&&foe.intent.damage>0){const heal=Math.min(foe.maxHp-foe.hp,10);foe.hp+=heal;if(heal)emit('heal',foe.id,[foe.id],heal,'祭火回魂');}
   const counter=rank(r,'guardRiposte')*PERKS.guardRiposte.damagePerRank+(r.ascended&&r.build==='guard'?BALANCE.guardCounterDamage:0);
   if(blocked>0&&r.hero.hp>0&&counter>0)hit(foe,counter,'counter','hero','','guard');
   if(r.hero.hp>0&&original>0&&effect(r,'thorns'))hit(foe,effect(r,'thorns'),'counter','hero','荆棘反伤','guard');

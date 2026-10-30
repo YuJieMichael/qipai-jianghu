@@ -1,4 +1,5 @@
 import {BALANCE,BUILDS,NODES,ENEMY_TYPES,PERKS,emptyPerks} from './config.mjs';
+import {curseAttack,choiceKey,ROGUE_DEFAULTS} from './rogue.mjs';
 export const SAVE_KEY='qipai-bamboo-demo-v1';
 const num=n=>Number.isFinite(n)&&n>=0;
 const integer=n=>Number.isInteger(n)&&n>=0;
@@ -31,15 +32,16 @@ function validRoute(r){
  if(!Array.isArray(r.completedBattles)||new Set(r.completedBattles).size!==r.completedBattles.length||!r.completedBattles.every(id=>r.route.some(n=>n.id===id&&n.type==='battle')))return false;
  if(!object(r.results)||typeof r.results.completed!=='boolean'||!['worldBossDamage','worldBossHp','towerFloorCompleted'].every(k=>num(r.results[k]))||!numbers(r.reward))return false;
  if(new Set(r.route.map(n=>n?.id)).size!==r.route.length)return false;
- return r.route.every((n,i)=>object(n)&&typeof n.id==='string'&&n.index===i&&['battle','reward','event','camp'].includes(n.type)&&typeof n.name==='string'&&['bamboo','temple','gate'].includes(n.scene)&&typeof n.reward==='boolean'&&['coins','treasure'].every(key=>!Object.hasOwn(n,key)||currency(n[key]))&&num(n.hpScale)&&num(n.attackScale)&&Array.isArray(n.enemies)&&(n.type!=='battle'||(n.enemies.length>0&&integer(n.turnLimit)&&n.turnLimit>=1&&n.turnLimit<=1000))&&n.enemies.every(e=>object(e)&&Object.hasOwn(ENEMY_TYPES,e.kind)&&['hp','attack','shield','stance','heavyDamage'].every(k=>num(e[k]))&&e.hp>0));
+ return r.route.every((n,i)=>object(n)&&typeof n.id==='string'&&n.index===i&&['battle','reward','event','camp'].includes(n.type)&&typeof n.name==='string'&&['bamboo','temple','gate','desert','lake','tomb','peak'].includes(n.scene)&&typeof n.reward==='boolean'&&['coins','treasure'].every(key=>!Object.hasOwn(n,key)||currency(n[key]))&&num(n.hpScale)&&num(n.attackScale)&&Array.isArray(n.enemies)&&(n.type!=='battle'||(n.enemies.length>0&&integer(n.turnLimit)&&n.turnLimit>=1&&n.turnLimit<=1000))&&n.enemies.every(e=>object(e)&&Object.hasOwn(ENEMY_TYPES,e.kind)&&['hp','attack','shield','stance','heavyDamage'].every(k=>num(e[k]))&&e.hp>0));
 }
-function validIntent(e,c){
+function validIntent(e,c,r){
  const i=e.intent;
  if(!i||typeof i.label!=='string')return false;
  if(i.kind==='frozen')return i.damage===0&&(e.hp===0||c.phase==='resolved');
  if(i.kind==='stunned')return e.kind==='boss'&&e.stance===0&&i.damage===0&&(e.hp===0||c.phase==='resolved');
- if(i.kind==='heavy')return e.kind==='boss'&&i.damage===(e.heavyDamage??BALANCE.bossHeavyDamage)&&(e.hp===0||c.round%2===0);
- return i.kind==='attack'&&i.damage===(e.baseAttack??ENEMY_TYPES[e.kind].attack)&&(e.kind!=='boss'||e.hp===0||c.round%2===1);
+ const bonus=curseAttack(r)+(e.mechanic==='assault'&&e.phase===2?6:0);
+ if(i.kind==='heavy')return e.kind==='boss'&&i.damage===(e.heavyDamage??BALANCE.bossHeavyDamage)+bonus&&(e.hp===0||c.round%2===0);
+ return i.kind==='attack'&&i.damage===(e.baseAttack??ENEMY_TYPES[e.kind].attack)+bonus&&(e.kind!=='boss'||e.hp===0||c.round%2===1);
 }
 function validBoundary(r){
  const node=(r.route||NODES)[r.nodeIndex],c=r.combat;
@@ -77,8 +79,10 @@ function validHistoryEntry(h){
 }
 function validChoice(c,r){
  if(!c||!['id','title','description','before','after'].every(k=>typeof c[k]==='string')||!build(c.build)||!integer(c.dieIndex)||c.dieIndex>=5)return false;
+ if(r.rogue&&(r.rogue.banned.includes(choiceKey(c))||!['common','fine','rare','epic'].includes(c.rarity)))return false;
  if(c.kind==='bind')return true;
  const perk=PERKS[c.perkId];
+ const prerequisite=r.rogue?.rules?.prerequisites?.[c.perkId];if(prerequisite&&(r.perks[prerequisite.perkId]||0)<prerequisite.rank)return false;
  return c.kind==='perk'&&perk&&perk.build===c.build&&r.perks[c.perkId]<perk.maxRank&&r.diceSkills.some(s=>s?.kind===c.build);
 }
 function validCombat(c,r){
@@ -96,7 +100,7 @@ function validCombat(c,r){
   for(const e of c.enemies){
    if(!e||typeof e.id!=='string')return false;
    const i=node.enemies.findIndex((_,i)=>e.id===`${node.id}-${i}`),d=node.enemies[i];
-   if(d){if(e.kind!==d.kind||e.baseAttack!==d.attack||e.heavyDamage!==d.heavyDamage||e.baseStance!==d.stance||e.maxHp!==d.hp||e.noSummon!==!!d.noSummon)return false;continue;}
+   if(d){if(e.kind!==d.kind||e.baseAttack!==d.attack||e.heavyDamage!==d.heavyDamage||e.baseStance!==d.stance||e.maxHp!==d.hp||e.noSummon!==!!d.noSummon||e.mechanic!==d.mechanic||e.affix!==d.affix)return false;continue;}
    const parent=c.enemies.find(b=>b.kind==='boss'&&b.summoned&&[`${b.id}-aid-1`,`${b.id}-aid-2`].includes(e.id));
    const expected=e.id.endsWith('-aid-1')?'melee':'ranged';
    if(!parent||e.kind!==expected||e.maxHp!==ENEMY_TYPES[expected].hp||e.baseAttack!==undefined)return false;
@@ -106,11 +110,35 @@ function validCombat(c,r){
   e&&typeof e.id==='string'&&Object.hasOwn(ENEMY_TYPES,e.kind)&&typeof e.name==='string'
   &&['hp','maxHp','shield','stance','phase'].every(k=>num(e[k]))&&e.maxHp>0&&e.hp<=e.maxHp
   &&['baseAttack','heavyDamage','baseStance'].every(k=>e[k]===undefined||num(e[k]))&&(e.noSummon===undefined||typeof e.noSummon==='boolean')
-  &&typeof e.summoned==='boolean'&&e.poison&&integer(e.poison.stacks)&&integer(e.poison.turns)&&validIntent(e,c));
+  &&typeof e.summoned==='boolean'&&e.poison&&integer(e.poison.stacks)&&integer(e.poison.turns)&&validIntent(e,c,r));
 }
+
+const text=v=>typeof v==='string'&&v.length<=2000;
+const mechanics=['assault','ward','ritual'];
+function validEncounter(c){return object(c)&&text(c.id)&&['hpCost','coinCost','heal','attack','coins','goldBonus'].every(k=>c[k]===undefined||currency(c[k]))&&(c.curseId===undefined||text(c.curseId));}
+function validRogue(r){
+ if(r.rogue===undefined&&r.expeditionContent===undefined&&r.loot===undefined)return true;
+ const g=r.rogue,c=r.expeditionContent;if(!object(g)||!object(c)||!object(c.expansion)||!Array.isArray(r.loot)||r.loot.length>100)return false;
+ if(!['equipment','skills','relics','decorations'].every(key=>Array.isArray(c[key])&&c[key].length<=500&&c[key].every(v=>object(v)&&text(v.id))))return false;
+ if(c.skills.some(v=>!validLoadout({effects:{},skills:[v]}))||c.relics.some(v=>!validLoadout({effects:{},relics:[v]}))||c.decorations.some(v=>!decorations.includes(v.id))||c.equipment.some(v=>!numbers(v.effects)||!Object.keys(v.effects).every(k=>effects.includes(k))))return false;
+ const rules=g.rules;if(JSON.stringify(rules)!==JSON.stringify({...ROGUE_DEFAULTS,...c.expansion.rogue}))return false;
+ if(!object(rules)||!object(rules.rarityWeights)||!Object.entries(rules.rarityWeights).every(([k,v])=>['common','fine','rare','epic'].includes(k)&&num(v))||!Object.values(rules.rarityWeights).some(v=>v>0)||!['refreshCost','maxRefresh','maxBans'].every(k=>currency(rules[k]))||!integer(g.refreshes)||g.refreshes>rules.maxRefresh||!currency(g.goldBonus))return false;
+ if(rules.prerequisites!==undefined&&(!object(rules.prerequisites)||!Object.entries(rules.prerequisites).every(([id,v])=>PERKS[id]&&object(v)&&PERKS[v.perkId]&&integer(v.rank)&&v.rank<=PERKS[v.perkId].maxRank)))return false;
+ if(!Array.isArray(g.banned)||g.banned.length>rules.maxBans||new Set(g.banned).size!==g.banned.length||!g.banned.every(v=>/^bind:(sword|poison|guard)$/.test(v)||v.startsWith('perk:')&&PERKS[v.slice(5)]))return false;
+ if(!Array.isArray(g.branches)||!g.branches.every(b=>object(b)&&r.route?.some(n=>n.id===b.nodeId&&n.branchChoices?.some(ch=>ch.id===b.choiceId))))return false;
+ if(!Array.isArray(g.purchases)||new Set(g.purchases).size!==g.purchases.length||!g.purchases.every(p=>r.route?.some(n=>n.inventory?.some(i=>`${n.id}:${i.id}`===p))))return false;
+ const enc=c.expansion.encounters;if(enc!==undefined&&(!object(enc)||!Array.isArray(enc.choices)||!enc.choices.every(validEncounter)||!object(enc.curseRules)||!Object.values(enc.curseRules).every(v=>object(v)&&(v.enemyAttack===undefined||currency(v.enemyAttack)))))return false;
+ if(!Array.isArray(g.curses)||new Set(g.curses).size!==g.curses.length||!g.curses.every(id=>text(id)&&(enc?.curseRules?.[id]||id==='blood-oath')))return false;
+ const affixes=c.expansion.affixes||[];if(!Array.isArray(affixes)||!affixes.every(a=>object(a)&&effects.includes(a.key)&&currency(a.min)&&currency(a.max)&&a.max>=a.min))return false;
+ const loot=c.expansion.loot;if(loot!==undefined&&(!object(loot)||!['chance','bossChance'].every(k=>loot[k]===undefined||num(loot[k])&&loot[k]<=1)||!object(loot.rarityWeights)||!Object.values(loot.rarityWeights).every(num)||!object(loot.affixCount)||!Object.values(loot.affixCount).every(integer)))return false;
+ if(new Set(r.loot.map(l=>l?.id)).size!==r.loot.length||!r.loot.every(l=>object(l)&&text(l.id)&&c.equipment.some(e=>e.id===l.templateId)&&['boss','elite','battle'].includes(l.source)&&Array.isArray(l.affixes)&&l.affixes.length<=16&&new Set(l.affixes.map(a=>a.key)).size===l.affixes.length&&l.affixes.every(a=>object(a)&&integer(a.value)&&affixes.some(f=>f.key===a.key&&a.value>=f.min&&a.value<=f.max))))return false;
+ return r.route?.every(n=>(n.branchChoices===undefined||Array.isArray(n.branchChoices)&&n.type==='event'&&n.branchChoices.length>=2&&n.branchChoices.every(b=>object(b)&&text(b.id)&&['hpScale','attackScale'].every(k=>b[k]===undefined||num(b[k])&&b[k]>0)&& (b.coins===undefined||currency(b.coins))))&&(n.encounterChoices===undefined||Array.isArray(n.encounterChoices)&&n.encounterChoices.every(validEncounter))&&(n.inventory===undefined||Array.isArray(n.inventory)&&n.inventory.every(i=>object(i)&&text(i.id)&&currency(i.price)&&['skill','relic','decoration'].includes(i.kind)&&object(i.definition)&&c[{skill:'skills',relic:'relics',decoration:'decorations'}[i.kind]].some(d=>d.id===i.definition.id&&JSON.stringify(d)===JSON.stringify(i.definition))))&&n.enemies.every(e=>(e.mechanic===undefined||e.kind==='boss'&&mechanics.includes(e.mechanic))&&(e.affix===undefined||e.kind==='elite'&&['fierce','armored','vampiric'].includes(e.affix))));
+}
+
 function valid(r){
  if(!r||r.version!==3||!integer(r.seed)||r.seed>4294967295||!build(r.build)||!integer(r.nodeIndex)||!(r.route||NODES)[r.nodeIndex]||!['intro','battle','reward','event','camp','victory','defeat'].includes(r.flow))return false;
  if(r.route!==undefined&&!validRoute(r))return false;
+ if(!validRogue(r))return false;
  if(r.loadout!==undefined&&!validLoadout(r.loadout))return false;
  if(r.bag!==undefined&&!items(r.bag))return false;
  if(r.consumed!==undefined&&!items(r.consumed,true))return false;

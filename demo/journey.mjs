@@ -1,11 +1,12 @@
 import {BALANCE,BUILDS,NODES,PERKS} from './config.mjs';
 import {nextRandom} from './model.mjs';
 import {startBattle} from './combat.mjs';
+import {draw,weighted,choiceKey,addBattleLoot} from './rogue.mjs';
 const copy=r=>structuredClone(r);
 export const getRunNodes=run=>run?.route||NODES;
 export const getRunNode=run=>getRunNodes(run)[run.nodeIndex];
 const campKey=(run,key)=>run.route?`${key}-${run.nodeIndex}`:key;
-const gainCoins=(run,amount)=>{run.coins=(run.coins||0)+Math.floor(amount*(1+Math.max(0,Number(run.loadout?.effects?.goldBonus)||0)/100));};
+const gainCoins=(run,amount)=>{run.coins=(run.coins||0)+Math.floor(amount*(1+Math.max(0,(Number(run.loadout?.effects?.goldBonus)||0)+(run.rogue?.goldBonus||0))/100));};
 const validIndex = index => Number.isInteger(index)&&index>=0&&index<5;
 const bound = (run,build) => run.diceSkills.some(skill=>skill?.kind===build);
 const effect = (build,level,run) => build==='sword'?`每道剑气 ${BALANCE.swordDamage*level} 伤害`:build==='guard'?`护盾 ${BALANCE.guardShield*level+(run?.perks?.guardBulwark??0)*PERKS.guardBulwark.shieldPerRank} 点`:`附加 ${level+(run?.perks?.poisonCatalyst??0)*PERKS.poisonCatalyst.stacksPerRank} 层毒`;
@@ -43,13 +44,24 @@ export function createChoices(run){
  r.flow='reward';r.pendingUpgrade=null;
  const prefix=`growth-${r.nodeIndex}-${r.stats.upgrades.length}`;
  const bind=build=>({id:`${prefix}-bind-${build}`,title:`${BUILDS[build].name}·${slot<0?'精修':'传承'}`,build,dieIndex,kind:'bind'});
- const perks=Object.values(PERKS).filter(p=>bound(r,p.build)&&(r.perks?.[p.id]??0)<p.maxRank).map(p=>({id:`${prefix}-perk-${p.id}`,title:p.name,build:p.build,perkId:p.id,kind:'perk',dieIndex}));
+ const prerequisites=r.rogue?.rules?.prerequisites||{};
+ const perks=Object.values(PERKS).filter(p=>(!prerequisites[p.id]||(r.perks[prerequisites[p.id].perkId]||0)>=prerequisites[p.id].rank)&&bound(r,p.build)&&(r.perks?.[p.id]??0)<p.maxRank).map(p=>({id:`${prefix}-perk-${p.id}`,title:p.name,build:p.build,perkId:p.id,kind:'perk',dieIndex}));
  const sample=pool=>{const random=nextRandom(r.seed);r.seed=random.seed;return pool[Math.floor(random.value*pool.length)];};
  const own=bind(r.build),ownPerks=perks.filter(p=>p.build===r.build);
  const pool=[...perks,...Object.keys(BUILDS).filter(b=>b!==r.build).map(bind)];
  const second=sample(ownPerks.length?ownPerks:pool);
  const third=sample(pool.filter(c=>c.id!==second.id));
  r.choices=[own,second,third];
+ if(r.rogue){
+  const candidates=[...Object.keys(BUILDS).map(bind),...perks].filter(c=>!r.rogue.banned.includes(choiceKey(c)));
+  r.choices=[];
+  const guaranteed=candidates.find(c=>c.kind==='bind'&&c.build===r.build);if(guaranteed){r.choices.push({...guaranteed,rarity:'common'});candidates.splice(candidates.indexOf(guaranteed),1);}
+  while(r.choices.length<3&&candidates.length){
+   const scored=candidates.map(c=>({...c,rarity:c.kind==='perk'?(c.perkId.endsWith('Echo')||c.perkId.endsWith('Catalyst')||c.perkId.endsWith('Riposte')?'epic':'rare'):'common'}));
+   const available=Object.fromEntries(Object.entries(r.rogue.rules.rarityWeights).filter(([key])=>scored.some(c=>c.rarity===key)));
+   const rarity=weighted(r,available),pool=scored.filter(c=>c.rarity===rarity);const choice=(pool.length?pool:scored)[Math.floor(draw(r)*(pool.length||scored.length))];r.choices.push(choice);candidates.splice(candidates.findIndex(c=>c.id===choice.id),1);
+  }
+ }
  r.choices=r.choices.map(c=>{const p=previewUpgrade(r,c.id,c.dieIndex);return {...c,before:p.before,after:p.after,description:p.description};});
  return r;
 }
@@ -92,7 +104,7 @@ export function completeBattle(run){
   if(r.hero.hp<=0||(remaining.length&&!partial)){r.flow='defeat';return r;}
   r.completedBattles??=[];
   if(!r.completedBattles.includes(node.id)){
-   r.completedBattles.push(node.id);gainCoins(r,(node.coins||0)+(r.mode==='resource'?Math.floor(r.stats.damage/8):r.mode==='worldboss'?Math.floor(r.results.worldBossDamage/10):0));
+   r.completedBattles.push(node.id);if(!remaining.length)addBattleLoot(r,node);gainCoins(r,(node.coins||0)+(r.mode==='resource'?Math.floor(r.stats.damage/8):r.mode==='worldboss'?Math.floor(r.results.worldBossDamage/10):0));
   }
   if(r.nodeIndex===r.route.length-1){r.flow='victory';r.results.completed=true;if(r.mode==='tower')r.results.towerFloorCompleted=r.floor;return r;}
   r.combat=null;
@@ -129,9 +141,54 @@ export function chooseUpgrade(run,id,index){
  r.nodeIndex++;r.flow='intro';return enterNode(r);
 }
 export function chooseEvent(run,optionId){
+ if(run.flow==='event'&&getRunNode(run)?.branchChoices)return chooseBranch(run,['heal','train'].includes(optionId)?0:getRunNode(run).branchChoices.findIndex(c=>c.id===optionId));
+ if(run.flow==='event'&&getRunNode(run)?.encounter)return chooseEncounter(run,['heal','train'].includes(optionId)?(getRunNode(run).encounterChoices?.find(c=>!c.hpCost)?.id):optionId);
+ if(run.flow==='event'&&getRunNode(run)?.merchant&&run.rogue&&!['heal','train','buy-potion','buy-tonic'].includes(optionId))return chooseMerchant(run,optionId);
  if(run.flow!=='event'||!['heal','train','buy-potion','buy-tonic'].includes(optionId))return run;
  const node=getRunNode(run),purchase=optionId.startsWith('buy-'),price=optionId==='buy-potion'?20:30;
  if(purchase&&(!node.merchant||(run.coins||0)<price))return run;
  const r=copy(run);if(purchase){r.coins-=price;r.bag??={};const item=optionId.slice(4);r.bag[item]=(r.bag[item]||0)+1;}else if(optionId==='heal')r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+BALANCE.eventHeal);else r.hero.attack+=3;
  r.nodeIndex++;r.flow='intro';return enterNode(r);
+}
+
+/** Normalized display descriptors; reading them never changes the seed. */
+export function getJourneyOptions(run){
+ const node=getRunNode(run),base={kind:'none',title:node?.name||'',description:node?.description||'',choices:[],refresh:{available:false,cost:0,remaining:0},bans:{remaining:0}};
+ if(run.flow==='reward')return {...base,kind:'growth',choices:run.choices.map(c=>({...c})),refresh:{available:!!run.rogue&&run.rogue.refreshes<run.rogue.rules.maxRefresh&&(run.coins||0)>=run.rogue.rules.refreshCost,cost:run.rogue?.rules.refreshCost||0,remaining:Math.max(0,(run.rogue?.rules.maxRefresh||0)-(run.rogue?.refreshes||0))},bans:{remaining:Math.max(0,(run.rogue?.rules.maxBans||0)-(run.rogue?.banned.length||0))}};
+ if(run.flow!=='event')return base;
+ if(node.branchChoices)return {...base,kind:'branch',choices:node.branchChoices.map(c=>({...c}))};
+ if(node.encounter)return {...base,kind:'encounter',choices:(node.encounterChoices||[]).map(c=>({...c,title:c.title||c.id,description:c.description||'',disabled:run.hero.hp<=(c.hpCost||0)||(run.coins||0)<(c.coinCost||0),reason:run.hero.hp<=(c.hpCost||0)?'气血不足':(run.coins||0)<(c.coinCost||0)?'铜钱不足':''}))};
+ if(node.merchant&&run.rogue)return {...base,kind:'merchant',choices:[...(node.inventory||[]).map(c=>({...c,disabled:run.rogue.purchases.includes(`${node.id}:${c.id}`)||(run.coins||0)<c.price,reason:run.rogue.purchases.includes(`${node.id}:${c.id}`)?'已购':(run.coins||0)<c.price?'铜钱不足':''})),{id:'leave',title:'离开行商',description:'继续前行。'}]};
+ return {...base,kind:'legacy',choices:[{id:'heal',title:'回复气血',description:'回复35气血'},{id:'train',title:'磨练武艺',description:'攻击+3'}]};
+}
+export function refreshChoices(run){
+ if(run.flow!=='reward'||!run.rogue||run.rogue.refreshes>=run.rogue.rules.maxRefresh||(run.coins||0)<run.rogue.rules.refreshCost)return run;
+ const r=copy(run);r.coins-=r.rogue.rules.refreshCost;r.rogue.refreshes++;r.choices=[];r.pendingUpgrade=null;return createChoices(r);
+}
+export function banChoice(run,id){
+ const choice=run.choices?.find(c=>c.id===id);if(run.flow!=='reward'||!run.rogue||!choice||run.rogue.banned.length>=run.rogue.rules.maxBans)return run;
+ // Keep at least three selectable branches after a ban.
+ const key=choiceKey(choice),r=copy(run);r.rogue.banned.push(key);r.choices=[];r.pendingUpgrade=null;const next=createChoices(r);return next.choices.length===3?next:run;
+}
+const leaveEvent=r=>{r.nodeIndex++;r.flow='intro';return enterNode(r);};
+export function chooseBranch(run,index){
+ const node=getRunNode(run),choice=node?.branchChoices?.[index];if(run.flow!=='event'||!run.rogue||!Number.isInteger(index)||!choice)return run;
+ const r=copy(run),next=r.route.slice(r.nodeIndex+1).find(n=>n.type==='battle');if(!next)return run;
+ for(const e of next.enemies){e.hp=Math.ceil(e.hp*(choice.hpScale||1));e.attack=Math.ceil(e.attack*(choice.attackScale||1));e.heavyDamage=Math.ceil(e.heavyDamage*(choice.attackScale||1));}
+ next.coins=(next.coins||0)+(choice.coins||0);r.rogue.branches.push({nodeId:node.id,choiceId:choice.id});return leaveEvent(r);
+}
+export function chooseEncounter(run,id){
+ const node=getRunNode(run),choice=node?.encounterChoices?.find(c=>c.id===id);if(run.flow!=='event'||!run.rogue||!node.encounter||!choice||run.hero.hp<=(choice.hpCost||0)||(run.coins||0)<(choice.coinCost||0))return run;
+ const r=copy(run);r.hero.hp-=choice.hpCost||0;r.coins-=choice.coinCost||0;r.hero.hp=Math.min(r.hero.maxHp,r.hero.hp+(choice.heal||0));r.hero.attack+=choice.attack||0;r.coins+=choice.coins||0;r.rogue.goldBonus+=choice.goldBonus||0;if(choice.curseId&&!r.rogue.curses.includes(choice.curseId))r.rogue.curses.push(choice.curseId);return leaveEvent(r);
+}
+export function chooseMerchant(run,id){
+ const node=getRunNode(run);if(run.flow!=='event'||!node?.merchant||!run.rogue)return run;
+ if(id==='leave')return leaveEvent(copy(run));
+ const item=node.inventory?.find(i=>i.id===id),key=`${node.id}:${id}`;if(!item||run.rogue.purchases.includes(key)||(run.coins||0)<item.price)return run;
+ const r=copy(run);r.loadout??={effects:{}};
+ if(item.kind==='skill'){r.loadout.skills??=[];if(r.loadout.skills.length>=4)return run;r.loadout.skills.push(copy(item.definition));}
+ else if(item.kind==='relic'){r.loadout.relics??=[];if(r.loadout.relics.length>=3)return run;r.loadout.relics.push(copy(item.definition));}
+ else if(item.kind==='decoration'){r.loadout.dice??=Array.from({length:5},()=>({faces:[1,2,3,4,5,6],marks:Array(6).fill(null),materialId:'wood',materialLevel:1,decorationId:'plain'}));r.loadout.dice[0].decorationId=item.definition.id;}
+ else return run;
+ r.coins-=item.price;r.rogue.purchases.push(key);return r;
 }
