@@ -10,13 +10,14 @@ const uiModule=await import('../demo/ui.mjs');
 const report={round:3,nodeName:'夜雨竹林',hand:{name:'三条',dice:[2,2,2,4,6]},damage:37,kills:1,hero:{hpBefore:68,hpAfter:59,shieldBefore:12,shieldAfter:0},events:[{type:'skill',text:'飞剑穿雨',sourceName:'无名侠客',targetNames:['竹林刀客'],value:25},{type:'attack',text:'弩箭',sourceName:'夜雨弩手',targetNames:['无名侠客'],value:9}]};
 
 function withUI(fn){
- const oldDocument=globalThis.document,nodes=new Map(),listeners=new Map();
+ const oldDocument=globalThis.document,nodes=new Map(),listeners=new Map(),documentListeners=new Map();
  const node=selector=>{if(!nodes.has(selector)){let html='';const item={textContent:'',className:'',details:null,mounts:0};Object.defineProperty(item,'innerHTML',{get:()=>html,set:value=>{html=value;item.mounts++;item.details=value.includes('<details')?{open:/<details\b[^>]*\bopen(?:\s|>)/.test(value)}:null;}});nodes.set(selector,item);}return nodes.get(selector);};
  const root={innerHTML:'',contains:element=>!!element,classList:{toggle(){}},addEventListener:(type,listener)=>listeners.set(type,listener),removeEventListener:type=>listeners.delete(type),querySelectorAll:()=>[],querySelector:selector=>selector==='#round-report details'?node('#round-report').details:/^#[\w-]+$/.test(selector)?node(selector):null};
- globalThis.document={activeElement:null,addEventListener(){},removeEventListener(){}};
+ globalThis.document={activeElement:null,addEventListener:(type,listener)=>documentListeners.set(type,listener),removeEventListener:type=>documentListeners.delete(type)};
  const actions=[],ui=createUI(root,action=>actions.push(action));
  const click=type=>{const button={dataset:{action:type,value:''},disabled:false};listeners.get('click')({target:{closest:()=>button}});};
- try{return fn({ui,root,node,actions,click});}finally{ui.destroy();globalThis.document=oldDocument;}
+ const keydown=event=>documentListeners.get('keydown')(event);
+ try{return fn({ui,root,node,actions,click,keydown});}finally{ui.destroy();globalThis.document=oldDocument;}
 }
 const battle=()=>rollDice(startBattle(createRun('sword',42),NODES[0]));
 
@@ -79,6 +80,41 @@ test('report disclosure survives same-report selections and resets for a new or 
  ui.render(run,{roundReport:{...report,round:4}});assert.equal(node('#round-report').details.open,false);
  node('#round-report').details.open=true;ui.render(run,{roundReport:null});assert.equal(node('#round-report').innerHTML,'');
  ui.render(run,{roundReport:report});assert.equal(node('#round-report').details.open,false);
+}));
+
+test('native report summary and its descendants retain keyboard handling without combat shortcuts',()=>withUI(({ui,keydown,actions})=>{
+ ui.render(toggleHold(battle(),0),{roundReport:report});
+ let prevented=0;
+ const summary={tagName:'SUMMARY'},descendant={tagName:'SPAN'};
+ for(const element of [summary,descendant])for(const [key,code] of [[' ','Space'],['r','KeyR'],['1','Digit1'],['2','Digit2'],['3','Digit3'],['4','Digit4'],['5','Digit5'],['Enter','Enter']]){
+  const target={...element,closest:selector=>selector.split(',').some(part=>part.trim()==='summary')?summary:null};
+  keydown({key,code,target,preventDefault:()=>prevented++});
+ }
+ assert.deepEqual(actions,[],'native report interaction must never attack, reroll or select dice');
+ assert.equal(prevented,0,'Space and Enter retain native disclosure behavior');
+}));
+
+test('same report retains its native DOM through settings, hold and busy events; a new report replaces it and null clears it',()=>withUI(({ui,node})=>{
+ const run=battle();ui.render(run,{roundReport:report});
+ const initialMounts=node('#round-report').mounts,details=node('#round-report').details;
+ details.open=true;
+ ui.render(run,{roundReport:report,settings:{playbackSpeed:2}});
+ ui.render(toggleHold(run,0),{roundReport:report});
+ ui.render(run,{roundReport:report,busy:true,playback:{index:1,total:2,text:'出招'}});
+ ui.render(run,{roundReport:report,busy:true,playback:{index:2,total:2,text:'回应'}});
+ assert.equal(node('#round-report').mounts,initialMounts,'unchanged report must retain pointer/focus targets');
+ assert.equal(node('#round-report').details,details);assert.equal(details.open,true);
+ ui.render(run,{roundReport:{...report,round:4}});assert.equal(node('#round-report').mounts,initialMounts+1);assert.notEqual(node('#round-report').details,details);assert.equal(node('#round-report').details.open,false);
+ ui.render(run,{roundReport:null});assert.equal(node('#round-report').innerHTML,'');assert.equal(node('#round-report').mounts,initialMounts+2);
+ ui.render(run,{roundReport:null});assert.equal(node('#round-report').mounts,initialMounts+2);
+}));
+
+test('earlier dice focus history does not steal focus from a native report summary on updates',()=>withUI(({ui,root})=>{
+ const run=battle(),die={dataset:{action:'hold',value:'0'},disabled:false,closest:()=>die,focus:()=>{document.activeElement=die;}};
+ root.querySelectorAll=()=>[die];document.activeElement=die;ui.render(run,{roundReport:report});
+ const summary={closest:()=>null};document.activeElement=summary;
+ ui.render(run,{roundReport:report,settings:{playbackSpeed:2}});
+ assert.equal(document.activeElement,summary);
 }));
 
 test('dice feedback classifies real rolls, stable selection changes and equal-value linked rerolls',()=>{
