@@ -1,10 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAdventureController} from '../demo/renewal/controller.mjs';
-import {SAVE_KEY} from '../demo/renewal/model.mjs';
+import {SAVE_KEY,newAdventure,act as reduce} from '../demo/renewal/model.mjs';
 
 function memory(){const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};}
 function presentation(){return {ready:Promise.resolve(),update(){},async play(events,{onFrame}){for(const event of events)onFrame(event.snapshot);},destroy(){}};}
+
+// Routing a real flame or guard decision through raw event names would drop their supported SFX.
+test('flame and guard model events play the supported burst and shield sounds at each snapshot',async t=>{
+ for(const [skill,want] of [['flame',['dice','burst']],['guard',['dice','shield']]]){
+  await t.test(skill,async()=>{
+  const initial=reduce(newAdventure(1),{type:'begin'}).state;initial.dice[0].skill=skill;
+  const sounds=[],views=[];
+  const c=createAdventureController({initial,storage:memory(),scene:presentation(),audio:{setMuted(){},play:sound=>sounds.push(sound),destroy(){}},render:view=>views.push(structuredClone(view))});
+  await c.ready;await c.act({type:'reroll',index:0});
+  assert.deepEqual(sounds,want,`${skill} maps only its completed playback event to an existing audio cue`);
+  assert.ok(views.some(view=>skill==='guard'?view.hero.shield>0:view.enemies[0].hp<26), 'the sound accompanies a real model result');
+  c.destroy();
+  });
+ }
+});
+
+// Full absorption is a shield sound; HP loss must keep the ordinary hurt sound.
+test('hurt sound distinguishes a full block from a partial block and unshielded damage',async()=>{
+ for(const [shield,want] of [[7,'shield'],[4,'hurt'],[0,'hurt']]){
+  const initial=reduce(newAdventure(1),{type:'begin'}).state;initial.hero.shield=shield;
+  const sounds=[];
+  const c=createAdventureController({initial,storage:memory(),scene:presentation(),audio:{setMuted(){},play:sound=>sounds.push(sound),destroy(){}}});
+  await c.ready;await c.act({type:'attack'});
+  assert.deepEqual(sounds,['strike',want,'dice','sword']);
+  assert.equal(c.state.hero.hp,shield===7?120:shield===4?117:113);
+  c.destroy();
+ }
+});
 
 test('fresh entry automatically rolls once, records immediate sword damage and restores without rolling again',async()=>{
  const storage=memory(),scene=presentation(),views=[];

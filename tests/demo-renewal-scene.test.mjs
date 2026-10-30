@@ -8,20 +8,23 @@ function harness(t) {
   const originals = Object.fromEntries(keys.map(key => [key, globalThis[key]]));
   let now = 0, next = 0;
   const frames = new Map(), timers = new Map(), images = [], calls = [], scenes = [];
-  let alpha = 1, fillStyle, stack = [];
+  let alpha = 1, fillStyle, strokeStyle, path = [], stack = [];
   const gradient = {addColorStop() {}};
   const context = new Proxy({
     get globalAlpha() { return alpha; }, set globalAlpha(value) { alpha = value; },
     get fillStyle() { return fillStyle; }, set fillStyle(value) { fillStyle = value; },
-    save() { stack.push({alpha, fillStyle}); calls.push({type: 'save'}); },
-    restore() { ({alpha, fillStyle} = stack.pop() || {alpha: 1}); calls.push({type: 'restore'}); },
+    get strokeStyle() { return strokeStyle; }, set strokeStyle(value) { strokeStyle = value; },
+    save() { stack.push({alpha, fillStyle, strokeStyle}); calls.push({type: 'save'}); },
+    restore() { ({alpha, fillStyle, strokeStyle} = stack.pop() || {alpha: 1}); calls.push({type: 'restore'}); },
+    beginPath() { path = []; calls.push({type: 'beginPath'}); },
     createLinearGradient: () => gradient, createRadialGradient: () => gradient,
     measureText: text => ({width: String(text).length * 15}),
   }, {get(object, key) {
     if (key in object) return object[key];
     return (...args) => {
       for (const value of args) if (typeof value === 'number') assert.ok(Number.isFinite(value), `${String(key)} received ${value}`);
-      calls.push({type: key, args, alpha, fillStyle});
+      if (['ellipse', 'moveTo', 'lineTo', 'closePath'].includes(key)) path.push({type: key, args});
+      calls.push({type: key, args, alpha, fillStyle, strokeStyle, path: [...path]});
     };
   }});
   globalThis.Image = class {
@@ -81,6 +84,107 @@ const state = (enemies = [{id: 'a', kind: 'bandit', hp: 12, maxHp: 12}]) => ({
 });
 const spriteCalls = h => h.calls.filter(call => call.type === 'drawImage' && call.args[0].url === 'characters.png');
 const labels = h => h.calls.filter(call => call.type === 'fillText').map(call => call.args[0]);
+const rgb = color => /^#[\da-f]{6}/i.test(color || '') ? [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16)) : [0, 0, 0];
+const warm = color => { const [r, g, b] = rgb(color); return r > 200 && g > 70 && g < 225 && b < g * .8; };
+const blue = color => { const [r, g, b] = rgb(color); return b > r * 1.1 && g > r * 1.05; };
+const paintedEllipses = (h, type, color) => h.calls.filter(call => call.type === type && color(type === 'stroke' ? call.strokeStyle : call.fillStyle))
+  .flatMap(call => call.path.filter(segment => segment.type === 'ellipse').map(segment => ({args: segment.args, alpha: call.alpha})));
+
+// A flame event must paint a single warm projectile toward its chosen foe and warm damage at impact.
+test('flame paints an orange gold projectile and local target sparks before applying its snapshot', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready;
+  const before = state([{id: 'a', kind: 'bandit', hp: 12}, {id: 'b', kind: 'archer', hp: 12}]);
+  const after = structuredClone(before); after.enemies[1].hp = 6;
+  scene.update(before); const seen = [];
+  const playing = scene.play([{type: 'flame', source: 'hero', target: 'b', amount: 6, dieIndex: 0, snapshot: after}], {onFrame: snapshot => seen.push(snapshot)});
+  h.frame(65);
+  assert.ok(paintedEllipses(h, 'fill', warm).some(({args: [x, y, rx]}) => x > 195 && x < 281 && y > 300 && y < 500 && rx < 22), 'one small orange fire core travels to the selected enemy');
+  assert.deepEqual(seen, [], 'projectile does not expose the next model state');
+  h.frame(110);
+  assert.ok(paintedEllipses(h, 'stroke', warm).some(({args: [x, y, rx]}) => Math.abs(x - 280.8) < 1 && Math.abs(y - 278.96) < 15 && rx < 50), 'impact stays local to the selected target');
+  const damage = h.calls.find(call => call.type === 'fillText' && call.args[0] === '−6');
+  assert.ok(damage && warm(damage.fillStyle), 'flame damage is negative and warm colored');
+  assert.ok(!h.calls.some(call => call.type === 'fillRect' && call.args[0] === 0 && call.args[1] === 0 && call.args[2] >= 390 && call.args[3] >= 844), 'flame never flashes the whole battlefield');
+  await h.complete(); await playing; assert.deepEqual(seen, [after]);
+});
+
+// A guard event adds a readable positive shield amount and leaves a quiet shield only after its snapshot settles.
+test('guard paints a blue gold body ring and positive shield readout then retains a quiet shield', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready;
+  const before = state(), after = structuredClone(before); after.hero.shield = 6;
+  scene.update(before); h.frame(); assert.equal(paintedEllipses(h, 'stroke', blue).length, 0);
+  const playing = scene.play([{type: 'guard', source: 'hero', target: 'hero', amount: 6, dieIndex: 0, snapshot: after}]);
+  h.frame(150);
+  assert.ok(paintedEllipses(h, 'stroke', blue).some(({args: [x, y, rx, ry]}) => x === 195 && y > 470 && y < 515 && rx > 25 && rx < 85 && ry > 45 && ry < 110), 'shield ring surrounds the hero rather than the whole screen');
+  const readout = h.calls.find(call => call.type === 'fillText' && call.args[0] === '护盾 +6');
+  assert.ok(readout && blue(readout.fillStyle), 'shield growth has its own positive blue readout');
+  assert.ok(paintedEllipses(h, 'stroke', warm).length > 0, 'the shield has a fine gold rim');
+  await h.complete(); await playing; h.frame();
+  const resting = paintedEllipses(h, 'stroke', blue);
+  assert.ok(resting.length > 0 && resting.every(call => call.alpha <= .4), 'a remaining shield is visible without an action flash');
+  scene.update(before); h.frame(); assert.equal(paintedEllipses(h, 'stroke', blue).length, 0, 'spent shield disappears');
+});
+
+// The shield cap can produce a guard event with no increase; presenting +0 implies a gain that did not happen.
+test('guard at the shield cap reports a full shield without a false positive increase', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready;
+  const full = state(); full.hero.shield = 60; scene.update(full);
+  const playing = scene.play([{type: 'guard', source: 'hero', target: 'hero', amount: 0, snapshot: full}]);
+  h.frame(150); assert.ok(labels(h).includes('护盾已满')); assert.ok(!labels(h).includes('护盾 +0'));
+  await h.complete(); await playing;
+});
+
+// Filtering nonpositive damage must not hide a successful full block or mislabel it as healing.
+test('fully blocked hurt displays a blue block amount without zero damage or a damage jolt', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready;
+  const before = state(); before.hero.shield = 7;
+  const after = structuredClone(before); after.hero.shield = 0;
+  scene.update(before, {reducedMotion: true}); h.frame(); const heroAtRest = spriteCalls(h).find(call => call.args[1] === 0).args.slice(5);
+  const playing = scene.play([{type: 'hurt', source: 'a', target: 'hero', amount: 0, blocked: 7, snapshot: after}]);
+  h.frame(150);
+  const blocked = h.calls.find(call => call.type === 'fillText' && call.args[0] === '格挡 7');
+  assert.ok(blocked && blue(blocked.fillStyle));
+  assert.ok(!labels(h).some(label => /[−+]0/.test(label)), 'full block does not display fake zero damage');
+  const hero = spriteCalls(h).find(call => call.args[1] === 0);
+  assert.ok(Math.abs((hero.args[5] + hero.args[7] / 2) - (heroAtRest[0] + heroAtRest[2] / 2)) < .001, 'full block does not knock the hero sideways');
+  assert.equal(h.calls.filter(call => call.type === 'scale').length, 0, 'full block avoids the damage camera pulse');
+  await h.complete(); await playing;
+});
+
+// Partial absorption must show both shield use and actual HP loss as separate values.
+test('partially blocked hurt paints both actual health loss and a separate blue block amount', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready; scene.update(state());
+  const playing = scene.play([{type: 'hurt', source: 'a', target: 'hero', amount: 3, blocked: 4, snapshot: state()}]);
+  h.frame(150);
+  const damage = h.calls.find(call => call.type === 'fillText' && call.args[0] === '−3');
+  const blocked = h.calls.find(call => call.type === 'fillText' && call.args[0] === '格挡 4');
+  assert.ok(damage && blocked && blue(blocked.fillStyle));
+  assert.ok(Math.abs(damage.args[2] - blocked.args[2]) >= 25, 'block and HP loss do not overlap');
+  await h.complete(); await playing;
+});
+
+// Reduced motion retains local fire/shield/block cues but removes travel, camera movement, and shield breathing.
+test('reduced motion keeps new skill feedback local and the resting shield stationary', async t => {
+  const h = harness(t), scene = h.create(); h.load(); await scene.ready;
+  const shielded = state(); shielded.hero.shield = 8;
+  scene.update(shielded, {reducedMotion: true}); h.frame();
+  const rings = paintedEllipses(h, 'stroke', blue).map(call => call.args);
+  h.frame(1000); assert.deepEqual(paintedEllipses(h, 'stroke', blue).map(call => call.args), rings);
+  const seen = [];
+  const playing = scene.play([
+    {type: 'flame', source: 'hero', target: 'a', amount: 6, snapshot: shielded},
+    {type: 'guard', source: 'hero', target: 'hero', amount: 4, snapshot: shielded},
+    {type: 'hurt', source: 'a', target: 'hero', amount: 0, blocked: 7, snapshot: shielded},
+  ], {reducedMotion: true, onFrame: snapshot => seen.push(snapshot)});
+  h.frame(120);
+  assert.ok(labels(h).includes('−6'));
+  assert.ok(paintedEllipses(h, 'stroke', warm).length > 0, 'fire still marks the target in reduced motion');
+  assert.ok(!paintedEllipses(h, 'fill', warm).some(({args: [, y]}) => y > 330 && y < 470), 'no fireball flies between the actors');
+  assert.equal(h.calls.filter(call => ['translate', 'scale'].includes(call.type)).length, 0);
+  await h.complete(); h.frame(120); assert.ok(labels(h).includes('护盾 +4'));
+  await h.complete(); h.frame(120); assert.ok(labels(h).includes('格挡 7'));
+  await h.complete(); await playing; assert.equal(seen.length, 3);
+});
 
 // Applying independent X/Y viewport scales to a sprite must not squash its face or weapon.
 test('character images keep their source proportions on wide, tall and compact screens', async t => {

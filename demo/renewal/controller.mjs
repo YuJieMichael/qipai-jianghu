@@ -1,7 +1,7 @@
 import {newAdventure,act as reduce,validateAdventure,SAVE_KEY} from './model.mjs';
 
 const SETTINGS_KEY='qipai-reference-settings-v1';
-const soundFor={attack:'strike',roll:'dice',unlock:'ascension',reward:'victory'};
+const soundFor={attack:'strike',roll:'dice',flame:'burst',guard:'shield',unlock:'ascension',reward:'victory'};
 
 /** Owns browser boundaries; model decisions are atomic and presentation is cancellable. */
 export function createAdventureController({storage,initial,seed=()=>Date.now()>>>0,scene,render=()=>{},audio,onWorkshop=()=>{}}={}){
@@ -43,7 +43,9 @@ export function createAdventureController({storage,initial,seed=()=>Date.now()>>
   try{
    if(scene?.play){await scene.play(result.events,{reducedMotion:settings.reducedMotion,onFrame(snapshot){
     if(dead||own!==generation)return;
-    const event=result.events[eventIndex++];audio?.play(soundFor[event?.type]||event?.type);show(snapshot);
+    const event=result.events[eventIndex++];
+    const sound=event?.type==='hurt'&&event.amount===0&&event.blocked>0?'shield':soundFor[event?.type]||event?.type;
+    audio?.play(sound);show(snapshot);
    }});}
   }catch{if(!dead&&own===generation)message='演出已略过，可以继续试炼。';}
   finally{if(!dead&&own===generation){busy=false;sync();}}

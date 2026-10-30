@@ -1,10 +1,11 @@
-import {handOf, rewardPreview} from './model.mjs';
+import {handOf, rewardPreview, skillDescription} from './model.mjs';
 
 const NUMERALS = ['壹', '贰', '叁', '肆', '伍'];
 const CHAPTERS = ['青岚山径', '竹影初深', '林间伏击', '石阶问剑', '山门试锋', '青岚守关'];
 const PIPS = {0:[], 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
-const CHOICE_GLYPHS = {sword:'剑', face:'六', vitality:'元'};
-const CHOICE_CAPTIONS = {sword:'御剑 · 骰技', face:'炼骰 · 改面', vitality:'吐纳 · 气血'};
+const SKILL_KINDS = ['sword', 'flame', 'guard'];
+const CHOICE_GLYPHS = {sword:'剑', flame:'炎', guard:'盾', face:'六', vitality:'元'};
+const CHOICE_CAPTIONS = {sword:'御剑 · 骰技', flame:'烈火 · 骰技', guard:'护体 · 骰技', face:'炼骰 · 改面', vitality:'吐纳 · 气血'};
 
 /** A persistent DOM shell: animation snapshots update nodes without replacing the canvas or focused controls. */
 export function createAdventureUI(root, onAction) {
@@ -47,6 +48,19 @@ export function createAdventureUI(root, onAction) {
     const visible = PIPS[value] ?? [];
     pips.forEach((pip, index)=>pip.classList.toggle('is-visible',visible.includes(index)));
   }
+  function dieCaption() {
+    const caption=node('span','renewal-die-caption'),skillName=node('span','renewal-die-skill-name'),skillEffect=node('small','renewal-die-skill-effect');
+    caption.append(skillName,skillEffect);return {caption,skillName,skillEffect};
+  }
+  function renderDieSkill(item, die, unlocked, lockedText) {
+    const description=unlocked?skillDescription(die):'未解锁';
+    const [name,effect='']=description.split(' · ');
+    for(const skill of SKILL_KINDS)item.die.classList.toggle(`has-${skill}`,unlocked&&die.skill===skill);
+    text(item.skillName,unlocked?name:lockedText);
+    text(item.skillEffect,effect.replaceAll(' ','').replace('（上限60）','·限60'));
+    item.skillEffect.hidden=!unlocked||!effect;item.die.title=description;
+    return description;
+  }
   function resetSelection() { selection = {choiceId:null,index:null}; submitted = false; }
   function canPlay() { return !!state && state.phase === 'battle' && !options.busy && !options.paused; }
   function chosen() { return state?.choices.find(choice=>choice.id===selection.choiceId) ?? null; }
@@ -88,8 +102,8 @@ export function createAdventureUI(root, onAction) {
     const die = button('renewal-die','reroll',undefined,index);die.setAttribute('data-die-index',index);
     const number=node('span','renewal-die-number',NUMERALS[index]);const {face,pips}=dieFace();
     const lock=node('span','renewal-die-lock');lock.setAttribute('aria-hidden','true');
-    const caption=node('span','renewal-die-caption');die.append(number,face,lock,caption);diceTray.appendChild(die);
-    return {die,face,pips,lock,caption};
+    const skill=dieCaption();die.append(number,face,lock,skill.caption);diceTray.appendChild(die);
+    return {die,face,pips,lock,...skill};
   });
   const actionRow = node('div','renewal-action-row'), hand = node('div','renewal-hand');
   const handTop = node('div','renewal-hand-top'), handName=node('strong','renewal-hand-name'), multiplier=node('span','renewal-multiplier');handTop.append(handName,multiplier);
@@ -107,7 +121,9 @@ export function createAdventureUI(root, onAction) {
   const rewardTarget=node('section','renewal-reward-target');rewardTarget.setAttribute('aria-label','选择成长目标骰');
   const targetTitle=node('strong','renewal-target-title','选择一颗骰子'),rewardDice=node('div','renewal-reward-dice');
   const rewardDieNodes=Array.from({length:5},(_,index)=>{
-    const die=button('renewal-reward-die','pick-die',undefined,index);const {face,pips}=dieFace();const label=node('span','',`第${index+1}骰`);die.append(face,label);rewardDice.appendChild(die);return{die,pips,label};
+    const die=button('renewal-reward-die','pick-die',undefined,index);const {face,pips}=dieFace(),skill=dieCaption();
+    const number=node('span','renewal-die-number',NUMERALS[index]);number.setAttribute('aria-hidden','true');
+    die.append(number,face,skill.caption);rewardDice.appendChild(die);return{die,pips,...skill};
   });rewardTarget.append(targetTitle,rewardDice);
   const rewardPreviewNode=node('p','renewal-reward-preview');rewardPreviewNode.setAttribute('data-action','reward-preview');rewardPreviewNode.setAttribute('aria-live','polite');
   const rewardActions=node('div','renewal-dialog-actions'),cancel=button('renewal-secondary-button','cancel-choice','返回重选'),confirm=button('renewal-primary-button','confirm-choice','确认 · 继续上山');rewardActions.append(cancel,confirm);
@@ -167,7 +183,8 @@ export function createAdventureUI(root, onAction) {
     rewardDieNodes.forEach((item,index)=>{
       const die=state.dice[index];item.die.disabled=!die?.unlocked||!!options.busy||!!options.paused||submitted;
       setPressed(item.die,selection.index===index);item.die.classList.toggle('is-locked',!die?.unlocked);showFace(item.pips,die?.value||6);
-      text(item.label,die?.unlocked?`第${index+1}骰`:'未解锁');item.die.setAttribute('aria-label',die?.unlocked?`第${index+1}骰，${die.skill==='sword'?`剑气${die.level}级`:'无骰技'}`:`第${index+1}骰，未解锁`);
+      const description=renderDieSkill(item,die,!!die?.unlocked,'未解锁');
+      item.die.setAttribute('aria-label',`第${index+1}骰，${description}`);
     });
     const preview=chosenPreview();
     text(rewardPreviewNode,preview?formatPreview(preview):selected?'点选下方骰子，查看修炼变化':'选择一项成长');
@@ -206,9 +223,9 @@ export function createAdventureUI(root, onAction) {
     text(rerolls,`重掷 ${state.rerolls}`);rerolls.classList.toggle('is-empty',state.rerolls===0);
     diceNodes.forEach((item,index)=>{
       const die=state.dice[index],unlocked=!!die?.unlocked;item.die.disabled=!canPlay()||!unlocked||state.rerolls<=0;
-      item.die.classList.toggle('is-locked',!unlocked);item.die.classList.toggle('has-sword',unlocked&&die.skill==='sword');item.face.hidden=!unlocked;item.lock.hidden=unlocked;
-      showFace(item.pips,unlocked?die.value:0);text(item.caption,unlocked?(die.skill==='sword'?`剑气 ${die.level} 级`:'无骰技'):`第${index}战后解锁`);
-      item.die.setAttribute('aria-label',unlocked?`第${index+1}骰，${die.value}点，${die.skill==='sword'?`剑气${die.level}级，`:''}点击立即重掷`:`第${index+1}骰，未解锁`);
+      item.die.classList.toggle('is-locked',!unlocked);item.face.hidden=!unlocked;item.lock.hidden=unlocked;
+      showFace(item.pips,unlocked?die.value:0);const description=renderDieSkill(item,die,unlocked,`第${index}战后解锁`);
+      item.die.setAttribute('aria-label',unlocked?`第${index+1}骰，${die.value}点，${description}，点击立即重掷`:`第${index+1}骰，未解锁`);
     });
     const result=handOf(state);text(handName,result.name);text(multiplier,`×${result.multiplier}`);text(damage,result.damage);
     attack.disabled=!canPlay();text(attackCaption,options.busy?'招式演出中':'攻击选中目标');

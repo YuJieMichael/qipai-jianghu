@@ -8,12 +8,17 @@ const STARTING_HP = 120;
 const STARTING_ATTACK = 14;
 const REROLLS_PER_ROUND = 3;
 const SWORD_DAMAGE = 4;
+const FLAME_DAMAGE = 7;
+const GUARD_SHIELD = 6;
+const SHIELD_CAP = 60;
 const VITALITY_MAX_HP = 24;
 const VITALITY_HEAL = 32;
 const MAX_SKILL_LEVEL = 20;
 const MAX_NUMBER = 1_000_000;
 const MAX_COUNTER = 1_000_000_000;
 const MAX_HISTORY = 40;
+const SKILL_NAMES = {sword:'剑气',flame:'烈火',guard:'护体'};
+const isSkill = kind => typeof kind === 'string' && Object.hasOwn(SKILL_NAMES,kind);
 const HAND_NAMES = ['散招','一对','两对','三条','顺子','葫芦','四条','五同'];
 // Local balance parameters; reference-game final damage was not runtime-verified.
 const HAND_MULTIPLIERS = [1,1.5,2,2.5,3,3.5,5,10];
@@ -67,7 +72,7 @@ export function validateAdventure(value) {
       shortString(die.id) && typeof die.unlocked === 'boolean' &&
       arrayOf(die.faces,6,6,face => integer(face,1,6)) && integer(die.value,0,6) &&
       (die.value === 0 || die.faces.includes(die.value)) &&
-      ((die.skill === null && die.level === 0) || (die.skill === 'sword' && integer(die.level,1,MAX_SKILL_LEVEL))) &&
+      ((die.skill === null && die.level === 0) || (isSkill(die.skill) && integer(die.level,1,MAX_SKILL_LEVEL))) &&
       (die.unlocked || (die.value === 0 && die.skill === null && die.faces.every((face,index) => face === index+1))))) return false;
     if (new Set(value.dice.map(die => die.id)).size !== 5) return false;
     const unlocked = Math.min(5,value.stage + (value.phase === 'reward' ? 2 : 1));
@@ -83,7 +88,7 @@ export function validateAdventure(value) {
     if (value.phase === 'won' && value.stage !== 5) return false;
     if (value.phase === 'reward') {
       if (value.stage === 5 || !arrayOf(value.choices,3,3,choice =>
-        record(choice,['id','kind','name','description','rarity']) && ['sword','face','vitality'].includes(choice.kind) &&
+        record(choice,['id','kind','name','description','rarity']) && ['sword','flame','guard','face','vitality'].includes(choice.kind) &&
         choice.id === `s${value.stage}-${choice.kind}` && shortString(choice.name) &&
         shortString(choice.description,240) && ['common','uncommon','rare'].includes(choice.rarity)) ||
         new Set(value.choices.map(choice => choice.kind)).size !== 3) return false;
@@ -131,11 +136,29 @@ function emit(state, events, type, data = {}) {
 }
 
 function rewardChoices(stage) {
-  return [
+  const choices = [
     {id:`s${stage}-sword`,kind:'sword',name:'御剑诀',description:'选一颗骰绑定剑气；已有剑气则升一级，每次投掷立即出剑。',rarity:'rare'},
+    {id:`s${stage}-flame`,kind:'flame',name:'离火诀',description:'选一颗骰绑定烈火；同技升级，每次投掷灼击当前选中的敌人。不同骰技会被替换。',rarity:'rare'},
+    {id:`s${stage}-guard`,kind:'guard',name:'金钟诀',description:'选一颗骰绑定护体；同技升级，每次投掷积累护盾抵挡反击，上限60。不同骰技会被替换。',rarity:'uncommon'},
     {id:`s${stage}-face`,kind:'face',name:'六面归元',description:'选一颗骰，将它最小的一个物理骰面改为六。',rarity:'uncommon'},
     {id:`s${stage}-vitality`,kind:'vitality',name:'养元心法',description:'气血上限增加24，回复32点气血。',rarity:'common'},
   ];
+  // Opening rewards remain familiar; later victories offer distinct build paths.
+  // Choices already stored in a save are never regenerated.
+  const kinds = [
+    ['sword','face','vitality'], ['flame','guard','vitality'],
+    ['sword','flame','vitality'], ['flame','guard','vitality'], ['sword','guard','vitality'],
+  ][stage];
+  return kinds.map(kind => choices.find(choice => choice.kind === kind));
+}
+
+/** Shared truthful ability text for dice, target selection and reward previews. */
+export function skillDescription(die) {
+  if (!die || !isSkill(die.skill)) return '无骰技';
+  const prefix = `${SKILL_NAMES[die.skill]} ${die.level} 级`;
+  if (die.skill === 'sword') return `${prefix} · 全体 ${die.level*SWORD_DAMAGE} 伤害`;
+  if (die.skill === 'flame') return `${prefix} · 单体 ${die.level*FLAME_DAMAGE} 伤害`;
+  return `${prefix} · 护盾 +${die.level*GUARD_SHIELD}（上限${SHIELD_CAP}）`;
 }
 
 function finishFight(state, events) {
@@ -161,7 +184,7 @@ function hitEnemy(state, enemy, damage, type, events, data = {}) {
   enemy.hp -= amount;
   state.stats.damage = Math.min(MAX_COUNTER,state.stats.damage + amount);
   if (enemy.hp === 0 && !living(state).some(candidate=>candidate.id===state.targetId)) state.targetId = living(state)[0]?.id ?? null;
-  emit(state, events, type, {target:enemy.id,amount,text:`${type === 'sword' ? '剑气' : '出招'} ${amount}`,...data});
+  emit(state, events, type, {target:enemy.id,amount,text:`${SKILL_NAMES[type] ?? '出招'} ${amount}`,...data});
   if (enemy.hp === 0) {
     state.stats.kills = Math.min(MAX_COUNTER,state.stats.kills+1);
     emit(state, events, 'death', {target:enemy.id,text:`${enemy.name}退场`});
@@ -178,6 +201,13 @@ function rollOne(state, index, events) {
     for (const target of living(state)) {
       hitEnemy(state, target, die.level * SWORD_DAMAGE, 'sword', events, {dieIndex:index});
     }
+  } else if (die.skill === 'flame') {
+    const target = living(state).find(enemy => enemy.id === state.targetId) ?? living(state)[0];
+    if (target) hitEnemy(state, target, die.level * FLAME_DAMAGE, 'flame', events, {dieIndex:index});
+  } else if (die.skill === 'guard') {
+    const amount = Math.min(die.level*GUARD_SHIELD, Math.max(0, SHIELD_CAP-state.hero.shield));
+    state.hero.shield += amount;
+    emit(state, events, 'guard', {target:'hero',dieIndex:index,amount,text:amount ? `护盾 +${amount}` : '护盾已满'});
   }
 }
 
@@ -202,10 +232,11 @@ export function rewardPreview(state, choiceId, index) {
   }
   if (!validIndex(state, index)) return null;
   const die = state.dice[index];
-  if (choice.kind === 'sword') {
-    if (die.level >= MAX_SKILL_LEVEL) return null;
-    const nextLevel = die.skill === 'sword' ? die.level + 1 : 1;
-    return {before:die.skill === 'sword' ? `剑气 ${die.level} 级 · 全体 ${die.level*SWORD_DAMAGE} 伤害` : '无剑气',after:`剑气 ${nextLevel} 级 · 全体 ${nextLevel*SWORD_DAMAGE} 伤害`};
+  if (isSkill(choice.kind)) {
+    if (die.skill === choice.kind && die.level >= MAX_SKILL_LEVEL) return null;
+    const nextLevel = die.skill === choice.kind ? die.level + 1 : 1;
+    return {before:die.skill ? skillDescription(die) : choice.kind === 'sword' ? '无剑气' : '无骰技',
+      after:skillDescription({skill:choice.kind,level:nextLevel}) + (die.skill && die.skill !== choice.kind ? '（替换原骰技）' : '')};
   }
   if (choice.kind === 'face') {
     const faces = [...die.faces], minimum = Math.min(...faces);
@@ -234,9 +265,9 @@ export function act(state, action) {
       emit(next, events, 'heal', {target:'hero',amount:next.hero.hp-previousHp,text:`气血 +${next.hero.hp-previousHp}`});
     } else {
       const die = next.dice[action.index];
-      if (choice.kind === 'sword') {
-        die.level = die.skill === 'sword' ? die.level + 1 : 1;
-        die.skill = 'sword';
+      if (isSkill(choice.kind)) {
+        die.level = die.skill === choice.kind ? die.level + 1 : 1;
+        die.skill = choice.kind;
       } else {
         die.faces[die.faces.indexOf(Math.min(...die.faces))] = 6;
       }
@@ -277,7 +308,7 @@ export function act(state, action) {
       next.hero.shield -= blocked;
       const amount = Math.min(next.hero.hp, enemy.attack - blocked);
       next.hero.hp -= amount;
-      emit(next, events, 'hurt', {source:enemy.id,target:'hero',amount,text:amount ? `气血 -${amount}` : `格挡 ${blocked}`});
+      emit(next, events, 'hurt', {source:enemy.id,target:'hero',amount,blocked,text:amount ? `气血 -${amount}` : `格挡 ${blocked}`});
       if (next.hero.hp === 0) {
         next.phase = 'lost';
         emit(next, events, 'death', {source:enemy.id,target:'hero',text:'试炼未竟'});

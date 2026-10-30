@@ -152,3 +152,59 @@ test('opening a decision dialog moves focus inside and its keyboard boundary kee
   root.dispatchEvent({type:'keydown',key:'Tab'});assert.ok(doc.activeElement===first,'Tab wraps to the first enabled choice');
   ui.render(fixture());assert.ok(doc.activeElement===die,'closing the decision restores an available world control');
 }));
+
+test('battle dice expose each equipped skill and its effect without hiding the current shield', () => withUI(({ui,root,find}) => {
+  const state=fixture();state.stage=2;state.hero.shield=18;
+  Object.assign(state.dice[1],{unlocked:true,value:4,skill:'flame',level:2});
+  Object.assign(state.dice[2],{unlocked:true,value:5,skill:'guard',level:3});
+  ui.render(state);
+  const expected=[
+    {skill:'sword',name:'剑气',description:'剑气 1 级 · 全体 4 伤害',effect:/全体\s*4\s*伤害/},
+    {skill:'flame',name:'烈火',description:'烈火 2 级 · 单体 14 伤害',effect:/单体\s*14\s*伤害/},
+    {skill:'guard',name:'护体',description:'护体 3 级 · 护盾 +18（上限60）',effect:/护盾\s*\+18/},
+  ];
+  expected.forEach(({skill,name,description,effect},index)=>{
+    const die=find('reroll',index);
+    for(const candidate of ['sword','flame','guard'])assert.equal(die.classList.contains(`has-${candidate}`),candidate===skill);
+    assert.match(die.querySelector('.renewal-die-caption').textContent,new RegExp(name));
+    assert.match(die.querySelector('.renewal-die-caption').textContent,effect,'the touch-visible caption explains the effect');
+    assert.ok(die.getAttribute('aria-label').includes(description),'the accessible name explains the equipped ability');
+    assert.equal(die.title,description);
+  });
+  assert.match(find('reroll',2).querySelector('.renewal-die-caption').textContent,/60/,'the shield cap is visible on touch screens');
+  assert.equal(root.querySelector('.renewal-shield').textContent,'护盾 18');
+  assert.equal(root.querySelector('.renewal-shield').hidden,false);
+  const previous=find('reroll',1);ui.render({...state,dice:state.dice.map((die,index)=>index===1?{...die,skill:'guard',level:1}:die)});
+  assert.equal(find('reroll',1),previous,'a skill change keeps the stable die control');
+  assert.equal(previous.classList.contains('has-flame'),false);assert.equal(previous.classList.contains('has-guard'),true);
+}));
+
+test('flame and guard reward cards require a target and describe replacing its real equipped skill', () => withUI(({ui,actions,find,click}) => {
+  const state=fixture('reward');state.stage=1;
+  Object.assign(state.dice[1],{value:4,skill:'flame',level:2});
+  Object.assign(state.dice[2],{unlocked:true,value:5,skill:'guard',level:3});
+  state.choices=[
+    {id:'s1-sword',kind:'sword',name:'御剑诀',description:'修炼剑气，投掷时伤害全体敌人。',rarity:'rare'},
+    {id:'s1-flame',kind:'flame',name:'烈火诀',description:'修炼烈火，投掷时伤害当前目标。',rarity:'rare'},
+    {id:'s1-guard',kind:'guard',name:'护体诀',description:'修炼护体，投掷时获得护盾，上限60。',rarity:'rare'},
+  ];
+  const before=structuredClone(state);ui.render(state);
+  const glyphs=state.choices.map(choice=>find('pick-choice',choice.id).querySelector('.renewal-reward-glyph').textContent);
+  assert.equal(new Set(glyphs).size,3);assert.ok(!glyphs.includes('悟'),'each skill has its own recognizable card glyph');
+  for(const choice of state.choices)assert.match(find('pick-choice',choice.id).querySelector('.renewal-reward-kind').textContent,/骰技/);
+  click('pick-choice','s1-flame');assert.equal(find('confirm-choice').disabled,true);
+  for(const [index,description] of [
+    [0,'剑气 1 级 · 全体 4 伤害'],[1,'烈火 2 级 · 单体 14 伤害'],[2,'护体 3 级 · 护盾 +18（上限60）'],
+  ]){
+    const target=find('pick-die',index);
+    assert.ok(target.getAttribute('aria-label').includes(description));assert.equal(target.title,description);
+    assert.doesNotMatch(target.textContent,/无骰技/);
+  }
+  click('pick-die',3);assert.equal(find('confirm-choice').disabled,true,'a locked die cannot receive a skill');
+  click('pick-die',0);assert.equal(find('confirm-choice').disabled,false);
+  assert.match(find('reward-preview').textContent,/剑气.*→.*烈火.*替换原骰技/);
+  click('pick-choice','s1-guard');assert.equal(find('confirm-choice').disabled,true,'switching skill cards clears the target');
+  click('pick-die',1);assert.match(find('reward-preview').textContent,/烈火.*→.*护体.*替换原骰技/);
+  assert.deepEqual(state,before);click('confirm-choice');
+  assert.deepEqual(actions,[{type:'choose',choiceId:'s1-guard',index:1}]);
+}));

@@ -1,7 +1,7 @@
 const WIDTH = 390, HEIGHT = 844, TAU = Math.PI * 2;
 const clamp = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const ease = value => 1 - (1 - clamp(value)) ** 3;
-const durations = {roll: 220, sword: 300, attack: 340, hurt: 300, death: 320, unlock: 340, reward: 220, heal: 280};
+const durations = {roll: 220, sword: 300, flame: 300, guard: 280, attack: 340, hurt: 300, death: 320, unlock: 340, reward: 220, heal: 280};
 const columns = {hero: 0, bandit: 1, archer: 2, sentinel: 3, boss: 3};
 
 /** Portrait battle presentation. Simulation remains entirely in model.mjs. */
@@ -145,11 +145,27 @@ export function createAdventureScene(canvas, {
         pose.x += dx / distance * reach; pose.y += dy / distance * reach; pose.scale += pulse * .025;
       }
     }
-    if (isTarget && ['sword', 'attack', 'hurt'].includes(event.type) && progress > .42 && progress < .85) {
+    const damaging = ['sword', 'flame', 'attack'].includes(event.type) || (event.type === 'hurt' && event.amount > 0);
+    if (isTarget && damaging && progress > .42 && progress < .85) {
       const impact = (progress - .42) / .43;
       pose.x += Math.sin(impact * Math.PI * 4) * (1 - impact) * 3;
     }
     return pose;
+  }
+  function ward(x, y, height, alpha, expansion = 0, sparks = false) {
+    const rx = height * (.35 + expansion * .06) * layout.spriteAspect;
+    const ry = height * (.53 + expansion * .04), centerY = y - height * .025;
+    context.save(); context.globalAlpha *= alpha;
+    ellipse(x, centerY, rx, ry, '#84cfff0b', '#8bdfff', 1.7);
+    ellipse(x, centerY, rx * .94, ry * .96, null, '#e9cb7a', .85);
+    ellipse(x, y + height * .40, rx * .94, 8 + expansion * 2, null, '#8bdfff', 1.2);
+    if (sparks) for (let index = 0; index < 4; index++) {
+      const angle = index * TAU / 4 + .45;
+      const sx = x + Math.cos(angle) * rx, sy = centerY + Math.sin(angle) * ry;
+      line([[sx - 3, sy], [sx + 3, sy]], '#fff0ba', 1.5);
+      line([[sx, sy - 4], [sx, sy + 4]], '#c1efff', 1.2);
+    }
+    context.restore();
   }
   function drawActor(actor, progress, time) {
     const pose = actorPose(actor, progress, time);
@@ -164,6 +180,10 @@ export function createAdventureScene(canvas, {
     const width = height * sourceWidth / sourceHeight * layout.spriteAspect;
     context.save(); context.globalAlpha = pose.alpha;
     ellipse(pose.x, actor.y + height * .46, Math.max(19, width * .36), 6.5, '#173c2848');
+    if (actor.id === 'hero' && actor.shield > 0) {
+      const breath = reducedMotion ? 0 : (Math.sin(time * 1.8) + 1) * .5;
+      ward(pose.x, pose.y, height, .21 + breath * .07, breath * .08);
+    }
     if (sprites) {
       context.drawImage(sprites, crop?.x ?? column * sourceWidth, crop?.y ?? 0, sourceWidth, sourceHeight,
         pose.x - width / 2, pose.y - height / 2, width, height);
@@ -206,12 +226,43 @@ export function createAdventureScene(canvas, {
     }
     impact(target.x, target.y - 8, progress, '#efffe0');
   }
+  function flame(source, target, progress) {
+    const targetY = target.y - 8;
+    if (!reducedMotion && progress < .68) {
+      const travel = ease(clamp((progress - .03) / .58));
+      const dx = target.x - source.x, dy = targetY - source.y, distance = Math.hypot(dx, dy) || 1;
+      const vx = dx / distance, vy = dy / distance, px = -vy, py = vx;
+      const x = source.x + dx * travel, y = source.y + dy * travel;
+      context.save(); context.globalAlpha = Math.min(1, progress * 12, (.72 - progress) * 7);
+      polygon([[x + px * 7, y + py * 7], [x - vx * 48, y - vy * 48], [x - px * 7, y - py * 7]], '#e8792a80');
+      line([[x - vx * 34, y - vy * 34], [x, y]], '#ffc45aaa', 6);
+      ellipse(x, y, 13, 11, '#ef7d2a66');
+      ellipse(x, y, 7, 7, '#ffc45a');
+      ellipse(x + vx * 2, y + vy * 2, 3, 4, '#fff2bc');
+      context.restore();
+    }
+    impact(target.x, targetY, progress, '#f5ac4d');
+    if (progress < .4) return;
+    const burst = clamp((progress - .4) / .6);
+    context.save(); context.globalAlpha *= (1 - burst) * .85;
+    for (let index = 0; index < 6; index++) {
+      const angle = index * TAU / 6 + .3;
+      const radius = reducedMotion ? 13 : 8 + ease(burst) * 30;
+      ellipse(target.x + Math.cos(angle) * radius, targetY + Math.sin(angle) * radius * .75 - (reducedMotion ? 0 : burst * 7), 1.7, 2.7, index % 2 ? '#ffc45a' : '#ee8b36');
+    }
+    context.restore();
+  }
   function effects(progress) {
     if (!active) return;
     const event = active.event, target = findActor(targetOf(event)), source = findActor(event.source || 'hero');
     context.save();
     if (event.type === 'sword' && source && target) sword(source, target, progress);
-    if (['attack', 'hurt'].includes(event.type) && source && target) {
+    if (event.type === 'flame' && source && target) flame(source, target, progress);
+    if ((event.type === 'guard' || (event.type === 'hurt' && event.blocked > 0)) && target) {
+      const pulse = Math.sin(progress * Math.PI);
+      ward(target.x, target.y, HEIGHT * layout.heroHeight, pulse * .88, reducedMotion ? 0 : ease(progress), true);
+    }
+    if ((event.type === 'attack' || (event.type === 'hurt' && event.amount > 0)) && source && target) {
       context.globalAlpha = Math.sin(progress * Math.PI);
       context.strokeStyle = event.type === 'hurt' ? '#ffdcac' : '#fcffd4'; context.lineWidth = reducedMotion ? 2 : 5;
       context.beginPath(); context.ellipse(target.x, target.y - 5, reducedMotion ? 19 : 35, reducedMotion ? 25 : 47, -.6, -.9 + progress * 1.6, 1.6 + progress * 1.6); context.stroke();
@@ -240,18 +291,31 @@ export function createAdventureScene(canvas, {
     context.restore();
   }
   function readout(progress) {
-    if (!active || !['sword', 'attack', 'hurt', 'heal'].includes(active.event.type)) return;
+    if (!active || !['sword', 'flame', 'guard', 'attack', 'hurt', 'heal'].includes(active.event.type)) return;
     const event = active.event, target = findActor(targetOf(event) || (event.type === 'heal' ? 'hero' : null));
-    if (!target || !Number.isFinite(event.amount) || event.amount <= 0 || progress < .27) return;
-    const label = `${event.type === 'heal' ? '+' : '−'}${Math.round(event.amount)}`;
+    if (!target || progress < .27) return;
+    const entries = [];
+    if (event.type === 'guard' && Number.isFinite(event.amount) && event.amount >= 0) {
+      entries.push({label: event.amount > 0 ? `护盾 +${Math.round(event.amount)}` : '护盾已满', tint: '#a8e6ff', small: true});
+    } else if (Number.isFinite(event.amount) && event.amount > 0) {
+      const tint = event.type === 'heal' ? '#d3ffd3' : event.type === 'flame' ? '#ffd195' : event.type === 'hurt' ? '#ffe0bd' : '#fff6cd';
+      entries.push({label: `${event.type === 'heal' ? '+' : '−'}${Math.round(event.amount)}`, tint});
+    }
+    if (event.type === 'hurt' && Number.isFinite(event.blocked) && event.blocked > 0) {
+      entries.push({label: `格挡 ${Math.round(event.blocked)}`, tint: '#a8e6ff', small: true});
+    }
+    if (!entries.length) return;
     const alpha = Math.min(1, (progress - .27) * 8, (1 - progress) * 7);
     const y = target.y - 48 - (reducedMotion ? 0 : ease(clamp((progress - .27) / .73)) * 15);
     context.save(); context.globalAlpha = alpha; context.textAlign = 'center'; context.textBaseline = 'middle';
-    context.font = '800 27px Georgia, serif';
-    const width = Math.max(43, context.measureText(label).width + 18);
-    context.fillStyle = '#153a2ede'; context.fillRect(target.x - width / 2, y - 18, width, 35);
-    context.strokeStyle = '#203e2b'; context.lineWidth = 3; context.strokeText(label, target.x, y);
-    context.fillStyle = event.type === 'heal' ? '#d3ffd3' : event.type === 'hurt' ? '#ffe0bd' : '#fff6cd'; context.fillText(label, target.x, y);
+    entries.forEach(({label, tint, small}, index) => {
+      const textY = y - index * 34;
+      context.font = small ? '700 20px system-ui, sans-serif' : '800 27px Georgia, serif';
+      const width = Math.max(43, context.measureText(label).width + 18);
+      context.fillStyle = '#153a2ede'; context.fillRect(target.x - width / 2, textY - 18, width, 33);
+      context.strokeStyle = '#203e2b'; context.lineWidth = 3; context.strokeText(label, target.x, textY);
+      context.fillStyle = tint; context.fillText(label, target.x, textY);
+    });
     context.restore();
   }
   function finishEvent(current) {
@@ -310,7 +374,8 @@ export function createAdventureScene(canvas, {
     const time = reducedMotion ? 0 : (now - began) / 1000;
     context.clearRect(0, 0, WIDTH, HEIGHT);
     context.save();
-    if (!reducedMotion && current && ['sword', 'attack', 'hurt'].includes(current.event.type)) {
+    const damaging = current && (['sword', 'flame', 'attack'].includes(current.event.type) || (current.event.type === 'hurt' && current.event.amount > 0));
+    if (!reducedMotion && damaging) {
       const bump = Math.sin(clamp((progress - .36) / .35) * Math.PI), target = findActor(targetOf(current.event));
       const cameraX = target ? clamp(target.x / WIDTH) - .5 : 0;
       const zoom = 1 + bump * .009;
