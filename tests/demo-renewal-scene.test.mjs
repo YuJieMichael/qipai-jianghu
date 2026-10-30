@@ -204,6 +204,29 @@ test('character images keep their source proportions on wide, tall and compact s
   }
 });
 
+// Wide sprites must fit the same lanes as their target buttons.
+test('three and four enemies fit inside their stage lanes on tall phones without distorting sprites', async t => {
+  const h = harness(t);
+  for (const count of [3,4]) {
+    const scene = h.create({width:360,height:800}); h.load(); await scene.ready;
+    const enemies = Array.from({length:count}, (_,i)=>({id:`enemy-${i}`,kind:i%2?'bandit':'archer',hp:10,maxHp:10}));
+    scene.update(state(enemies), {reducedMotion:true}); h.frame();
+    const actors = spriteCalls(h);
+    assert.equal(actors.length, count+1);
+    const transform = h.calls.find(call=>call.type==='setTransform').args, sx = transform[0], sy = transform[3];
+    const maxWidth = 360/(count+1)*.92;
+    const centers = actors.slice(0,count).map(call => Math.round((call.args[5]+call.args[7]/2)*sx));
+    assert.deepEqual(centers, count===3?[90,180,270]:[72,144,216,288], 'sprites line up with their target buttons');
+    // Enemies paint first, then the hero; the hero keeps its original size.
+    for (const call of actors.slice(0,count)) {
+      assert.ok(call.args[7]*sx <= maxWidth+.001, `enemy width ${call.args[7]*sx} exceeds ${maxWidth}`);
+      assert.ok(Math.abs(call.args[7]*sx/(call.args[8]*sy)-call.args[3]/call.args[4])<.000001, 'lane fitting preserves source proportions');
+    }
+    assert.ok(Math.abs(actors.at(-1).args[8]*sy-168)<.001, 'hero keeps the original height');
+    scene.destroy();
+  }
+});
+
 // Removing image rendering or returning to a side-view actor layout breaks this test.
 test('loaded forest and four-column sprites draw a portrait encounter above the hero', async t => {
   const h = harness(t), scene = h.create(); h.load(); await scene.ready;
@@ -217,7 +240,7 @@ test('loaded forest and four-column sprites draw a portrait encounter above the 
     const [, sx, sy, sw, sh, dx, dy, dw, dh] = call.args;
     assert.equal(sx, [400, 800, 1200, 0][index]);
     assert.equal(sy, 0); assert.equal(sw, 400); assert.equal(sh, 600);
-    const expected = index === 3 ? [.5, .60] : [[.24, .34], [.5, .34], [.76, .34]][index];
+    const expected = index === 3 ? [.5, .60] : [[.25, .34], [.5, .34], [.75, .34]][index];
     assert.ok(Math.abs((dx + dw / 2) / 390 - expected[0]) < .01);
     assert.ok(Math.abs((dy + dh / 2) / 844 - expected[1]) < .01);
   }

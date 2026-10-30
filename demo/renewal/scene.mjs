@@ -84,7 +84,7 @@ export function createAdventureScene(canvas, {
   }
   function actorList() {
     const enemies = state?.enemies || [];
-    const positions = enemies.length <= 1 ? [.5] : enemies.length === 2 ? [.28, .72] : [.24, .5, .76];
+    const positions = enemies.length <= 1 ? [.5] : enemies.length === 2 ? [.28, .72] : enemies.map((_,index)=>(index+1)/(enemies.length+1));
     return [...enemies.map((enemy, index) => ({...enemy, x: (positions[index] ?? .5) * WIDTH, y: layout.enemyY})),
       {id: 'hero', kind: 'hero', ...(state?.hero || {hp: 1}), x: WIDTH * .5, y: layout.heroY}];
   }
@@ -170,14 +170,19 @@ export function createAdventureScene(canvas, {
   function drawActor(actor, progress, time) {
     const pose = actorPose(actor, progress, time);
     if (pose.alpha <= .003) return;
-    const height = HEIGHT * (actor.id === 'hero' ? layout.heroHeight : actor.kind === 'boss' || actor.kind === 'sentinel' ? layout.bossHeight : layout.enemyHeight) * pose.scale;
+    let height = HEIGHT * (actor.id === 'hero' ? layout.heroHeight : actor.kind === 'boss' || actor.kind === 'sentinel' ? layout.bossHeight : layout.enemyHeight) * pose.scale;
     const column = columns[actor.kind] ?? 1;
     const crop = spriteCrops[column];
     const sourceWidth = crop?.width || (sprites ? sprites.naturalWidth / 4 : 400);
     const sourceHeight = crop?.height || (sprites ? sprites.naturalHeight : 600);
     // Positions use a normalized battlefield, but artwork keeps its own aspect
     // after the viewport's independent horizontal and vertical transforms.
-    const width = height * sourceWidth / sourceHeight * layout.spriteAspect;
+    let width = height * sourceWidth / sourceHeight * layout.spriteAspect;
+    if (actor.id !== 'hero' && state.enemies.length >= 3) {
+      // Keep complete weapons inside their target lane on narrow, tall screens.
+      const fit = Math.min(1, WIDTH / (state.enemies.length + 1) * .92 / width);
+      width *= fit; height *= fit;
+    }
     context.save(); context.globalAlpha = pose.alpha;
     ellipse(pose.x, actor.y + height * .46, Math.max(19, width * .36), 6.5, '#173c2848');
     if (actor.id === 'hero' && actor.shield > 0) {
