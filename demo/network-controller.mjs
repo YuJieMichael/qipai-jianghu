@@ -1,7 +1,7 @@
 import {createNetworkClient} from './network.mjs';
 import {validateProfile} from './profile.mjs';
 /** Session/UI state is deliberately separate from exportable player data. */
-export function createNetworkController({client=null,getProfile,setProfile,onChange=()=>{},storage,origin=globalThis.location?.origin}={}){
+export function createNetworkController({client=null,getProfile,setProfile,canReplaceProfile=()=>true,onChange=()=>{},storage,origin=globalThis.location?.origin}={}){
  let baseUrl='';try{baseUrl=JSON.parse(storage?.getItem('qipai-network-v1')||'null')?.baseUrl||'';}catch{}
  let api=client||createNetworkClient({baseUrl}),dead=false,active=false,timer=null,epoch=0;
  let state={status:'idle',busy:false,user:null,error:'',message:'',profileRevision:0,entries:[],guilds:[],guild:null,queued:false,match:null,selected:[],baseUrl};
@@ -31,7 +31,7 @@ export function createNetworkController({client=null,getProfile,setProfile,onCha
    else if(type==='register'||type==='login'){result=await api[type](String(action.username||''),String(action.password||''));if(dead)return;state.user=result.user||null;await connected();state.message='登录成功。';}
    else if(type==='logout'){await api.logout();if(dead)return;state.user=null;state.guild=null;state.guilds=[];state.match=null;state.queued=false;state.entries=[];state.profileRevision=0;state.message='已退出账号，本机档案保留。';}
    else if(type==='save-profile'){result=await api.saveProfile(structuredClone(getProfile()),state.profileRevision);if(dead)return;state.profileRevision=result.revision;state.message='档案已上传到账号存档。';}
-   else if(type==='load-profile'){result=await api.loadProfile();if(dead)return;if(!result.profile)throw Error('此账号还没有远端档案。');const checked=validateProfile(result.profile);if(!checked.valid)throw Error(`远端档案校验失败：${checked.errors[0]}`);setProfile(checked.profile);state.profileRevision=result.revision;state.message='远端档案已下载；进行中的旅程继续使用原配装快照。';}
+   else if(type==='load-profile'){if(!canReplaceProfile())throw Error('请先完成或放弃已保存旅途，再下载档案。');result=await api.loadProfile();if(dead)return;if(!result.profile)throw Error('此账号还没有远端档案。');const checked=validateProfile(result.profile);if(!checked.valid)throw Error(`远端档案校验失败：${checked.errors[0]}`);if(!canReplaceProfile())throw Error('请先完成或放弃已保存旅途，再下载档案。');setProfile(checked.profile);state.profileRevision=result.revision;state.message='远端档案已下载。';}
    else if(type==='leaderboard'){result=await api.leaderboard();if(dead)return;state.entries=result.entries||[];}
    else if(type==='guilds'){result=await api.listGuilds();if(dead)return;state.guilds=result.guilds||[];const membership=state.guilds.find(g=>g.mine);state.guild=membership?(await api.guild(membership.id)).guild:null;}
    else if(type==='create-guild'){result=await api.createGuild(String(action.name||''));if(dead)return;state.guild=result.guild||null;}

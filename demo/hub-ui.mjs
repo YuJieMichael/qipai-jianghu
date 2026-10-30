@@ -35,7 +35,7 @@ export function renderHub(profile,{tab='expedition',filter='weapon',editorText='
 function expeditionPanel(p,c,{hasSave}){
  const fields=select('build','局内传承',[{id:'sword',name:'剑气'},{id:'poison',name:'毒针'},{id:'guard',name:'金刚'}],'sword')+select('mode','玩法',c.modes,'campaign')+select('chapter','章节',c.chapters,'bamboo');
  const start=`<button type="button" class="hub-button primary" data-action="expedition">按当前配装出征 →</button>`;
- const resume=hasSave?button('继续已保存旅途','resume','','secondary'):'';
+ const resume=hasSave?button('继续已保存旅途','resume','','secondary')+button('放弃已保存旅途','abandon-saved','','secondary'):'';
  return section('行路问招',form(fields,start+resume,'expedition-form'),'进入战斗自动掷骰；选中要换的骰子，再决定何时出招。')+
  grid(c.modes.map(m=>card(m.name,info(m)+`<p class="hub-effect">${esc(textStats(m.reward))}</p>`,form(select('build','传承',[{id:'sword',name:'剑气'},{id:'poison',name:'毒针'},{id:'guard',name:'金刚'}],'sword')+`<input type="hidden" data-field="mode" value="${esc(m.id)}"><input type="hidden" data-field="chapter" value="bamboo">`,`<button type="button" class="hub-button" data-action="expedition">进入${esc(m.name)}</button>`),m.id==='tower'?`第 ${p.progression?.towerFloor||1} 层`:'')).join(''))+
  section('山河星谱',grid(c.chapters.map(ch=>card(ch.name,info(ch)+`<p>章节星级 <strong>${'★'.repeat(p.chapterStars?.[ch.id]||0)}${'☆'.repeat(3-(p.chapterStars?.[ch.id]||0))}</strong></p>${cost(ch.sweepCost)}`,action('已通关章节扫荡',{type:'sweep',chapter:ch.id}))).join('')));

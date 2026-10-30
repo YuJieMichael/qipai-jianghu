@@ -29,5 +29,5 @@ export function lootProbabilities(content){
   else for(const r of available)probabilities.set(r.id,probabilities.get(r.id)+weight/total*r.count/content.equipment.length);
  }
  const uniqueKeys=Array.isArray(content.expansion?.affixes)?new Set(content.expansion.affixes.map(a=>a.key)).size:Infinity;
- return available.map(r=>({id:r.id,name:r.name,probability:probabilities.get(r.id),battleChance:probabilities.get(r.id)*(loot.chance||0),affixes:Math.min(loot.affixCount?.[r.id]??1,uniqueKeys)}));
+ return available.map(r=>({id:r.id,name:r.name,probability:probabilities.get(r.id),battleChance:probabilities.get(r.id)*(loot.chance||0),affixes:Math.min(loot.affixCount?.[r.id]??1,content.expansion?.gear?.maxAffixes??4,uniqueKeys)}));
 }

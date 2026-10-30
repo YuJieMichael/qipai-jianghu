@@ -1,7 +1,7 @@
 import {createRun,rollDice,toggleHold,rerollDice} from './model.mjs';
 import {prepareRound,selectTarget,previewAttack,resolveRound} from './combat.mjs';
 import {enterNode,completeBattle,selectUpgrade,selectUpgradeTarget,cancelUpgrade,previewUpgrade,chooseUpgrade,chooseEvent,advanceNode,refreshChoices,banChoice,chooseBranch,chooseMerchant,chooseEncounter} from './journey.mjs';
-import {saveRun,loadRun} from './storage.mjs';
+import {saveRun,loadRun,SAVE_KEY} from './storage.mjs';
 import {createProfile,loadProfile,saveProfile,applyProfileAction,beginExpedition,settleRun,validateProfile} from './profile.mjs';
 import {getContent} from './content.mjs';
 import {createExpedition,useRunItem} from './adventures.mjs';
@@ -23,8 +23,23 @@ export function createController({initial=null,initialProfile=null,storage,rende
  let saved=loadRun(storage);message=saved.message||loadedProfile.message||'';
  const show=(view=state)=>{display=view;if(!dead)render(view,{busy,message,settings,hasSave:!!saved.run,profile,hubTab,hubFilter,editorText,editorRevision,creator,network:networkController?.state,lootNotice,tutorialStep,now:now(),preview:view.flow==='battle'?previewAttack(view):null});};
  const checkpoint=()=>{if(state.flow==='intro')return;const result=saveRun(storage,state);if(result.ok){saved={run:structuredClone(state),message:''};}else message=result.message;};
- const persistProfile=()=>{const result=saveProfile(storage,profile);if(!result.ok)message=result.message;};
- networkController=createNetworkController({client:networkClient,storage,getProfile:()=>profile,setProfile:p=>{profile=p;persistProfile();},onChange:()=>show()});
+ const persistProfile=()=>{const result=saveProfile(storage,profile);if(!result.ok)message=result.message;return result;};
+ const outstanding=run=>!!run&&!profile.settledRunIds.includes(run.runId);
+ const canReplaceProfile=()=>![state.flow==='intro'?null:state,saved.run,loadRun(storage).run].some(outstanding);
+ const clearDemoSave=()=>{
+  if(storage?.getItem(SAVE_KEY)!=null){
+   if(!storage.removeItem)throw Error('已保存旅途未能清除，请重试。');
+   storage.removeItem(SAVE_KEY);
+   if(storage.getItem(SAVE_KEY)!=null)throw Error('已保存旅途未能清除，请重试。');
+  }
+  saved={run:null,message:''};
+ };
+ const replaceProfile=p=>{
+  const persisted=saveProfile(storage,p);if(!persisted.ok)throw Error(persisted.message);
+  try{clearDemoSave();}catch(error){const restored=saveProfile(storage,profile);if(!restored.ok)throw Error(`${error.message} ${restored.message}`);throw error;}
+  state=createRun(state.build||'sword',1);profile=p;
+ };
+ networkController=createNetworkController({client:networkClient,storage,getProfile:()=>profile,setProfile:replaceProfile,canReplaceProfile,onChange:()=>show()});
  const settle=(run,abandoned=false)=>{
   if(!Number.isSafeInteger(run?.runId))return;
   const result=settleRun(profile,abandoned?{...run,flow:'abandoned'}:run,{now:now()});
@@ -51,7 +66,7 @@ export function createController({initial=null,initialProfile=null,storage,rende
   if(action.type==='exit'){checkpoint();generation++;busy=false;networkController.setActive(false);onExit();return;}
   if(busy)return;
   if(action.type==='network'){if(state.flow!=='intro'){message='请回门庭使用账号与真人论剑。';show();return;}await networkController.act(action.value);return;}
-  if(networkController.state.busy&&['profile','profile-import','expedition','start','retry','creator-apply'].includes(action.type)){message='账号请求进行中，请稍后操作。';show();return;}
+  if(networkController.state.busy&&['profile','profile-import','expedition','start','retry','resume','abandon-saved','creator-apply'].includes(action.type)){message='账号请求进行中，请稍后操作。';show();return;}
   if(action.type==='tutorial-next'||action.type==='tutorial-skip'||action.type==='tutorial-open'){tutorialStep=action.type==='tutorial-open'?0:action.type==='tutorial-skip'?3:Math.min(3,tutorialStep+1);try{storage?.setItem('qipai-bamboo-onboarding-v1',JSON.stringify({step:tutorialStep}));}catch{}show();return;}
   if(action.type==='drop-dismiss'){lootNotice=[];show();return;}
   if(action.type==='creator-open'){creator={...creator,...action.value};show();return;}
@@ -72,16 +87,29 @@ export function createController({initial=null,initialProfile=null,storage,rende
    editorRevision++;editorText=JSON.stringify(action.type==='profile-export'?profile:getContent(profile),null,2);hubTab='editor';message='数据已写入文本框，可复制修改后导入。';show();return;
   }
   if(action.type==='profile-import'){
+   if(!canReplaceProfile()){message='请先完成或放弃已保存旅途，再导入档案。';show();return;}
    const checked=validateProfile(action.value);
    if(!checked.valid){message=`档案未导入：${checked.errors.join('；')}`;show();return;}
-   profile=checked.profile;persistProfile();message='档案已导入；已保存旅途的配装快照保持原值。';show();return;
+   try{replaceProfile(checked.profile);message='档案已导入。';}catch(error){message=error.message;}show();return;
+  }
+  if(action.type==='abandon-saved'){
+   const run=state.flow==='intro'?(loadRun(storage).run||saved.run):state;
+   if(!run){show();return;}
+   if(Number.isSafeInteger(run.runId)){
+    const result=settleRun(profile,{...run,flow:'abandoned'},{now:now()});
+    if(!result.profile.settledRunIds.includes(run.runId)){message=result.message;show();return;}
+    const before=profile;profile=result.profile;
+    if(!persistProfile().ok){profile=before;show();return;}
+   }
+   try{clearDemoSave();state=createRun(state.build||'sword',1);lootNotice=[];message='已放弃已保存旅途，仅扣除用过的行囊物品，没有奖励。';}catch(error){message=error.message;}
+   show();return;
   }
   if(action.type==='expedition'){start(action.value?.build||'sword',action.value||{});return;}
   if(action.type==='start'||action.type==='retry'){
    start(action.type==='start'?action.value:state.build,action.type==='retry'?{mode:state.mode,chapter:state.chapter}:{});return;
   }
   if(action.type==='resume'){
-   saved=loadRun(storage);message=saved.message||'';if(saved.run){lootNotice=[];state=rollDice(saved.run);networkController.setActive(false);if(['victory','defeat'].includes(state.flow))settle(state);if(state!==saved.run)checkpoint();show();}return;
+   saved=loadRun(storage);message=saved.message||'';if(saved.run){if(profile.settledRunIds.includes(saved.run.runId)&&!['victory','defeat'].includes(saved.run.flow)){message='此旅途已结算或放弃，不能再次继续。';show();return;}lootNotice=[];state=rollDice(saved.run);networkController.setActive(false);if(['victory','defeat'].includes(state.flow))settle(state);if(state!==saved.run)checkpoint();show();}return;
   }
   if(action.type==='roll'){change(rollDice(state));return;}
   if(action.type==='hold'){change(toggleHold(state,Number(action.value)));return;}

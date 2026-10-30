@@ -23,7 +23,7 @@ export function addBattleLoot(run,node){
  if(draw(run)>=chance)return;
  const exclusive=boss&&loot.bossExclusive?.[run.chapter];let template=config.equipment.find(e=>e.id===exclusive);
  if(!template){const rarity=weighted(run,loot.rarityWeights||{common:1});const pool=config.equipment.filter(e=>e.rarity===rarity);const entries=pool.length?pool:config.equipment;template=entries[Math.floor(draw(run)*entries.length)];}
- const affixes=[],pool=config.expansion.affixes||[],count=Math.min(new Set(pool.map(entry=>entry.key)).size,loot.affixCount?.[template.rarity]??1);let remaining=[...pool];
+ const affixes=[],pool=config.expansion.affixes||[],count=Math.min(config.expansion.gear?.maxAffixes??4,new Set(pool.map(entry=>entry.key)).size,loot.affixCount?.[template.rarity]??1);let remaining=[...pool];
  for(let i=0;i<count;i++){const index=Math.floor(draw(run)*remaining.length),entry=remaining[index];remaining=remaining.filter(candidate=>candidate.key!==entry.key);affixes.push({key:entry.key,value:Math.floor(entry.min+draw(run)*(entry.max-entry.min+1))});}
  run.loot??=[];run.loot.push({id:`loot-${run.runId}-${node.id}-${run.loot.length}`,templateId:template.id,affixes,source:boss?'boss':node.enemies.some(e=>e.kind==='elite')?'elite':'battle'});
 }
