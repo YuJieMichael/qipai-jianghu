@@ -39,7 +39,7 @@ node server/start.mjs
 | GET `/api/profile` | — | profile,revision |
 | PUT `/api/profile` | {profile,expectedRevision} | profile,revision |
 | GET `/api/leaderboard` | — | entries:[{userId,username,wins,losses,played}] |
-| GET `/api/guilds` | — | guilds:[{id,name,memberCount}] |
+| GET `/api/guilds` | — | guilds:[{id,name,memberCount,mine}] |
 | POST `/api/guilds` | {name} | guild |
 | GET `/api/guilds/:id` | — | guild（仅成员） |
 | POST `/api/guilds/:id/join` | {} | guild |
