@@ -25,12 +25,12 @@ export function createAudio(){
   case'sword':air(.14,2700,.025);tone(550,.13,'sine',.03,1500);tone(1500,.12,'triangle',.014,700,.035);break;
   case'swordFocus':air(.17,3600,.03);tone(1600,.18,'sine',.035,2200);tone(270,.09,'triangle',.04,70,.055);break;
   case'swordEcho':for(let i=0;i<3;i++){tone(790+i*130,.15,'sine',.022,1450+i*100,i*.035);air(.08,2100,.016,i*.035);}break;
-  case'swordArray':tone(196,.25,'triangle',.036,392);for(let i=0;i<5;i++){air(.09,1700+i*450,.021,i*.025);tone(880+i*190,.16,'sine',.018,530,i*.025);}tone(78,.2,'triangle',.04,35,.12);break;
+  case'swordArray':tone(196,.25,'triangle',.036,392);for(let i=0;i<5;i++){air(.09,1700+i*450,.021,i*.025);tone(880+i*190,.16,'sine',.018,530,i*.025);}tone(78,.2,'triangle',.04,35,.16);tone(1568,.22,'sine',.011,784,.2);break;
   case'poisonApply':air(.11,4300,.022);tone(1500,.09,'sine',.025,620);tone(970,.09,'sine',.016,510,.03);break;
   case'poisonTick':tone(315,.17,'sine',.022,155);tone(630,.14,'sine',.013,420,.025);air(.1,550,.008);break;
-  case'burst':tone(115,.24,'sawtooth',.029,32);air(.22,1100,.043);tone(1174,.2,'sine',.025,210);break;
+  case'burst':tone(115,.24,'sawtooth',.029,32);air(.22,1100,.043);tone(1174,.2,'sine',.025,210);air(.16,380,.02,.18);tone(294,.2,'sine',.012,147,.21);break;
   case'shield':if(typeof event==='object'&&event.value<0){tone(330,.12,'triangle',.04,220);tone(1320,.16,'sine',.026,1047);air(.045,2700,.015);}else{tone(294,.22,'sine',.04,294);tone(588,.2,'triangle',.018,660);}break;
-  case'counter':air(.1,1400,.035);tone(220,.16,'triangle',.045,440);tone(880,.21,'sine',.024,660,.035);break;
+  case'counter':air(.1,1400,.035);tone(220,.16,'triangle',.045,440);tone(880,.21,'sine',.024,660,.035);tone(110,.17,'triangle',.026,220,.16);air(.09,2100,.012,.19);break;
   case'ascension':for(const [i,f]of [294,440,587].entries())tone(f,.3,'sine',.025,f*1.05,i*.055);air(.25,1500,.015);break;
   case'break':air(.14,2900,.045);tone(1370,.17,'triangle',.024,440);tone(96,.2,'triangle',.045,36,.02);break;
   case'mechanic':{const mechanic=event?.snapshot?.combat?.enemies?.find(foe=>foe.id===event.sourceId)?.mechanic;if(mechanic==='ward'){tone(294,.3,'sine',.028,294);tone(587,.25,'sine',.018,440,.04);}else if(mechanic==='ritual'){tone(220,.3,'sine',.026,330);tone(659,.24,'sine',.018,440,.06);air(.18,1700,.012);}else{tone(105,.2,'triangle',.035,65);air(.12,650,.022);}break;}

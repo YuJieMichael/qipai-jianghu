@@ -24,14 +24,16 @@ const basePoses={
 };
 /** Local +X faces the foe; upper/forearm angles are independent joint rotations. */
 export function sampleActorPose(role='hero',action='idle',progress=0,{reducedMotion=false,weaponType='sword'}={}) {
- const b=basePoses[role]||basePoses.melee,pose={...b},p=clamp(progress);
- if(action==='idle'||p===0)return pose;
- const prepare=smooth(p/.3),release=smooth((p-.3)/.19),recover=smooth((p-.62)/.38),envelope=prepare*(1-recover),cut=release*(1-recover),motion=reducedMotion?0:1;
+ const b={...(basePoses[role]||basePoses.melee),deathProgress:-1},pose={...b},p=clamp(progress);
  if(action==='death'){
-  pose.torso+=smooth(p)*1.3*motion;pose.crouch+=smooth(p)*48;pose.y+=smooth(p)*10;pose.opacity=1-smooth(p)*.8;pose.frontUpper+=p;pose.weapon+=p;return pose;
+  const fall=smooth(p);
+  pose.deathProgress=fall;pose.torso+=fall*1.3;pose.crouch+=fall*48;pose.y+=fall*10;pose.opacity=1-fall*.8;pose.frontUpper+=fall;pose.weapon+=fall;return pose;
  }
+ if(action==='idle'||p===0||p===1)return pose;
+ const prepare=smooth(p/.3),release=smooth((p-.3)/.19),recover=smooth((p-.62)/.38),envelope=prepare*(1-recover),cut=release*(1-recover),motion=reducedMotion?0:1;
  if(action==='hurt'){
-  const hit=Math.sin(Math.PI*p);pose.x=-hit*14*motion;pose.torso-=hit*.2*(reducedMotion?.2:1);pose.head-=hit*.15;pose.frontUpper+=hit*.5;pose.cape=-hit*12*motion;return pose;
+  const hit=Math.sin(Math.PI*p),heavy=role==='boss',armored=heavy||role==='elite';
+  pose.x=-hit*(heavy?4:armored?7:14)*motion;pose.torso-=hit*(heavy?.055:armored?.09:.2)*(reducedMotion?.2:1);pose.head-=hit*(armored?.065:.15);pose.frontUpper+=hit*.5;pose.cape=-hit*(heavy?8:12)*motion;return pose;
  }
  if(action==='guard'){
   pose.frontUpper-=envelope*.9;pose.frontFore-=envelope*.5;pose.torso-=envelope*.07;pose.crouch+=envelope*5;pose.weapon-=envelope*.2;return pose;
@@ -53,7 +55,11 @@ export function sampleActorPose(role='hero',action='idle',progress=0,{reducedMot
    pose.frontUpper-=envelope*.65-strike*.9;pose.frontFore-=envelope*.5;pose.backUpper-=envelope*1.1;pose.backFore-=strike*1.2;pose.weapon+=strike*1.6;pose.x*=.55;
   }else{
    pose.frontUpper-=envelope*1.6-strike*1.8;pose.frontFore-=envelope*.9-strike*1.4;
-   pose.backUpper-=envelope*.4;pose.backFore-=envelope*.6;pose.weapon-=envelope*1.1-strike*2.5*strength;
+   pose.backUpper-=envelope*.4;pose.backFore-=envelope*.6;
+   // Commanders raise their long blades vertically instead of winding them
+   // behind the back edge of the battlefield.
+   pose.weapon-=envelope*(role==='boss'?.35:role==='elite'?.28:1.1)-strike*2.5*strength;
+   if(role==='boss'){pose.x=strike*40*motion;pose.torso=b.torso-envelope*.025+strike*.32;pose.cape*=.45;}
   }
  }
  // Keep the mathematical endpoint identical to rest rather than a near-zero sine remainder.

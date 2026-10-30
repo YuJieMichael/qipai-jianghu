@@ -87,3 +87,28 @@ test('phase, mechanic and break events map roles without depending on enemy name
  assert.equal(eventActorAction('hero',{type:'break',sourceId:'hero',targetIds:['captain']}),'attack');
  assert.equal(eventActorAction('other',{type:'break',sourceId:'hero',targetIds:['captain']}),'idle');
 });
+
+test('death poses identify their whole collapse including its first frame',()=>{
+ for(const role of ['hero','melee','ranged','shield','elite','boss'])for(const reducedMotion of [false,true]){
+  assert.equal(sampleActorPose(role,'idle').deathProgress,-1);
+  let previous=-1;
+  for(const p of [0,.2,.5,.8,1]){
+   const pose=sampleActorPose(role,'death',p,{reducedMotion});
+   assert.ok(pose.deathProgress>=previous&&pose.deathProgress>=0);
+   assert.ok(Object.values(pose).every(Number.isFinite));
+   previous=pose.deathProgress;
+  }
+  assert.equal(previous,1);
+  assert.ok(sampleActorPose(role,'death',1,{reducedMotion}).opacity<.3);
+ }
+});
+
+test('preparation and recovery ease into rest for every weapon and role',()=>{
+ for(const role of ['hero','melee','ranged','shield','elite','boss'])for(const weaponType of ['sword','staff','hammer'])for(const action of ['prepare','attack','hurt','guard']){
+  const rest=sampleActorPose(role,'idle',0,{weaponType});
+  for(const progress of [NaN,-1,Infinity])assert.deepEqual(sampleActorPose(role,action,progress,{weaponType}),rest);
+  const near=sampleActorPose(role,action,.9999,{weaponType}),end=sampleActorPose(role,action,1,{weaponType});
+  assert.deepEqual(end,rest);
+  for(const key of Object.keys(rest))assert.ok(Math.abs(near[key]-end[key])<.05,`${role}/${weaponType}/${action}/${key} snaps`);
+ }
+});
