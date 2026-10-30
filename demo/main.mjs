@@ -8,20 +8,23 @@ import {createExpedition,useRunItem} from './adventures.mjs';
 import {patchContent} from './creator-data.mjs';
 import {simulateConfiguration} from './creator-simulation.mjs';
 import {createNetworkController} from './network-controller.mjs';
+import {createBattleReport} from './battle-report.mjs';
 
 export function seedFromQuery(value,fallback){return typeof value==='string'&&/^[0-9]+$/.test(value)&&Number(value)<=0xffffffff?Number(value):fallback();}
 
 /** One input gate owns the run. Presentation consumes snapshots, never rules. */
-export function createController({initial=null,initialProfile=null,storage,render=()=>{},play=async()=>{},onExit=()=>{},onSettings=()=>{},defaultSettings={},seed=()=>Date.now()>>>0,now=()=>Date.now(),networkClient=null}={}){
+export function createController({initial=null,initialProfile=null,storage,render=()=>{},play=async()=>{},onExit=()=>{},onSettings=()=>{},onSkipPlayback=()=>{},onDiceCue=()=>{},defaultSettings={},seed=()=>Date.now()>>>0,now=()=>Date.now(),networkClient=null}={}){
  let state=initial||createRun('sword',1),busy=false,dead=false,generation=0,message='';
+ let playback=null,roundReport=null,skipPlayback=false,releasePlayback=null;
  let creator={section:'equipment',id:'',chapter:'bamboo',report:null},lootNotice=[],tutorialStep=0,networkController;
  try{const savedTutorial=JSON.parse(storage?.getItem('qipai-bamboo-onboarding-v1')||'null');if(Number.isInteger(savedTutorial?.step))tutorialStep=Math.min(3,Math.max(0,savedTutorial.step));}catch{}
  const loadedProfile=loadProfile(storage);
  let profile=initialProfile||loadedProfile.profile||createProfile(1,now()),hubTab='expedition',hubFilter='weapon',editorText='',editorRevision=0;
- let settings={muted:false,reducedMotion:false,...defaultSettings},display=state;
- try{const s=JSON.parse(storage?.getItem('qipai-bamboo-settings-v1')||'null');if(s)for(const key of ['muted','reducedMotion'])if(typeof s[key]==='boolean')settings[key]=s[key];}catch{}
+ let settings={muted:false,reducedMotion:false,playbackSpeed:1,...defaultSettings},display=state;
+ settings.playbackSpeed=settings.playbackSpeed===2?2:1;
+ try{const s=JSON.parse(storage?.getItem('qipai-bamboo-settings-v1')||'null');if(s)for(const key of ['muted','reducedMotion'])if(typeof s[key]==='boolean')settings[key]=s[key];if(s?.playbackSpeed===1||s?.playbackSpeed===2)settings.playbackSpeed=s.playbackSpeed;}catch{}
  let saved=loadRun(storage);message=saved.message||loadedProfile.message||'';
- const show=(view=state)=>{display=view;if(!dead)render(view,{busy,message,settings,hasSave:!!saved.run,profile,hubTab,hubFilter,editorText,editorRevision,creator,network:networkController?.state,lootNotice,tutorialStep,now:now(),preview:view.flow==='battle'?previewAttack(view):null});};
+ const show=(view=state)=>{display=view;if(!dead)render(view,{busy,message,settings,hasSave:!!saved.run,profile,hubTab,hubFilter,editorText,editorRevision,creator,network:networkController?.state,lootNotice,tutorialStep,playback,roundReport,now:now(),preview:!busy&&view.flow==='battle'?previewAttack(view):null});};
  const checkpoint=()=>{if(state.flow==='intro')return;const result=saveRun(storage,state);if(result.ok){saved={run:structuredClone(state),message:''};}else message=result.message;};
  const persistProfile=()=>{const result=saveProfile(storage,profile);if(!result.ok)message=result.message;return result;};
  const outstanding=run=>!!run&&!profile.settledRunIds.includes(run.runId);
@@ -37,7 +40,7 @@ export function createController({initial=null,initialProfile=null,storage,rende
  const replaceProfile=p=>{
   const persisted=saveProfile(storage,p);if(!persisted.ok)throw Error(persisted.message);
   try{clearDemoSave();}catch(error){const restored=saveProfile(storage,profile);if(!restored.ok)throw Error(`${error.message} ${restored.message}`);throw error;}
-  state=createRun(state.build||'sword',1);profile=p;
+  state=createRun(state.build||'sword',1);profile=p;roundReport=null;
  };
  networkController=createNetworkController({client:networkClient,storage,getProfile:()=>profile,setProfile:replaceProfile,canReplaceProfile,onChange:()=>show()});
  const settle=(run,abandoned=false)=>{
@@ -53,17 +56,19 @@ export function createController({initial=null,initialProfile=null,storage,rende
   const begun=beginExpedition(profile,{now:now()});if(!begun.loadout){message=begun.message;show();return;}
   profile=begun.profile;persistProfile();
   const next=createExpedition(build,seed(),{runId:begun.runId,loadout:begun.loadout,mode,chapter,content,floor:begun.loadout.progression?.towerFloor||1,worldBossHp:begun.loadout.progression?.worldBossHp});
-  lootNotice=[];message=begun.message;change(enterNode(next));
+  lootNotice=[];roundReport=null;message=begun.message;change(enterNode(next));
  };
- const change=next=>{next=rollDice(next);if(next===state)return;const before=state.loot?.length||0;if((next.loot?.length||0)>before)lootNotice=next.loot.slice(before);state=next;networkController.setActive(state.flow==='intro'&&hubTab==='network');checkpoint();show();};
+ const cue=type=>{try{onDiceCue(type);}catch{/* Feedback cannot block a decision. */}};
+ const change=next=>{const input=next;next=rollDice(next);if(next===state)return;if(next!==input)cue('dice');const before=state.loot?.length||0;if((next.loot?.length||0)>before)lootNotice=next.loot.slice(before);state=next;networkController.setActive(state.flow==='intro'&&hubTab==='network');checkpoint();show();};
  async function act(action){
   if(dead||!action)return;
-  if(action.type==='mute'||action.type==='motion'){
-   settings={...settings,[action.type==='mute'?'muted':'reducedMotion']:!settings[action.type==='mute'?'muted':'reducedMotion']};
+  if(['mute','motion','speed'].includes(action.type)){
+   settings=action.type==='speed'?{...settings,playbackSpeed:settings.playbackSpeed===1?2:1}:{...settings,[action.type==='mute'?'muted':'reducedMotion']:!settings[action.type==='mute'?'muted':'reducedMotion']};
    try{storage?.setItem('qipai-bamboo-settings-v1',JSON.stringify(settings));}catch{message='设置暂时无法保存，本次仍然生效。';}
    onSettings(settings);show(display);return;
   }
-  if(action.type==='exit'){checkpoint();generation++;busy=false;networkController.setActive(false);onExit();return;}
+  if(action.type==='skip-playback'){if(busy&&!skipPlayback){skipPlayback=true;releasePlayback?.();try{onSkipPlayback();}catch{/* The controller still commits the already resolved round. */}}return;}
+  if(action.type==='exit'){checkpoint();generation++;busy=false;playback=null;releasePlayback?.();releasePlayback=null;networkController.setActive(false);onExit();return;}
   if(busy)return;
   if(action.type==='network'){if(state.flow!=='intro'){message='请回门庭使用账号与真人论剑。';show();return;}await networkController.act(action.value);return;}
   if(networkController.state.busy&&['profile','profile-import','expedition','start','retry','resume','abandon-saved','creator-apply'].includes(action.type)){message='账号请求进行中，请稍后操作。';show();return;}
@@ -77,7 +82,7 @@ export function createController({initial=null,initialProfile=null,storage,rende
   if(action.type==='branch'){change(chooseBranch(state,Number(action.value)));return;}
   if(action.type==='merchant'){change(chooseMerchant(state,String(action.value)));return;}
   if(action.type==='encounter'){change(chooseEncounter(state,String(action.value)));return;}
-  if(action.type==='home'){checkpoint();state=createRun(state.build||'sword',1);hubTab='expedition';lootNotice=[];networkController.setActive(false);show();return;}
+  if(action.type==='home'){checkpoint();state=createRun(state.build||'sword',1);hubTab='expedition';lootNotice=[];roundReport=null;networkController.setActive(false);show();return;}
   if(action.type==='hub-tab'){hubTab=String(action.value);networkController.setActive(hubTab==='network'&&state.flow==='intro');show();if(hubTab==='network'&&networkController.state.status==='idle')await networkController.act({type:'refresh'});return;}
   if(action.type==='hub-filter'){hubFilter=String(action.value);show();return;}
   if(action.type==='profile'){
@@ -101,7 +106,7 @@ export function createController({initial=null,initialProfile=null,storage,rende
     const before=profile;profile=result.profile;
     if(!persistProfile().ok){profile=before;show();return;}
    }
-   try{clearDemoSave();state=createRun(state.build||'sword',1);lootNotice=[];message='已放弃已保存旅途，仅扣除用过的行囊物品，没有奖励。';}catch(error){message=error.message;}
+   try{clearDemoSave();state=createRun(state.build||'sword',1);lootNotice=[];roundReport=null;message='已放弃已保存旅途，仅扣除用过的行囊物品，没有奖励。';}catch(error){message=error.message;}
    show();return;
   }
   if(action.type==='expedition'){start(action.value?.build||'sword',action.value||{});return;}
@@ -109,11 +114,11 @@ export function createController({initial=null,initialProfile=null,storage,rende
    start(action.type==='start'?action.value:state.build,action.type==='retry'?{mode:state.mode,chapter:state.chapter}:{});return;
   }
   if(action.type==='resume'){
-   saved=loadRun(storage);message=saved.message||'';if(saved.run){if(profile.settledRunIds.includes(saved.run.runId)&&!['victory','defeat'].includes(saved.run.flow)){message='此旅途已结算或放弃，不能再次继续。';show();return;}lootNotice=[];state=rollDice(saved.run);networkController.setActive(false);if(['victory','defeat'].includes(state.flow))settle(state);if(state!==saved.run)checkpoint();show();}return;
+   saved=loadRun(storage);message=saved.message||'';if(saved.run){if(profile.settledRunIds.includes(saved.run.runId)&&!['victory','defeat'].includes(saved.run.flow)){message='此旅途已结算或放弃，不能再次继续。';show();return;}lootNotice=[];roundReport=null;state=rollDice(saved.run);if(state!==saved.run)cue('dice');networkController.setActive(false);if(['victory','defeat'].includes(state.flow))settle(state);if(state!==saved.run)checkpoint();show();}return;
   }
   if(action.type==='roll'){change(rollDice(state));return;}
-  if(action.type==='hold'){change(toggleHold(state,Number(action.value)));return;}
-  if(action.type==='reroll'){change(rerollDice(state));return;}
+  if(action.type==='hold'){const next=toggleHold(state,Number(action.value));if(next!==state)cue('hold');change(next);return;}
+  if(action.type==='reroll'){const next=rerollDice(state);if(next!==state)cue('dice');change(next);return;}
   if(action.type==='use-item'){change(useRunItem(state,String(action.value)));return;}
   if(action.type==='target'){change(selectTarget(state,String(action.value)));return;}
   if(action.type==='upgrade'){change(selectUpgrade(state,String(action.value)));return;}
@@ -128,29 +133,31 @@ export function createController({initial=null,initialProfile=null,storage,rende
   if(action.type==='next'){if(state.flow==='camp')change(enterNode(advanceNode(state)));return;}
   if(action.type!=='attack'||state.flow!=='battle'||state.combat?.phase!=='pick')return;
   // Save the decision boundary, including exact dice and target, before playback.
-  checkpoint();busy=true;const ownGeneration=++generation;show();
+  checkpoint();const before=state;busy=true;skipPlayback=false;playback=null;const ownGeneration=++generation;const skipped=new Promise(resolve=>releasePlayback=resolve);show();
   try{
    const result=resolveRound(state);
    for(const [eventIndex,event] of result.events.entries()){
-    if(dead||ownGeneration!==generation)return;
-    await play(event,{eventIndex,events:result.events});if(dead||ownGeneration!==generation)return;show(event.snapshot);
+    if(dead||ownGeneration!==generation)return;if(skipPlayback)break;
+    playback={index:eventIndex+1,total:result.events.length,text:event.text,type:event.type};show(display);
+    await Promise.race([play(event,{eventIndex,events:result.events,playbackSpeed:settings.playbackSpeed}),skipped]);if(dead||ownGeneration!==generation)return;if(skipPlayback)break;show(event.snapshot);
    }
    if(dead||ownGeneration!==generation)return;
+   roundReport=createBattleReport(before,result);
    const oldLoot=state.loot?.length||0;state=completeBattle(result.state);if((state.loot?.length||0)>oldLoot)lootNotice=state.loot.slice(oldLoot);
    if(state===result.state&&state.flow==='battle')state=prepareRound(state);
-   state=rollDice(state);
+   const unrolled=state;state=rollDice(state);if(state!==unrolled)cue('dice');
    if(['victory','defeat'].includes(state.flow))settle(state);
-   busy=false;checkpoint();show();
+   busy=false;playback=null;releasePlayback=null;checkpoint();show();
   }catch(error){
    if(dead||ownGeneration!==generation)return;
-   busy=false;message='本回合播放中断，已保留出招前的进度。可以重新出招。';show();
+   busy=false;playback=null;releasePlayback=null;message='本回合播放中断，已保留出招前的进度。可以重新出招。';show();
    console.error(error);
   }
  }
  if(!loadedProfile.profile&&!initialProfile){message=loadedProfile.message==='尚无门庭档案。'?'行装已备，门庭档案会自动保存。':message;persistProfile();}
- onSettings(settings);const ready=rollDice(state);if(ready!==state){state=ready;checkpoint();}show();
+ onSettings(settings);const ready=rollDice(state);if(ready!==state){state=ready;cue('dice');checkpoint();}show();
  return {act,get state(){return state;},get profile(){return profile;},get busy(){return busy;},get settings(){return settings;},get network(){return networkController.state;},save:checkpoint,
-  destroy(){if(dead)return;checkpoint();generation++;dead=true;busy=false;networkController.destroy();}};
+  destroy(){if(dead)return;checkpoint();generation++;dead=true;busy=false;playback=null;releasePlayback?.();releasePlayback=null;networkController.destroy();}};
 }
 
 /** A restored document owns a fresh app and exactly one next pagehide listener. */
@@ -174,6 +181,8 @@ async function mount(){
   render:(run,options)=>{ui.render(run,options);scene.setState(run);},
   play:async (event,context)=>{audio.play(event);await scene.play(event,context);},
   onSettings:settings=>{audio.setMuted(settings.muted);scene.setOptions(settings);},
+  onDiceCue:type=>audio.play(type),
+  onSkipPlayback:()=>{scene.skip();audio.stop();},
   onExit:()=>{cleanup();location.href='../';}
  });
  function cleanup(){controller?.destroy();ui.destroy();scene.destroy();audio.destroy();}

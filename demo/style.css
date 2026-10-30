@@ -93,3 +93,27 @@
 @media(max-width:650px){.tutorial-card{display:block;padding:14px}.tutorial-card .hub-actions{margin-top:12px}.loot-notice{padding:14px}.creator-fields,.creator-fieldset{grid-template-columns:1fr}.creator-fieldset{padding:10px}.topbar{height:auto;min-height:80px;flex-wrap:wrap;gap:8px;padding:12px 0}.topbar .brand{font-size:19px}.topbar .chapter{flex:1;justify-content:flex-end;font-size:11px}.topbar nav{flex-basis:100%;justify-content:flex-end;gap:6px}.topbar nav .exit-button{padding:0 12px}.growth-toolbar .hub-button{flex:1 1 120px}.reward-option .reward-card{height:auto}.scene-caption{letter-spacing:1px}}
 
 .enemy-trait{display:block;font-size:10px;color:#d7bd83;line-height:1.7;margin-top:5px}
+
+/* Battle pace, settled dice and the last round's paper trail. */
+.speed-button{min-width:76px;min-height:44px;padding:0 10px;background:#132d26;color:#ddc78e;border-color:#6f7856;font-size:12px;white-space:nowrap;letter-spacing:1px}
+.speed-button[aria-pressed=true]{background:#344732;border-color:#d8be82;color:#f0dba8}
+.playback-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:12px 0;padding:12px 15px;border:1px solid #6f7953;background:linear-gradient(110deg,#273b2c,#102a24);min-width:0}
+.playback-strip>div{min-width:0}.playback-strip strong{font-size:12px;font-weight:500;color:#e4ce96;letter-spacing:2px}.playback-strip strong span{font:13px Georgia,serif;letter-spacing:1px;margin-left:8px;color:#bfceb0}
+.playback-strip p{margin:5px 0 0;font-size:12px;line-height:1.7;color:#ced8bf;overflow-wrap:anywhere}
+.skip-playback{flex-shrink:0;min-height:44px;padding:0 14px;background:#10291f;border-color:#899367;color:#dfd3a7;font-size:12px;letter-spacing:1px}
+.die.to-reroll{background:linear-gradient(160deg,#3b442b,#23372a);border-color:#f0cc7f;box-shadow:inset 0 0 0 1px #d5b36b,0 0 12px #d6b77915}
+.to-reroll .die-index{color:#ffe0a2}.die-settling .die-face{animation:die-settle 300ms cubic-bezier(.2,.75,.3,1) both;transform-origin:50% 70%}
+@keyframes die-settle{0%{opacity:.4;transform:translateY(-12px) rotate(-6deg) scale(.9)}55%{opacity:1;transform:translateY(2px) rotate(2deg) scale(1.04,.97)}78%{transform:translateY(-2px) rotate(-1deg) scale(.99,1.02)}100%{opacity:1;transform:none}}
+.round-report{margin-top:14px;border:1px solid #4c6650;background:linear-gradient(130deg,#132c24,#0b221e);min-width:0;overflow-wrap:anywhere}
+.round-report summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:52px;padding:12px 16px;cursor:pointer;list-style:none;color:#c0cfb3;font-size:12px;line-height:1.7}
+.round-report summary::-webkit-details-marker{display:none}.round-report summary:focus-visible{outline:2px solid #f0d397;outline-offset:3px}
+.round-report summary strong{font-size:14px;font-weight:500;letter-spacing:2px;color:#ddc790}.round-report summary>span:not(.report-disclosure){flex:1;min-width:0}
+.report-disclosure{width:9px;height:9px;border-right:1px solid var(--gold);border-bottom:1px solid var(--gold);transform:rotate(45deg);margin:0 3px 4px 0;flex-shrink:0}
+.round-report[open] .report-disclosure{transform:rotate(225deg);margin-top:6px}.round-report[open] summary{border-bottom:1px solid #3a5440}
+.report-content{padding:15px 16px}.report-totals{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:12px}.report-totals p{margin:0;display:flex;flex-direction:column;gap:5px;color:#aec1a6;font-size:12px;line-height:1.7}
+.report-totals strong{font:27px Georgia,serif;color:#e6ce93}.report-totals small{font:11px "Songti SC",serif;color:#b8c8ab}.report-totals .report-hero{justify-content:center;color:#d0d8bd}
+.report-hand{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 16px;padding:12px 0;margin:13px 0 0;border-top:1px solid #3d5842;color:#becdb1;font-size:12px;line-height:1.8}
+.report-hand strong{font-weight:500;color:#dfce9d;letter-spacing:2px}.report-events{padding:0 0 0 26px;margin:0;border-top:1px solid #3d5842;font-size:12px;line-height:1.8;color:#a7bda0}
+.report-events li{padding:10px 0 9px 5px;border-bottom:1px solid #304a39}.report-events li:last-child{border-bottom:0}.report-events li::marker{font:12px Georgia,serif;color:#c1ad7c}
+.report-event-names{color:#cdd9bc}.report-event-names>span{color:#8faa91;margin:0 3px}.report-events p{margin:3px 0 0;color:#adbea3}.report-events b{font-weight:400;color:#e7d19a;margin-left:5px}
+@media(max-width:650px){.topbar nav{flex-wrap:wrap}.topbar .speed-button{min-width:76px;font-size:11px}.playback-strip{gap:10px;padding:10px;margin:10px 0}.playback-strip strong{letter-spacing:1px}.playback-strip p{font-size:11px}.skip-playback{padding:0 10px;font-size:11px;letter-spacing:0}.round-report summary{padding:11px 12px;gap:4px 10px}.round-report summary strong{font-size:13px;letter-spacing:1px}.round-report summary>span:not(.report-disclosure){font-size:11px}.report-content{padding:13px 12px}.report-totals{grid-template-columns:1fr 1fr;gap:9px}.report-totals .report-hero{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;justify-content:flex-start;gap:4px 18px}.report-totals strong{font-size:25px}.report-hand{margin-top:10px}.report-events{padding-left:22px}}
