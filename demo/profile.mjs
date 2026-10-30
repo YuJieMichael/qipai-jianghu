@@ -1,4 +1,7 @@
 import {CONTENT,getContent,validateContent,EFFECT_KEYS} from './content.mjs';
+import {ensureExpansion,EXPANSION_ACTIONS,isExpansionAction,observeExpansion,guardLegacyExpansion,runExpansionAction,addExpansionEffects,receiveExpansionLoot,expansionView,validateExpansionState} from './expansion-profile.mjs';
+export {ensureExpansion,EXPANSION_ACTIONS};
+export function getExpansionView(profile,options){return expansionView(profile,options,deriveLoadout);}
 export const PROFILE_KEY='qipai-bamboo-profile-v1';
 const CURRENCIES=['gold','dust','essence','insight'];
 const RUN_ITEMS=['potion','reroll','antidote','tonic'];
@@ -27,7 +30,7 @@ function toggle(list,id,max){const at=list.indexOf(id);if(at>=0)list.splice(at,1
 export function createProfile(seed=1,now=Date.now()){
  const p={version:1,seed:integer(seed,0,4294967295)?seed:1,nextRunId:1,nextUid:1,resources:{gold:1000,dust:120,essence:20,insight:6},inventory:[],equipped:{},slotLevels:Object.fromEntries(CONTENT.slots.map(s=>[s.id,0])),dice:Array.from({length:5},()=>({faces:[1,2,3,4,5,6],marks:[null,null,null,null,null,null],materialId:'wood',materialLevel:1,decorationId:'plain'})),sectId:'bamboo',skills:['bamboo-strike'],talents:{},relics:{equipped:[],levels:Object.fromEntries(CONTENT.relics.map(r=>[r.id,1])),refines:{},pending:{},infusions:{}},runes:{slots:[null,null,null,null,null],levels:Object.fromEntries(CONTENT.runes.map(r=>[r.id,1])),planIndex:0,plans:Array.from({length:3},()=>[null,null,null,null,null])},pet:null,petLevels:Object.fromEntries(CONTENT.pets.map(r=>[r.id,1])),souls:[],title:null,training:{},meridians:{},companions:Object.fromEntries(CONTENT.companions.map(v=>[v.id,{affinity:0}])),apprentices:{},bag:{potion:3,reroll:2,antidote:2,tonic:1,herb:5,ore:5,hide:3,gift:3,food:3},gems:Object.fromEntries(CONTENT.gems.map(g=>[g.id,3])),stats:{runs:0,clears:0,kills:0,turns:0,enhances:0,purchases:0,gathers:0,training:0,crafts:0,draws:0,dailyClaims:0,sweeps:0,gifts:0},chapterStars:{},claimed:[],settledRunIds:[],contentOverrides:null,progression:{towerFloor:1,towerHp:180,worldBossHp:CONTENT.economy.worldBossHp,modes:{}},drawsSinceRare:0,offlineAt:integer(now)?now:0,createdAt:integer(now)?now:0};
  for(const template of CONTENT.equipment){const item=addItem(p,template.id);if(!p.equipped[template.slot])p.equipped[template.slot]=item.uid;}
- addItem(p,'weapon-sword-1');addItem(p,'weapon-sword-1');return p;
+ addItem(p,'weapon-sword-1');addItem(p,'weapon-sword-1');p.expansion=ensureExpansion(p);observeExpansion(p,CONTENT,now);return p;
 }
 export function deriveLoadout(profile){
  const c=getContent(profile),effects=effectBase(),setCounts={},rules=c.workshopRules??CONTENT.workshopRules;
@@ -47,6 +50,7 @@ export function deriveLoadout(profile){
  for(const [id,apprentice]of Object.entries(profile.apprentices))addEffects(effects,find(c,'companions',id)?.effects,apprentice.level);
  let pet=null;if(profile.pet){const entry=find(c,'pets',profile.pet);if(entry){const level=profile.petLevels[entry.id]??1;pet={id:entry.id,name:entry.name,damage:entry.damage*level,heal:entry.heal*level,shield:entry.shield*level};}}
  const weapon=profile.inventory.find(i=>i.uid===profile.equipped.weapon);const template=weapon?find(c,'equipment',weapon.templateId):null;
+ addExpansionEffects(profile,c,effects);
  for(const key of EFFECT_KEYS)effects[key]=Math.round(effects[key]*100)/100;
  effects.extraRerolls=Math.min(4,Math.floor(effects.extraRerolls));effects.critChance=Math.min(75,effects.critChance);effects.freezeChance=Math.min(75,effects.freezeChance);effects.lifesteal=Math.min(75,effects.lifesteal);
  return {label:`${find(c,'sects',profile.sectId)?.name??'江湖'} · ${template?.name??'徒手'}`,sectId:profile.sectId,weaponType:template?.weaponType??'sword',effects,dice:clone(profile.dice),skills:profile.skills.map(id=>find(c,'skills',id)).filter(Boolean).map(({id,name,trigger,effects})=>({id,name,trigger,effects:clone(effects)})),pet,relics,bag:Object.fromEntries(RUN_ITEMS.map(id=>[id,profile.bag[id]??0])),progression:{towerFloor:profile.progression.towerFloor,towerHp:profile.progression.towerHp,worldBossHp:profile.progression.worldBossHp},contentVersion:c.version,rules:clone(c.combatRules??CONTENT.combatRules)};
@@ -55,10 +59,12 @@ export function applyProfileAction(profile,action,{now=Date.now()}={}){
  if(!object(action)||typeof action.type!=='string')return {profile,message:'操作格式不正确。'};
  if(!integer(now))return {profile,message:'时间须为非负整数。'};
  const validation=validateProfile(profile);if(!validation.valid)return {profile,message:`档案错误：${validation.errors[0]}`};
- const p=clone(profile),c=getContent(p);let message='操作完成。';
+ const p=validation.profile,c=getContent(p);let message='操作完成。';
  try{
+  observeExpansion(p,c,now);guardLegacyExpansion(p,action);
   const {type,id,uid}=action;
-  if(['equip','unequip','enhance','downgrade','salvage','fuse','refine','refine-accept','refine-cancel','socket','unsocket','lock'].includes(type)){
+  if(isExpansionAction(type)){message=runExpansionAction(p,c,action,{now,pay:(cost,factor=1)=>pay(p,scaleCost(cost,factor)),reward:(amount,factor=1)=>reward(p,scaleCost(amount,factor)),random:()=>rng(p),addItem:templateId=>addItem(p,templateId)});
+  }else if(['equip','unequip','enhance','downgrade','salvage','fuse','refine','refine-accept','refine-cancel','socket','unsocket','lock'].includes(type)){
    const item=uid===undefined?null:itemByUid(p,uid);
    if(type==='equip'){if(!item)fail('请选择装备。');const template=requireEntry(c,'equipment',item.templateId);p.equipped[template.slot]=uid;message=`已装备${template.name}。`;}
    if(type==='unequip'){requireEntry(c,'slots',action.slot);if(!p.equipped[action.slot])fail('该槽位没有装备。');delete p.equipped[action.slot];}
@@ -66,7 +72,7 @@ export function applyProfileAction(profile,action,{now=Date.now()}={}){
    if(['salvage','fuse','refine','refine-accept','refine-cancel','socket','unsocket','lock'].includes(type)&&!item)fail('请选择装备。');
    if(type==='lock'){item.locked=!item.locked;message=item.locked?'已锁定装备。':'已解锁装备。';}
    if(type==='salvage'){destructible(p,item);const template=requireEntry(c,'equipment',item.templateId);const rarity=requireEntry(c,'rarities',template.rarity);for(const gemId of item.gems)p.gems[gemId]++;p.inventory=p.inventory.filter(i=>i.uid!==uid);reward(p,{dust:rarity.salvage+item.fusionLevel*c.economy.fusionDustReturn,gold:c.economy.salvageGold});message='已分解并返还镶嵌宝石。';}
-   if(type==='fuse'){destructible(p,item);if(item.fusionLevel>=c.economy.maxFusion)fail('融合已到上限。');const other=p.inventory.find(i=>i.uid!==uid&&i.templateId===item.templateId&&!i.locked&&!i.pendingRefine&&!Object.values(p.equipped).includes(i.uid)&&!i.gems.length);if(!other)fail('需要一件相同模板的未装备、未锁定且未镶嵌的装备。');pay(p,scaleCost(c.economy.fuseCost,item.fusionLevel+1));p.inventory=p.inventory.filter(i=>i.uid!==other.uid);item.fusionLevel++;message=`融合成功，基础属性每级提升 ${Math.round(c.economy.fusionBonus*100)}%。`;}
+   if(type==='fuse'){destructible(p,item);if(item.fusionLevel>=c.economy.maxFusion)fail('融合已到上限。');const other=p.inventory.find(i=>i.uid!==uid&&i.templateId===item.templateId&&!i.locked&&!i.pendingRefine&&!p.expansion.gear[i.uid]?.pending&&!p.expansion.gear[i.uid]?.locks.length&&!Object.values(p.equipped).includes(i.uid)&&!i.gems.length);if(!other)fail('需要一件相同模板的未装备、未锁定且未镶嵌的装备。');pay(p,scaleCost(c.economy.fuseCost,item.fusionLevel+1));p.inventory=p.inventory.filter(i=>i.uid!==other.uid);item.fusionLevel++;message=`融合成功，基础属性每级提升 ${Math.round(c.economy.fusionBonus*100)}%。`;}
    if(type==='refine'){if(item.pendingRefine)fail('请先处理已有洗练候选。');pay(p,c.economy.refineCost);item.pendingRefine={effects:{attack:c.economy.refineAttackMin+Math.floor(rng(p)*c.economy.refineAttackRange),maxHp:c.economy.refineHpMin+Math.floor(rng(p)*c.economy.refineHpRange)}};message='洗练候选已生成，接受后才会生效。';}
    if(type==='refine-accept'){if(!item.pendingRefine)fail('没有待接受的候选。');item.refine=item.pendingRefine;delete item.pendingRefine;}
    if(type==='refine-cancel'){if(!item.pendingRefine)fail('没有待取消的候选。');delete item.pendingRefine;message='已取消候选，原属性保留，洗练费用不返还。';}
@@ -106,13 +112,15 @@ export function applyProfileAction(profile,action,{now=Date.now()}={}){
   }else if(type==='content-import'){const check=validateContent(action.value);if(!check.valid)fail(`配置无效：${check.errors.join('；')}`);p.contentOverrides=check.content;for(const g of check.content.gems)if(!own(p.gems,g.id))p.gems[g.id]=3;for(const pet of check.content.pets)if(!own(p.petLevels,pet.id))p.petLevels[pet.id]=1;for(const v of check.content.companions)if(!own(p.companions,v.id))p.companions[v.id]={affinity:0};for(const v of check.content.runes)if(!own(p.runes.levels,v.id))p.runes.levels[v.id]=1;for(const v of check.content.relics)if(!own(p.relics.levels,v.id))p.relics.levels[v.id]=1;for(const v of check.content.equipment)if(!p.inventory.some(i=>i.templateId===v.id))addItem(p,v.id);const checked=validateProfile(p);if(!checked.valid)fail(`配置与档案不兼容：${checked.errors.join('；')}`);message='原创内容配置已应用；当前战斗快照保持原值。';
   }else if(type==='content-reset'){p.contentOverrides=null;const checked=validateProfile(p);if(!checked.valid)fail('档案正在使用自订条目，暂不能恢复默认配置。');message='已恢复原创默认配置。';
   }else fail('未知操作。');
+  observeExpansion(p,getContent(p),now);
   const checked=validateProfile(p);if(!checked.valid)fail(`操作结果无效：${checked.errors[0]}`);
   return {profile:p,message};
  }catch(error){return {profile,message:error?.message??'操作失败。'};}
 }
-export function beginExpedition(profile){
+export function beginExpedition(profile,{now=Date.now()}={}){
  const check=validateProfile(profile);if(!check.valid)return {profile,message:`档案无效：${check.errors[0]}`,runId:null,loadout:null};
- const p=clone(profile),runId=p.nextRunId++;p.stats.runs++;return {profile:p,message:'行装已备，新游历使用此刻的配装快照。',runId,loadout:deriveLoadout(profile)};
+ if(!integer(now))return {profile,message:'时间须为非负整数。',runId:null,loadout:null};
+ const p=check.profile;observeExpansion(p,getContent(p),now);const runId=p.nextRunId++;p.stats.runs++;return {profile:p,message:'行装已备，新游历使用此刻的配装快照。',runId,loadout:deriveLoadout(profile)};
 }
 export function settleRun(profile,run,{now=Date.now()}={}){
  if(!object(run)||!integer(run.runId,1)||!integer(profile?.nextRunId,2)||run.runId>=profile.nextRunId)return {profile,message:'无法结算：游历编号无效。'};
@@ -120,8 +128,9 @@ export function settleRun(profile,run,{now=Date.now()}={}){
  if(!['victory','defeat','abandoned'].includes(run.flow))return {profile,message:'游历尚未结束。'};
  if(!integer(now))return {profile,message:'结算时间不正确。'};
  const checked=validateProfile(profile);if(!checked.valid)return {profile,message:'档案无效，未结算。'};
- const p=clone(profile),c=getContent(p);
+ const p=checked.profile,c=getContent(p);
  try{
+  observeExpansion(p,c,now);
   for(const [id,n]of Object.entries(run.consumed??{}))if(!RUN_ITEMS.includes(id)||!integer(n))fail('消耗品结算数量无效。');
   for(const id of RUN_ITEMS){const consumed=run.consumed?.[id]??0;let delta=-consumed;
    if(run.bag&&run.loadout?.bag){const final=run.bag[id],initial=run.loadout.bag[id];if(!integer(final)||!integer(initial)||final+consumed<initial)fail('行囊快照或消耗记录不一致。');delta=final-initial;}
@@ -130,6 +139,7 @@ export function settleRun(profile,run,{now=Date.now()}={}){
   }
   p.settledRunIds.push(run.runId);
   if(run.flow==='abandoned')return {profile:p,message:'已放弃游历，仅扣除用过的行囊物品，没有奖励。',rewards:{}};
+  receiveExpansionLoot(p,c,run,templateId=>addItem(p,templateId));
   const mode=requireEntry(c,'modes',run.mode??'campaign');const chapter=find(c,'chapters',run.chapter??'bamboo');const won=run.flow==='victory';
   const configured=run.reward??run.results?.reward??(mode.id==='campaign'?chapter?.reward:mode.reward)??mode.reward;
   const bonus=run.loadout?.effects?.goldBonus??0;if(typeof bonus!=='number'||!Number.isFinite(bonus)||bonus<0)fail('金币加成无效。');
@@ -137,6 +147,7 @@ export function settleRun(profile,run,{now=Date.now()}={}){
   if(run.coins!==undefined&&!integer(run.coins))fail('局内金币结算无效。');rewards.gold=(rewards.gold??0)+(run.coins??0);reward(p,rewards);
   const stats=run.stats??{};for(const key of ['kills','turns']){const n=stats[key]??(key==='turns'?stats.rounds??0:0);if(!integer(n))fail('游历统计无效。');p.stats[key]+=n;}
   if(won){p.stats.clears++;p.progression.modes[mode.id]=(p.progression.modes[mode.id]??0)+1;
+   if(mode.id==='campaign'&&chapter&&!p.expansion.firstClears.includes(chapter.id)){reward(p,c.expansion.cycles.firstClear);p.expansion.firstClears.push(chapter.id);}
    if(mode.id==='campaign'&&chapter){const hp=run.hero?.hp??0,maxHp=run.hero?.maxHp??180;const stars=1+(hp>=maxHp*c.economy.threeStarHpRatio?1:0)+((stats.turns??stats.rounds??100)<=c.economy.threeStarTurns?1:0);p.chapterStars[chapter.id]=Math.max(p.chapterStars[chapter.id]??0,stars);}
    if(mode.id==='tower'){const completed=run.results?.towerFloorCompleted??run.floor??p.progression.towerFloor;if(!integer(completed,1,1000000))fail('通天塔层数无效。');p.progression.towerFloor=Math.max(p.progression.towerFloor,completed+1);p.progression.towerHp=Math.max(1,Math.floor(run.hero?.hp??180));}
   }else if(mode.id==='tower')p.progression.towerHp=180;
@@ -145,6 +156,7 @@ export function settleRun(profile,run,{now=Date.now()}={}){
    else{const damage=run.results?.worldBossDamage??stats.damage??0;if(!integer(damage))fail('世界首领伤害无效。');p.progression.worldBossHp=Math.max(0,p.progression.worldBossHp-damage);}
    if(p.progression.worldBossHp===0){reward(p,c.economy.worldBossKillReward);p.progression.worldBossHp=c.economy.worldBossHp;}
   }
+  observeExpansion(p,c,now);
   const validation=validateProfile(p);if(!validation.valid)fail(`结算结果错误：${validation.errors[0]}`);
   return {profile:p,message:won?'游历结算完成，奖励已入库。':'历练结束，保留四分之一基础奖励与已获金币。',rewards};
  }catch(error){return {profile,message:error.message};}
@@ -157,7 +169,8 @@ export function validateProfile(value){
  function safe(v,depth=0){if(++nodes>60000||depth>16){error('档案过大或嵌套过深。');return;}if(v===null||typeof v==='boolean')return;if(typeof v==='number'){if(!Number.isFinite(v)||v<0||v>Number.MAX_SAFE_INTEGER)error('档案含无效数值。');return;}if(typeof v==='string'){if(v.length>4000||/[<>\u0000-\u0008]/.test(v))error('档案文本含 HTML 或控制字符。');return;}if(!object(v)&&!Array.isArray(v)){error('档案只支持普通 JSON 数据。');return;}for(const [key,item]of Object.entries(v)){if(['__proto__','prototype','constructor'].includes(key)){error('档案含不允许的键。');continue;}safe(item,depth+1);}}
  safe(p);
  if(!object(p))return {valid:false,profile:null,errors:['档案须为对象。']};
- const fields=['version','seed','nextRunId','nextUid','resources','inventory','equipped','slotLevels','dice','sectId','skills','talents','relics','runes','pet','petLevels','souls','title','training','meridians','companions','apprentices','bag','gems','stats','chapterStars','claimed','settledRunIds','contentOverrides','progression','drawsSinceRare','offlineAt','createdAt'];
+ if(p.expansion===undefined)p.expansion=ensureExpansion(p);
+ const fields=['expansion','version','seed','nextRunId','nextUid','resources','inventory','equipped','slotLevels','dice','sectId','skills','talents','relics','runes','pet','petLevels','souls','title','training','meridians','companions','apprentices','bag','gems','stats','chapterStars','claimed','settledRunIds','contentOverrides','progression','drawsSinceRare','offlineAt','createdAt'];
  for(const key of Object.keys(p))if(!fields.includes(key))error(`未知档案字段：${key}`);
  for(const key of fields)if(!own(p,key))error(`缺少档案字段：${key}`);
  if(p.version!==1)error('档案版本须为 1。');
@@ -195,6 +208,7 @@ export function validateProfile(value){
  record(p.chapterStars,'章节星级',id=>catalogId('chapters',id),n=>integer(n,0,3));
  list(p.claimed,'已领奖励',v=>typeof v==='string'&&/^[a-z][a-z0-9:-]{0,119}$/.test(v),20000);list(p.settledRunIds,'已结算游历',v=>integer(v,1,p.nextRunId-1),100000);
  if(!object(p.progression)||!integer(p.progression.towerFloor,1,1000000)||!integer(p.progression.towerHp,0,1000000)||!integer(p.progression.worldBossHp,0,100000000))error('持久挑战进度无效。');else record(p.progression.modes,'模式进度',id=>catalogId('modes',id),n=>integer(n,0,1000000000));
+ errors.push(...validateExpansionState(p,c));
  return {valid:errors.length===0,profile:errors.length?null:p,errors};
 }
 export function saveProfile(storage,profile){

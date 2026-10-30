@@ -1,3 +1,4 @@
+import {DEFAULT_EXPANSION,validateExpansion} from './expansion-content.mjs';
 /** Original, editable offline workshop catalog. This module has no storage or DOM side effects. */
 export const EFFECT_KEYS = ['attack','maxHp','armor','critChance','critDamage','lifesteal','poisonDamage','shieldGain','extraRerolls','openingShield','regen','thorns','fireDamage','freezeChance','comboBonus','goldBonus'];
 const named=(ids,names,extra=()=>({}))=>ids.map((id,i)=>({id,name:names[i],...extra(id,i)}));
@@ -9,7 +10,7 @@ const equipment=slots.flatMap((slot,si)=>Array.from({length:8},(_,i)=>{
  return {id:si===0?`weapon-${weaponType}-${Math.floor(i/3)+1}`:`${slot.id}-${i+1}`,name:`${['竹影','溪月','晨砂','远岫','听雨','晴岚','归鸿','星河'][i]}${slot.name}`,slot:slot.id,rarity:rarities[rank].id,setId:['bamboo','river'][i%2],...(si===0?{weaponType}:{}),effects,cost:{gold:60+rank*75},maxSockets:2};
 }));
 export const CONTENT={
- version:1,slots,rarities,equipment,
+ version:1,slots,rarities,equipment,expansion:structuredClone(DEFAULT_EXPANSION),
  workshopRules:{slotEffects:{weapon:{attack:2},ring:{critChance:1},armor:{maxHp:8},boots:{armor:1},scarf:{shieldGain:1},amulet:{openingShield:2}},runeResonance:{yang:{attack:2,comboBonus:3},yin:{armor:1,regen:1}},relicResonance:{openingShield:4,shieldGain:1}},
  combatRules:{swordStraightBonus:30,hammerShield:6,hammerBreak:12,markSword:4,markCritChance:10,markFire:5,markLeech:3,markHeal:5,markGuard:4,markColdChance:25,materialFirePerLevel:2,materialFrostChance:5,decorationDamage:2,decorationHeal:2,decorationShield:2,focusDamage:3,fortuneCoins:1},
  sets:[{id:'bamboo',name:'青竹行装',pieces:3,effects:{maxHp:12,armor:1}},{id:'river',name:'长河行装',pieces:3,effects:{attack:2,regen:1}}],
@@ -119,6 +120,7 @@ export function validateContent(value){
  for(const key of ['chapters','modes'])for(const row of c[key]??[])if(typeof row.hpScale!=='number'||typeof row.attackScale!=='number'||row.hpScale<=0||row.attackScale<=0)fail(`${key}.${row.id}`,'倍率必须为正数');
  for(const row of c.relics??[])if(!Number.isInteger(row.handRank)||row.handRank<0||row.handRank>7||typeof row.damage!=='number')fail(`relics.${row.id}`,'遗物触发与伤害错误');
  if(!c.economy||typeof c.economy!=='object')fail('economy','缺少经济配置');else{for(const key of Object.keys(CONTENT.economy))if(!(key in c.economy))fail(`economy.${key}`,'缺少配置');for(const key of ['drawCost','refineCost','fuseCost','faceCost','signinReward','grant','worldBossKillReward'])checkCurrency(c.economy[key],`economy.${key}`);for(const key of ['enhanceGold','enhanceDust','offlineGoldPerHour','offlineDustPerHour','worldBossHp'])if(!Number.isSafeInteger(c.economy[key])||c.economy[key]<0)fail(`economy.${key}`,'须为非负整数');for(const key of ['fusionBonus','downgradeGoldRefund','relicInfuseEffectScale','defeatRewardRate','threeStarHpRatio'])if(typeof c.economy[key]!=='number'||c.economy[key]<0||c.economy[key]>1)fail(`economy.${key}`,'比例须为 0..1');for(const key of ['refineAttackMin','refineAttackRange','refineHpMin','refineHpRange','relicRefineDamageMin','relicRefineDamageRange','relicRefineHpMin','relicRefineHpRange','relicInfuseDamage','runeResonancePieces','relicResonancePieces','companionAffinityStep','salvageGold','fusionDustReturn','threeStarTurns'])if(!Number.isSafeInteger(c.economy[key])||c.economy[key]<1||c.economy[key]>10000)fail(`economy.${key}`,'参数须为合法正整数');for(const key of ['maxFusion','maxApprenticeLevel','maxEnhance','drawPity','offlineHours'])if(!Number.isInteger(c.economy[key])||c.economy[key]<1||c.economy[key]>100)fail(`economy.${key}`,'须为 1..100 整数');}
+ const expansion=validateExpansion(c.expansion,c);if(!expansion.valid)errors.push(...expansion.errors);else c.expansion=expansion.expansion;
  return {valid:errors.length===0,content:errors.length?null:c,errors};
 }
-export function getContent(profile){return profile?.contentOverrides??CONTENT;}
+export function getContent(profile){const c=profile?.contentOverrides??CONTENT;return c.expansion?c:{...c,expansion:structuredClone(DEFAULT_EXPANSION)};}

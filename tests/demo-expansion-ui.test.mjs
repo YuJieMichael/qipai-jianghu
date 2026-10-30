@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createProfile,applyProfileAction} from '../demo/profile.mjs';
+import {collectHubAction} from '../demo/hub-ui.mjs';
+const ui=await import('../demo/expansion-ui.mjs').catch(()=>({}));
+test('equipment panel exposes real protected candidates and typed loadout controls',()=>{assert.equal(typeof ui.renderExpansionPanel,'function');let p=createProfile(1,0);const html=ui.renderExpansionPanel(p,{tab:'equipment',now:0});assert.match(html,/品质进阶/);assert.match(html,/gear-advance/);assert.match(html,/loadout-save/);assert.match(html,/data-kind="number"/);assert.match(html,/gear-batch-salvage/);const fields=[{dataset:{field:'index',kind:'number'},value:'1'},{dataset:{field:'name'},value:'剑客'}];const action=collectHubAction({dataset:{action:'profile',value:'{"type":"loadout-save"}'},closest:()=>({querySelectorAll:()=>fields})});assert.equal(action.value.index,1);p=applyProfileAction(p,action.value,{now:0}).profile;assert.equal(p.expansion.loadouts[1].name,'剑客');});
+test('quest and market controls reflect claimability and stock limits; custom names escaped',()=>{assert.equal(typeof ui.renderExpansionPanel,'function');const p=createProfile(2,0);assert.match(ui.renderExpansionPanel(p,{tab:'quests',now:0}),/cycle-claim/);assert.match(ui.renderExpansionPanel(p,{tab:'workshop',now:0}),/market-buy/);assert.match(ui.renderExpansionPanel(p,{tab:'relics',now:0}),/relic-affix-roll/);p.contentOverrides=structuredClone((awaitContent));p.contentOverrides.equipment[0].name='<img src=x>';const html=ui.renderExpansionPanel(p,{tab:'equipment',now:0});assert.ok(!html.includes('<img src=x>'));assert.ok(html.includes('&lt;img src=x&gt;'));});
+import {CONTENT as awaitContent} from '../demo/content.mjs';
