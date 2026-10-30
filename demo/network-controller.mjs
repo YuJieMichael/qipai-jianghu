@@ -10,7 +10,7 @@ export function createNetworkController({client=null,getProfile,setProfile,onCha
  const takeArena=r=>{state.queued=!!r.queued;state.match=r.match||null;state.selected=[];};
  function schedule(){clearTimer();if(dead||!active||(!state.queued&&state.match?.status!=='active'))return;timer=setTimeout(async()=>{
   if(dead||!active)return;
-  if(!state.busy){try{const requestEpoch=epoch,r=await api.arena();if(dead)return;if(requestEpoch!==epoch){schedule();return;}const changed=state.queued!==!!r.queued||state.match?.id!==r.match?.id||state.match?.version!==r.match?.version||state.match?.status!==r.match?.status;if(changed){takeArena(r);emit();}}catch(error){if(dead)return;state.error=error.message||'连接中断，请刷新对局。';if(error.status===401){state.user=null;state.queued=false;state.match=null;}emit();}}
+  if(!state.busy){const requestEpoch=epoch;try{const r=await api.arena();if(dead)return;if(requestEpoch!==epoch){schedule();return;}const changed=state.queued!==!!r.queued||state.match?.id!==r.match?.id||state.match?.version!==r.match?.version||state.match?.status!==r.match?.status;if(changed){takeArena(r);emit();}}catch(error){if(dead||requestEpoch!==epoch){schedule();return;}state.error=error.message||'连接中断，请刷新对局。';if(error.status===401){state.user=null;state.queued=false;state.match=null;}emit();}}
   schedule();
  },3000);timer?.unref?.();}
  async function connected(){
@@ -22,7 +22,7 @@ export function createNetworkController({client=null,getProfile,setProfile,onCha
   const type=action.type;
   if(type==='select-die'){const m=state.match,index=Number(action.index);if(!m?.isYourTurn||m.status!=='active'||!Number.isInteger(index)||index<0||index>=5)return;state.selected=state.selected.includes(index)?state.selected.filter(i=>i!==index):[...state.selected,index];emit();return;}
   if(type==='set-server'){
-   const value=String(action.baseUrl||'').trim().replace(/\/$/,'');try{if(value){const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('服务地址须为 HTTP 或 HTTPS。');if(origin&&url.origin!==origin)throw Error('请先在目标服务地址打开游戏页面，再使用同源账号服务。');}baseUrl=value;api=createNetworkClient({baseUrl});state={...state,user:null,match:null,queued:false,selected:[],baseUrl,status:'idle',error:'',message:'服务地址已设置，请刷新连接。'};try{storage?.setItem('qipai-network-v1',JSON.stringify({baseUrl}));}catch{state.message+=' 地址未能持久保存。';}}catch(error){state.error=error.message;}clearTimer();emit();return;
+   const value=String(action.baseUrl||'').trim().replace(/\/$/,'');try{if(value){const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('服务地址须为 HTTP 或 HTTPS。');if(origin&&url.origin!==origin)throw Error('请先在目标服务地址打开游戏页面，再使用同源账号服务。');}epoch++;baseUrl=value;api=createNetworkClient({baseUrl});state={...state,user:null,match:null,queued:false,selected:[],baseUrl,status:'idle',error:'',message:'服务地址已设置，请刷新连接。'};try{storage?.setItem('qipai-network-v1',JSON.stringify({baseUrl}));}catch{state.message+=' 地址未能持久保存。';}}catch(error){state.error=error.message;}clearTimer();emit();return;
   }
   state.busy=true;state.error='';state.message='';const own=++epoch;emit();
   try{

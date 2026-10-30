@@ -19,3 +19,14 @@ test('destroyed pending download cannot replace profile or render late response'
 test('refresh recovers membership after a new login without attempting to join again',async()=>{
  const guild={id:'g-one',name:'清风会',members:[{id:'u',username:'侠客'}],messages:[]};const f=fixture({listGuilds:async()=>({guilds:[{id:guild.id,mine:true}]}),guild:async id=>{assert.equal(id,guild.id);return {guild};}});await f.c.act({type:'refresh'});assert.deepEqual(f.c.state.guild,guild);f.c.destroy();
 });
+async function stalePoll(t,{reset=false}={}){
+ const original=globalThis.setTimeout,originalClear=globalThis.clearTimeout;let scheduled,resolve,reject,calls=0;const pending=new Promise((yes,no)=>{resolve=yes;reject=no;});
+ globalThis.setTimeout=fn=>{scheduled=fn;return {unref(){}};};globalThis.clearTimeout=()=>{};
+ t.after(()=>{globalThis.setTimeout=original;globalThis.clearTimeout=originalClear;});
+ const f=fixture({arena:async()=>++calls===2?pending:{queued:true,match:null}});t.after(()=>f.c.destroy());
+ await f.c.act({type:'refresh'});f.c.setActive(true);const poll=scheduled();
+ if(reset){await f.c.act({type:'set-server',baseUrl:''});resolve({queued:false,match:{id:'stale',version:1,status:'active'}});await poll;assert.equal(f.c.state.user,null);assert.equal(f.c.state.match,null);assert.equal(f.c.state.status,'idle');}
+ else{await f.c.act({type:'refresh'});reject(Object.assign(Error('old unauthorized'),{status:401}));await poll;assert.equal(f.c.state.user.id,'u');assert.equal(f.c.state.queued,true);assert.equal(f.c.state.error,'');}
+}
+test('late failed poll cannot clear a newer successful session',t=>stalePoll(t));
+test('switching service invalidates old in-flight arena responses',t=>stalePoll(t,{reset:true}));

@@ -5,7 +5,7 @@ const labels={gold:'铜钱',dust:'锻材',essence:'精华',insight:'悟性',atta
 const stats=o=>Object.entries(o??{}).filter(([,n])=>n!==0).map(([k,n])=>`${labels[k]??k} ${n>0?'+':''}${n}`).join(' · ')||'无额外属性';
 const cost=(o,f=1)=>`<small class="hub-cost">消耗：${esc(stats(Object.fromEntries(Object.entries(o??{}).map(([k,n])=>[k,Math.ceil(n*f)]))))}</small>`;
 const action=(title,payload,disabled=false)=>`<button type="button" class="hub-button" data-action="profile" data-value="${esc(JSON.stringify(payload))}"${disabled?' disabled':''}>${esc(title)}</button>`;
-const grid=s=>`<div class="hub-grid">${s}</div>`,card=(title,body,buttons='')=>`<article class="hub-card"><div class="hub-card-head"><h3>${esc(title)}</h3></div><div class="hub-card-body">${body}</div><div class="hub-actions">${buttons}</div></article>`;
+const grid=s=>`<div class="hub-grid">${Array.isArray(s)?s.join(''):s}</div>`,card=(title,body,buttons='')=>`<article class="hub-card"><div class="hub-card-head"><h3>${esc(title)}</h3></div><div class="hub-card-body">${body}</div><div class="hub-actions">${buttons}</div></article>`;
 const section=(title,body,note='')=>`<section class="hub-section expansion-section"><div class="hub-section-heading"><h2>${esc(title)}</h2><p>${esc(note)}</p></div>${body}</section>`;
 const options=(rows,selected)=>rows.map(r=>`<option value="${esc(r.id)}"${r.id===selected?' selected':''}>${esc(r.name)}</option>`).join('');
 const field=(key,title,rows,numeric=false)=>`<label class="hub-field"><span>${esc(title)}</span><select data-field="${esc(key)}"${numeric?' data-kind="number"':''}>${options(rows,rows[0]?.id)}</select></label>`;
