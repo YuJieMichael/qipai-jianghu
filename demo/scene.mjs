@@ -3,8 +3,8 @@ import {actorRole,drawActor} from './actors.mjs';
 import {eventActorAction,eventDuration,normalizeEventType,sampleActorPose,sampleSceneFeedback} from './choreography.mjs';
 const W=1000,H=540,TAU=Math.PI*2,colors={sword:'#baffed',poison:'#c6a6ef',guard:'#ffe0a0'};
 const clamp=n=>Math.max(0,Math.min(1,n));
-export function createScene(canvas,{reducedMotion=false}={}){
- const c=canvas.getContext('2d'),options={reducedMotion};let run=null,active=null,dead=false,raf=0,timer=0;const started=performance.now();
+export function createScene(canvas,{reducedMotion=false,playbackSpeed=1}={}){
+ const c=canvas.getContext('2d'),options={reducedMotion,playbackSpeed};let run=null,active=null,dead=false,raf=0,timer=0;const started=performance.now();
  const poly=(pts,fill,stroke,width=1)=>{c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
  const line=(x,y,X,Y,color,width=2)=>{c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.stroke()};
  const ellipse=(x,y,rx,ry,color,stroke,width=1)=>{c.beginPath();c.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,TAU);if(color){c.fillStyle=color;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}};
@@ -242,6 +242,7 @@ export function createScene(canvas,{reducedMotion=false}={}){
    return new Promise(resolve=>{const duration=eventDuration(event,context,options),current={event,time:performance.now(),duration,resolve};active=current;timer=setTimeout(()=>complete(current),duration);});
   },
   setOptions(next){Object.assign(options,next);},
+  skip(){complete(active);},
   destroy(){if(dead)return;dead=true;cancelAnimationFrame(raf);clearTimeout(timer);const current=active;active=null;current?.resolve();run=null;}
  };
 }

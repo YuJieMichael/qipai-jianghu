@@ -42,5 +42,5 @@ export function createAudio(){
   default:break;
  }}
  function stopVoices(){for(const voice of voices){try{voice.stop();}catch{}}voices.clear();}
- return {unlock,play,setMuted(value){muted=Boolean(value);if(muted)stopVoices();},destroy(){if(dead)return;dead=true;stopVoices();context?.close().catch(()=>{});context=null;noiseBuffer=null;}};
+ return {unlock,play,stop:stopVoices,setMuted(value){muted=Boolean(value);if(muted)stopVoices();},destroy(){if(dead)return;dead=true;stopVoices();context?.close().catch(()=>{});context=null;noiseBuffer=null;}};
 }

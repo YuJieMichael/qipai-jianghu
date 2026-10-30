@@ -2,15 +2,17 @@
 const clamp = n => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const smooth = n => { const p=clamp(n); return p*p*(3-2*p); };
 const weights={windup:.8,strike:1.25,sword:1.25,swordFocus:1.1,swordEcho:1.65,swordArray:2.7,poisonApply:1.05,poisonTick:.85,burst:2.35,shield:1,counter:1.7,hurt:1,death:1.3,intent:.85,phase:2.2,break:1.7,mechanic:1.3,ascension:1.65,heal:1,finish:1.3};
+const validPlaybackSpeed=value=>value===1||value===2;
 export function normalizeEventType(event={}) {return event.type==='poison'?(event.value>0?'poisonTick':'poisonApply'):event.type||'idle';}
-export function allocateSequenceDurations(events=[],{reducedMotion=false}={}) {
+export function allocateSequenceDurations(events=[],{reducedMotion=false,playbackSpeed=1}={}) {
  if(!events.length)return [];
- const values=events.map(e=>weights[normalizeEventType(e)]||1),total=values.reduce((a,b)=>a+b,0),budget=reducedMotion?1400:2600;
+ const values=events.map(e=>weights[normalizeEventType(e)]||1),total=values.reduce((a,b)=>a+b,0),budget=(reducedMotion?1400:2600)/(validPlaybackSpeed(playbackSpeed)?playbackSpeed:1);
  return values.map(weight=>budget*weight/total);
 }
 export function eventDuration(event={},context={},options={}) {
- if(Array.isArray(context?.events)&&Number.isInteger(context.eventIndex)&&context.eventIndex>=0&&context.eventIndex<context.events.length)return allocateSequenceDurations(context.events,options)[context.eventIndex];
- return (weights[normalizeEventType(event)]||1)*190*(options.reducedMotion?.55:1);
+ const playbackSpeed=validPlaybackSpeed(context?.playbackSpeed)?context.playbackSpeed:validPlaybackSpeed(options.playbackSpeed)?options.playbackSpeed:1;
+ if(Array.isArray(context?.events)&&Number.isInteger(context.eventIndex)&&context.eventIndex>=0&&context.eventIndex<context.events.length)return allocateSequenceDurations(context.events,{...options,playbackSpeed})[context.eventIndex];
+ return (weights[normalizeEventType(event)]||1)*190*(options.reducedMotion?.55:1)/playbackSpeed;
 }
 const basePoses={
  hero:{frontUpper:.5,frontFore:-.5,backUpper:1.9,backFore:.5,weapon:-.9,frontFoot:24,backFoot:-25,cape:0,torso:0,crouch:0,x:0,y:0,head:0,opacity:1},
