@@ -1,5 +1,6 @@
 import {BALANCE,BUILDS,NODES,ENEMY_TYPES,PERKS,emptyPerks} from './config.mjs';
 import {curseAttack,choiceKey,ROGUE_DEFAULTS} from './rogue.mjs';
+import {validateGrowthSelection} from './growth-pools.mjs';
 export const SAVE_KEY='qipai-bamboo-demo-v1';
 const num=n=>Number.isFinite(n)&&n>=0;
 const integer=n=>Number.isInteger(n)&&n>=0;
@@ -79,6 +80,7 @@ function validHistoryEntry(h){
 }
 function validChoice(c,r){
  if(!c||!['id','title','description','before','after'].every(k=>typeof c[k]==='string')||!build(c.build)||!integer(c.dieIndex)||c.dieIndex>=5)return false;
+ if(c.poolId!==undefined&&c.poolId!==c.build)return false;
  if(r.rogue&&(r.rogue.banned.includes(choiceKey(c))||!['common','fine','rare','epic'].includes(c.rarity)))return false;
  if(c.kind==='bind')return true;
  const perk=PERKS[c.perkId];
@@ -123,6 +125,8 @@ function validRogue(r){
  if(c.skills.some(v=>!validLoadout({effects:{},skills:[v]}))||c.relics.some(v=>!validLoadout({effects:{},relics:[v]}))||c.decorations.some(v=>!decorations.includes(v.id))||c.equipment.some(v=>!numbers(v.effects)||!Object.keys(v.effects).every(k=>effects.includes(k))))return false;
  const rules=g.rules;if(JSON.stringify(rules)!==JSON.stringify({...ROGUE_DEFAULTS,...c.expansion.rogue}))return false;
  if(!object(rules)||!object(rules.rarityWeights)||!Object.entries(rules.rarityWeights).every(([k,v])=>['common','fine','rare','epic'].includes(k)&&num(v))||!Object.values(rules.rarityWeights).some(v=>v>0)||!['refreshCost','maxRefresh','maxBans'].every(k=>currency(rules[k]))||!integer(g.refreshes)||g.refreshes>rules.maxRefresh||!currency(g.goldBonus))return false;
+ if(!validateGrowthSelection(c.expansion.rogue?.selection).valid||!validateGrowthSelection(rules.selection).valid)return false;
+ if(g.offer!==undefined&&(!rules.selection||!object(g.offer)||Object.keys(g.offer).length!==2||!['rarity','usedFallback'].every(k=>Object.hasOwn(g.offer,k))||!['common','fine','rare','epic'].includes(g.offer.rarity)||typeof g.offer.usedFallback!=='boolean'))return false;
  if(rules.prerequisites!==undefined&&(!object(rules.prerequisites)||!Object.entries(rules.prerequisites).every(([id,v])=>PERKS[id]&&object(v)&&PERKS[v.perkId]&&integer(v.rank)&&v.rank<=PERKS[v.perkId].maxRank)))return false;
  if(!Array.isArray(g.banned)||g.banned.length>rules.maxBans||new Set(g.banned).size!==g.banned.length||!g.banned.every(v=>/^bind:(sword|poison|guard)$/.test(v)||v.startsWith('perk:')&&PERKS[v.slice(5)]))return false;
  if(!Array.isArray(g.branches)||!g.branches.every(b=>object(b)&&r.route?.some(n=>n.id===b.nodeId&&n.branchChoices?.some(ch=>ch.id===b.choiceId))))return false;
@@ -159,7 +163,7 @@ function valid(r){
   const choice=r.choices.find(c=>c.id===pending.choiceId);
   if(!choice||(pending.dieIndex!==null&&(!integer(pending.dieIndex)||pending.dieIndex>=5))||(choice.kind==='perk'&&pending.dieIndex!==null))return false;
  }
- if(r.flow==='reward'&&r.choices.length!==3)return false;
+ if(r.flow==='reward'&&(r.rogue?.rules?.selection===undefined?r.choices.length!==3:r.choices.length<1||r.choices.length>3))return false;
  if(r.combat!==null&&!validCombat(r.combat,r))return false;
  return validBoundary(r);
 }

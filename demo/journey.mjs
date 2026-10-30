@@ -2,6 +2,7 @@ import {BALANCE,BUILDS,NODES,PERKS} from './config.mjs';
 import {nextRandom} from './model.mjs';
 import {startBattle} from './combat.mjs';
 import {draw,weighted,choiceKey,addBattleLoot} from './rogue.mjs';
+import {validateGrowthSelection} from './growth-pools.mjs';
 const copy=r=>structuredClone(r);
 export const getRunNodes=run=>run?.route||NODES;
 export const getRunNode=run=>getRunNodes(run)[run.nodeIndex];
@@ -21,6 +22,54 @@ const details = (build,run) => {
  const threshold=Math.max(PERKS.poisonCatalyst.minThreshold,BALANCE.poisonThreshold-catalyst*PERKS.poisonCatalyst.thresholdReductionPerRank);
  return `每层毒每回合 ${damage} 伤害，持续 ${turns} 回合；升华后满 ${threshold} 层触发 ${BALANCE.poisonBurstDamage} 伤害毒爆，每次消耗 ${threshold} 层。`;
 };
+
+const growthRarity=choice=>choice.kind==='bind'?'common':choice.perkId.endsWith('Echo')||choice.perkId.endsWith('Catalyst')||choice.perkId.endsWith('Riposte')?'epic':'rare';
+const rarityOrder=['common','fine','rare','epic'];
+function pickWeighted(run,items,weight){
+ const available=items.map(item=>({item,value:weight(item)})).filter(row=>row.value>0&&Number.isFinite(row.value));
+ if(!available.length)return null;
+ if(available.length===1)return available[0].item;
+ const total=available.reduce((sum,row)=>sum+row.value,0);
+ let point=draw(run)*total;
+ for(const row of available){point-=row.value;if(point<0)return row.item;}
+ return available.at(-1).item;
+}
+function layeredChoices(run,candidates,selection){
+ const chapter=selection.chapterBias[run.chapter]||{};
+ const poolWeight=build=>selection.poolWeights[build]>0?selection.poolWeights[build]+(build===run.build?selection.ownBuildBonus:0)+(chapter[build]||0):0;
+ const entryWeight=choice=>selection.entryWeights[choice.kind==='bind'?'bind':choice.perkId]||0;
+ let remaining=candidates.filter(choice=>poolWeight(choice.build)>0&&entryWeight(choice)>0&&!run.rogue.banned.includes(choiceKey(choice))).map(choice=>({...choice,rarity:growthRarity(choice),poolId:choice.build}));
+ const choices=[];
+ const guaranteed=remaining.find(choice=>choice.kind==='bind'&&choice.build===run.build);
+ if(guaranteed){choices.push(guaranteed);remaining=remaining.filter(choice=>choiceKey(choice)!==choiceKey(guaranteed));}
+ const available=rarityOrder.filter(rarity=>remaining.some(choice=>choice.rarity===rarity));
+ const weightedRarities=available.filter(rarity=>run.rogue.rules.rarityWeights[rarity]>0);
+ const rarity=pickWeighted(run,weightedRarities,id=>run.rogue.rules.rarityWeights[id])||available[0]||'common';
+ const position=rarityOrder.indexOf(rarity);
+ const fallback=[...rarityOrder.slice(0,position).reverse(),...rarityOrder.slice(position+1)];
+ let usedFallback=available.length>0&&weightedRarities.length===0;
+ for(const tier of [rarity,...fallback]){
+  while(choices.length<3){
+   const tierChoices=remaining.filter(choice=>choice.rarity===tier);
+   if(!tierChoices.length)break;
+   const pools=[...new Set(tierChoices.map(choice=>choice.build))];
+   const pool=pickWeighted(run,pools,poolWeight);
+   const chosen=pickWeighted(run,tierChoices.filter(choice=>choice.build===pool),entryWeight);
+   if(!chosen)break;
+   choices.push(chosen);remaining=remaining.filter(choice=>choiceKey(choice)!==choiceKey(chosen));
+   if(tier!==rarity)usedFallback=true;
+  }
+  if(choices.length>=3)break;
+ }
+ if(choices.length)run.rogue.offer={rarity,usedFallback};
+ else delete run.rogue.offer;
+ return choices;
+}
+function finishGrowth(run){
+ run.choices=[];run.pendingUpgrade=null;
+ if((run.route&&getRunNode(run).type==='camp')||(!run.route&&run.nodeIndex===7)){run.upgrades[campKey(run,'campComplete')]=1;run.flow='camp';return run;}
+ run.nodeIndex++;run.flow='intro';return enterNode(run);
+}
 
 /** Pure display preview; a bind must always supply its target explicitly. */
 export function previewUpgrade(run,id,index){
@@ -46,6 +95,14 @@ export function createChoices(run){
  const bind=build=>({id:`${prefix}-bind-${build}`,title:`${BUILDS[build].name}·${slot<0?'精修':'传承'}`,build,dieIndex,kind:'bind'});
  const prerequisites=r.rogue?.rules?.prerequisites||{};
  const perks=Object.values(PERKS).filter(p=>(!prerequisites[p.id]||(r.perks[prerequisites[p.id].perkId]||0)>=prerequisites[p.id].rank)&&bound(r,p.build)&&(r.perks?.[p.id]??0)<p.maxRank).map(p=>({id:`${prefix}-perk-${p.id}`,title:p.name,build:p.build,perkId:p.id,kind:'perk',dieIndex}));
+ const selection=r.rogue?.rules?.selection;
+ if(selection!==undefined&&validateGrowthSelection(selection).valid){
+  const candidates=[...Object.keys(BUILDS).map(bind),...perks];
+  r.choices=layeredChoices(r,candidates,selection);
+  if(!r.choices.length)return finishGrowth(r);
+  r.choices=r.choices.map(c=>{const p=previewUpgrade(r,c.id,c.dieIndex);return {...c,before:p.before,after:p.after,description:p.description};});
+  return r;
+ }
  const sample=pool=>{const random=nextRandom(r.seed);r.seed=random.seed;return pool[Math.floor(random.value*pool.length)];};
  const own=bind(r.build),ownPerks=perks.filter(p=>p.build===r.build);
  const pool=[...perks,...Object.keys(BUILDS).filter(b=>b!==r.build).map(bind)];
@@ -136,9 +193,7 @@ export function chooseUpgrade(run,id,index){
  r.stats.upgradeHistory??=[];
  r.stats.upgradeHistory.push({id,title:choice.title,build:choice.build,kind:choice.kind==='perk'?'perk':'bind',dieIndex:choice.kind==='perk'?null:dieIndex,perkId:choice.perkId??null,before:preview.before,after:preview.after});
  if(choice.build===r.build)r.mastery++;
- r.ascended=r.mastery>=BALANCE.masteryThreshold;r.choices=[];r.pendingUpgrade=null;
- if((r.route&&getRunNode(r).type==='camp')||(!r.route&&r.nodeIndex===7)){r.upgrades[campKey(r,'campComplete')]=1;r.flow='camp';return r;}
- r.nodeIndex++;r.flow='intro';return enterNode(r);
+ r.ascended=r.mastery>=BALANCE.masteryThreshold;return finishGrowth(r);
 }
 export function chooseEvent(run,optionId){
  if(run.flow==='event'&&getRunNode(run)?.branchChoices)return chooseBranch(run,['heal','train'].includes(optionId)?0:getRunNode(run).branchChoices.findIndex(c=>c.id===optionId));
@@ -154,7 +209,7 @@ export function chooseEvent(run,optionId){
 /** Normalized display descriptors; reading them never changes the seed. */
 export function getJourneyOptions(run){
  const node=getRunNode(run),base={kind:'none',title:node?.name||'',description:node?.description||'',choices:[],refresh:{available:false,cost:0,remaining:0},bans:{remaining:0}};
- if(run.flow==='reward')return {...base,kind:'growth',choices:run.choices.map(c=>({...c})),refresh:{available:!!run.rogue&&run.rogue.refreshes<run.rogue.rules.maxRefresh&&(run.coins||0)>=run.rogue.rules.refreshCost,cost:run.rogue?.rules.refreshCost||0,remaining:Math.max(0,(run.rogue?.rules.maxRefresh||0)-(run.rogue?.refreshes||0))},bans:{remaining:Math.max(0,(run.rogue?.rules.maxBans||0)-(run.rogue?.banned.length||0))}};
+ if(run.flow==='reward')return {...base,kind:'growth',choices:run.choices.map(c=>({...c})),...(run.rogue?.rules?.selection!==undefined&&run.rogue.offer?{selection:{mode:'layered',...run.rogue.offer}}:{}),refresh:{available:!!run.rogue&&run.rogue.refreshes<run.rogue.rules.maxRefresh&&(run.coins||0)>=run.rogue.rules.refreshCost,cost:run.rogue?.rules.refreshCost||0,remaining:Math.max(0,(run.rogue?.rules.maxRefresh||0)-(run.rogue?.refreshes||0))},bans:{remaining:Math.max(0,(run.rogue?.rules.maxBans||0)-(run.rogue?.banned.length||0))}};
  if(run.flow!=='event')return base;
  if(node.branchChoices)return {...base,kind:'branch',choices:node.branchChoices.map(c=>({...c}))};
  if(node.encounter)return {...base,kind:'encounter',choices:(node.encounterChoices||[]).map(c=>({...c,title:c.title||c.id,description:c.description||'',disabled:run.hero.hp<=(c.hpCost||0)||(run.coins||0)<(c.coinCost||0),reason:run.hero.hp<=(c.hpCost||0)?'气血不足':(run.coins||0)<(c.coinCost||0)?'铜钱不足':''}))};
@@ -167,8 +222,10 @@ export function refreshChoices(run){
 }
 export function banChoice(run,id){
  const choice=run.choices?.find(c=>c.id===id);if(run.flow!=='reward'||!run.rogue||!choice||run.rogue.banned.length>=run.rogue.rules.maxBans)return run;
- // Keep at least three selectable branches after a ban.
- const key=choiceKey(choice),r=copy(run);r.rogue.banned.push(key);r.choices=[];r.pendingUpgrade=null;const next=createChoices(r);return next.choices.length===3?next:run;
+ // A ban must leave a selectable reward; legacy offers still require three.
+ const key=choiceKey(choice),r=copy(run);r.rogue.banned.push(key);r.choices=[];r.pendingUpgrade=null;const next=createChoices(r);
+ const minimum=run.rogue.rules.selection===undefined?3:1;
+ return next.flow==='reward'&&next.choices.length>=minimum?next:run;
 }
 const leaveEvent=r=>{r.nodeIndex++;r.flow='intro';return enterNode(r);};
 export function chooseBranch(run,index){

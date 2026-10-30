@@ -1,6 +1,10 @@
 import {CONTENT,getContent,validateContent,EFFECT_KEYS} from './content.mjs';
 import {ensureExpansion,EXPANSION_ACTIONS,isExpansionAction,observeExpansion,guardLegacyExpansion,runExpansionAction,addExpansionEffects,receiveExpansionLoot,expansionView,validateExpansionState} from './expansion-profile.mjs';
+import {getSlotProgression as slotProgression,deriveEquipment as equipmentBucket} from './gear-rules.mjs';
 export {ensureExpansion,EXPANSION_ACTIONS};
+const gearContent=content=>({...content,workshopRules:content.workshopRules??CONTENT.workshopRules});
+export function getSlotProgression(profile,content,slotId){return slotProgression(profile,gearContent(content),slotId);}
+export function deriveEquipment(profile,content){return equipmentBucket(profile,gearContent(content));}
 export function getExpansionView(profile,options){return expansionView(profile,options,deriveLoadout);}
 export const PROFILE_KEY='qipai-bamboo-profile-v1';
 const CURRENCIES=['gold','dust','essence','insight'];
@@ -35,9 +39,8 @@ export function createProfile(seed=1,now=Date.now()){
 export function deriveLoadout(profile){
  const c=getContent(profile),effects=effectBase(),setCounts={},rules=c.workshopRules??CONTENT.workshopRules;
  addEffects(effects,find(c,'sects',profile.sectId)?.effects);
- for(const slot of c.slots){const item=profile.inventory.find(i=>i.uid===profile.equipped[slot.id]);if(!item)continue;const template=find(c,'equipment',item.templateId);if(!template)continue;addEffects(effects,template.effects,1+(item.fusionLevel??0)*c.economy.fusionBonus);addEffects(effects,item.refine?.effects);for(const gemId of item.gems)addEffects(effects,find(c,'gems',gemId)?.effects);setCounts[template.setId]=(setCounts[template.setId]??0)+1;
-  const level=profile.slotLevels[slot.id]??0;addEffects(effects,rules.slotEffects[slot.id],level);
- }
+ const equipmentBreakdown=equipmentBucket(profile,gearContent(c),{roundResults:false});addEffects(effects,equipmentBreakdown.effects);
+ for(const slot of c.slots){const item=profile.inventory.find(i=>i.uid===profile.equipped[slot.id]),template=item?find(c,'equipment',item.templateId):null;if(template)setCounts[template.setId]=(setCounts[template.setId]??0)+1;}
  for(const set of c.sets)if((setCounts[set.id]??0)>=set.pieces)addEffects(effects,set.effects);
  for(const [map,key]of [[profile.talents,'talents'],[profile.training,'training'],[profile.meridians,'meridians']])for(const [id,level]of Object.entries(map))addEffects(effects,find(c,key,id)?.effects,level);
  for(const id of profile.souls)addEffects(effects,find(c,'souls',id)?.effects);
@@ -52,8 +55,9 @@ export function deriveLoadout(profile){
  const weapon=profile.inventory.find(i=>i.uid===profile.equipped.weapon);const template=weapon?find(c,'equipment',weapon.templateId):null;
  addExpansionEffects(profile,c,effects);
  for(const key of EFFECT_KEYS)effects[key]=Math.round(effects[key]*100)/100;
+ for(const bucket of [equipmentBreakdown.effects,equipmentBreakdown.flatEffects])for(const key of Object.keys(bucket))bucket[key]=Math.round(bucket[key]*100)/100;
  effects.extraRerolls=Math.min(4,Math.floor(effects.extraRerolls));effects.critChance=Math.min(75,effects.critChance);effects.freezeChance=Math.min(75,effects.freezeChance);effects.lifesteal=Math.min(75,effects.lifesteal);
- return {label:`${find(c,'sects',profile.sectId)?.name??'江湖'} · ${template?.name??'徒手'}`,sectId:profile.sectId,weaponType:template?.weaponType??'sword',effects,dice:clone(profile.dice),skills:profile.skills.map(id=>find(c,'skills',id)).filter(Boolean).map(({id,name,trigger,effects})=>({id,name,trigger,effects:clone(effects)})),pet,relics,bag:Object.fromEntries(RUN_ITEMS.map(id=>[id,profile.bag[id]??0])),progression:{towerFloor:profile.progression.towerFloor,towerHp:profile.progression.towerHp,worldBossHp:profile.progression.worldBossHp},contentVersion:c.version,rules:clone(c.combatRules??CONTENT.combatRules)};
+ return {equipmentBreakdown,label:`${find(c,'sects',profile.sectId)?.name??'江湖'} · ${template?.name??'徒手'}`,sectId:profile.sectId,weaponType:template?.weaponType??'sword',effects,dice:clone(profile.dice),skills:profile.skills.map(id=>find(c,'skills',id)).filter(Boolean).map(({id,name,trigger,effects})=>({id,name,trigger,effects:clone(effects)})),pet,relics,bag:Object.fromEntries(RUN_ITEMS.map(id=>[id,profile.bag[id]??0])),progression:{towerFloor:profile.progression.towerFloor,towerHp:profile.progression.towerHp,worldBossHp:profile.progression.worldBossHp},contentVersion:c.version,rules:clone(c.combatRules??CONTENT.combatRules)};
 }
 export function applyProfileAction(profile,action,{now=Date.now()}={}){
  if(!object(action)||typeof action.type!=='string')return {profile,message:'操作格式不正确。'};
@@ -68,7 +72,7 @@ export function applyProfileAction(profile,action,{now=Date.now()}={}){
    const item=uid===undefined?null:itemByUid(p,uid);
    if(type==='equip'){if(!item)fail('请选择装备。');const template=requireEntry(c,'equipment',item.templateId);p.equipped[template.slot]=uid;message=`已装备${template.name}。`;}
    if(type==='unequip'){requireEntry(c,'slots',action.slot);if(!p.equipped[action.slot])fail('该槽位没有装备。');delete p.equipped[action.slot];}
-   if(type==='enhance'||type==='downgrade'){requireEntry(c,'slots',action.slot);const level=p.slotLevels[action.slot];if(type==='enhance'){if(level>=c.economy.maxEnhance)fail('强化已到上限。');pay(p,{gold:c.economy.enhanceGold*(level+1),dust:c.economy.enhanceDust*(level+1)});p.slotLevels[action.slot]++;p.stats.enhances++;}else{if(level<=0)fail('槽位尚未强化。');p.slotLevels[action.slot]--;reward(p,{gold:Math.floor(c.economy.enhanceGold*level*c.economy.downgradeGoldRefund),dust:c.economy.enhanceDust*level});message='槽位降一级，返还全部材料与一半金币。';}}
+   if(type==='enhance'||type==='downgrade'){requireEntry(c,'slots',action.slot);const level=p.slotLevels[action.slot];if(type==='enhance'){const info=getSlotProgression(p,c,action.slot);if(!info.canEnhance)fail(info.reason);pay(p,info.nextCost);p.slotLevels[action.slot]++;p.stats.enhances++;}else{if(level<=0)fail('槽位尚未强化。');p.slotLevels[action.slot]--;reward(p,{gold:Math.floor(c.economy.enhanceGold*level*c.economy.downgradeGoldRefund),dust:c.economy.enhanceDust*level});message='槽位降一级，返还全部材料与一半金币。';}}
    if(['salvage','fuse','refine','refine-accept','refine-cancel','socket','unsocket','lock'].includes(type)&&!item)fail('请选择装备。');
    if(type==='lock'){item.locked=!item.locked;message=item.locked?'已锁定装备。':'已解锁装备。';}
    if(type==='salvage'){destructible(p,item);const template=requireEntry(c,'equipment',item.templateId);const rarity=requireEntry(c,'rarities',template.rarity);for(const gemId of item.gems)p.gems[gemId]++;p.inventory=p.inventory.filter(i=>i.uid!==uid);reward(p,{dust:rarity.salvage+item.fusionLevel*c.economy.fusionDustReturn,gold:c.economy.salvageGold});message='已分解并返还镶嵌宝石。';}

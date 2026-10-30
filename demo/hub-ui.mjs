@@ -1,5 +1,5 @@
 import {getContent} from './content.mjs';
-import {deriveLoadout} from './profile.mjs';
+import {deriveLoadout,getSlotProgression} from './profile.mjs';
 import {renderExpansionPanel} from './expansion-ui.mjs';
 import {renderCreator} from './creator-ui.mjs';
 import {renderNetworkPanel} from './network-ui.mjs';
@@ -41,7 +41,11 @@ function expeditionPanel(p,c,{hasSave}){
  section('山河星谱',grid(c.chapters.map(ch=>card(ch.name,info(ch)+`<p>章节星级 <strong>${'★'.repeat(p.chapterStars?.[ch.id]||0)}${'☆'.repeat(3-(p.chapterStars?.[ch.id]||0))}</strong></p>${cost(ch.sweepCost)}`,action('已通关章节扫荡',{type:'sweep',chapter:ch.id}))).join('')));
 }
 function equipmentPanel(p,c,{filter}){
- const owned=p.inventory||[],slots=c.slots.map(s=>{const item=owned.find(i=>i.uid===p.equipped?.[s.id]),t=lookup(c.equipment,item?.templateId);return card(s.name,`<p>${esc(t?.name||'未装备')}</p><p>槽位强化 +${p.slotLevels?.[s.id]||0}</p>${cost({gold:c.economy.enhanceGold*((p.slotLevels?.[s.id]||0)+1),dust:c.economy.enhanceDust*((p.slotLevels?.[s.id]||0)+1)})}`,action('强化槽位',{type:'enhance',slot:s.id})+action('重置返还',{type:'downgrade',slot:s.id})+(item?action('卸下',{type:'unequip',slot:s.id}):''));}).join('');
+ const owned=p.inventory||[],slots=c.slots.map(s=>{
+  const item=owned.find(i=>i.uid===p.equipped?.[s.id]),t=lookup(c.equipment,item?.templateId),progress=getSlotProgression(p,c,s.id);
+  const body=`<p>${esc(t?.name||'未装备')}</p><p>已保存 +${progress.storedLevel} · 生效 +${progress.effectiveLevel}</p><p>装备上限 +${progress.cap}</p><p class="hub-effect">累计强化：${esc(Object.values(progress.cumulativeEffects).some(n=>n!==0)?textStats(progress.cumulativeEffects):'尚无')}</p>${progress.storedLevel>progress.effectiveLevel?'<p class="gear-retained">超出等级仍保留，换装或进阶后可恢复生效。</p>':''}${progress.nextEffects?`<p>下一级增量（装备平值）：${esc(textStats(progress.nextEffects))}</p>`:''}${progress.nextCost?cost(progress.nextCost):''}${progress.reason?`<p class="gear-limit">${esc(progress.reason)}</p>`:''}`;
+  return card(s.name,body,action('强化槽位',{type:'enhance',slot:s.id},!progress.canEnhance)+action('重置返还',{type:'downgrade',slot:s.id},progress.storedLevel<=0)+(item?action('卸下',{type:'unequip',slot:s.id}):''));
+ }).join('');
  const nav=`<div class="hub-filters">${c.slots.map(s=>button(s.name,'hub-filter',s.id,s.id===filter?'active':'')).join('')}</div>`;
  const items=owned.filter(i=>lookup(c.equipment,i.templateId)?.slot===filter).map(i=>{const t=lookup(c.equipment,i.templateId),equipped=isEquipped(p,i.uid),rarity=lookup(c.rarities,t.rarity);return card(t.name,iconMarkup({kind:'equipment',slot:t.slot,weaponType:t.weaponType,quality:rarity?.rank||0})+effect(t)+`<p>${esc(lookup(c.sets,t.setId)?.name||'')} · ${esc(t.weaponType?{sword:'剑 · 顺子专精',staff:'法杖 · 牌型群攻',hammer:'锤 · 三条破势'}[t.weaponType]:'')} ${equipped?'· 已装备':''}</p><p>洗练：${esc(textStats(i.refine?.effects||i.refine||{}))}</p>${i.pendingRefine?`<p class="hub-candidate">候选：${esc(textStats(i.pendingRefine.effects||i.pendingRefine))}</p>`:''}<p>融合 +${i.fusionLevel||0} · 洗练消耗 ${esc(textStats(c.economy.refineCost))} · 合成消耗 ${esc(textStats(scaledCost(c.economy.fuseCost,(i.fusionLevel||0)+1)))}</p><p>镶嵌：${esc((i.gems||[]).map(id=>lookup(c.gems,id)?.name||id).join('、')||'空')}</p>`,
  action(equipped?'已装备':'装备',{type:'equip',uid:i.uid},equipped)+action(i.locked?'解除保护':'保护',{type:'lock',uid:i.uid})+action('洗练',{type:'refine',uid:i.uid})+(i.pendingRefine?action('接受候选',{type:'refine-accept',uid:i.uid})+action('取消候选',{type:'refine-cancel',uid:i.uid}):'')+action('同类合成',{type:'fuse',uid:i.uid},equipped||i.locked)+action('分解',{type:'salvage',uid:i.uid},equipped||i.locked)+form(select('gemId','镶嵌宝石 · 消耗1颗',c.gems.map(g=>({...g,name:`${g.name} · 拥有 ${p.gems?.[g.id]||0}`})),c.gems[0]?.id),action('镶嵌',{type:'socket',uid:i.uid}))+(i.gems||[]).map((g,index)=>action(`取下${lookup(c.gems,g)?.name||g}`,{type:'unsocket',uid:i.uid,index})).join(''),`${rarity?.name||''} · ${i.uid}`);}).join('');

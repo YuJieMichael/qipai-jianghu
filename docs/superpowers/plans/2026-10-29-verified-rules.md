@@ -32,6 +32,8 @@ For new rules preserve current own-build binding guarantee when not banned. Fill
 
 No new mandatory run/profile fields. Optional rogue.offer={rarity,usedFallback} can describe last generated batch; validate it in storage when present and accept old saves without it. getJourneyOptions growth adds optional selection={mode:'layered',rarity,usedFallback}; choices may expose poolId=build for UI. Existing absent selection uses legacy generator; non-expansion demo unchanged. Refresh charges once, bans remain transactional, seed sequence deterministic and migration/preview must not draw RNG. Existing in-progress old snapshots remain legacy; new snapshots retain chosen rules across home/resume/content edits.
 
+Boundary integration: layered reward may have1..3 positively weighted eligible choices and each must save/restore/complete normally; legacy reward retains exact3 validation. If zero choices are eligible, complete this unavailable growth using the same existing node/camp advancement tail, without increasing mastery, upgrade count or rewards, or drawing RNG from an empty pool. No new controller action or mandatory field.
+
 Tests: hand-controlled weights choose eligible pool/entry, own and chapter biases; same batch rarity when sufficient and clearly marked fallback when short; banned/prereq/max/zero-weight entries never drawn; refresh payment once and ban rollback when invalid; deterministic restore without RNG, hostile saved rules/offer rejected, old snapshots accepted. Related journey/storage integration tests required.
 
 ## Task 3: Visible integration and acceptance

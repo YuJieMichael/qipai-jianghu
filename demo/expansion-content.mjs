@@ -1,5 +1,7 @@
 import {CHAPTER_ROUTES} from './chapter-content.mjs';
 import {PERKS} from './config.mjs';
+import {DEFAULT_GEAR_PROGRESSION,validateGearProgression} from './gear-rules.mjs';
+import {DEFAULT_GROWTH_SELECTION,validateGrowthSelection} from './growth-pools.mjs';
 const EFFECTS=['attack','maxHp','armor','critChance','critDamage','lifesteal','poisonDamage','shieldGain','extraRerolls','openingShield','regen','thorns','fireDamage','freezeChance','comboBonus','goldBonus'];
 const affixes=[['edge','锋芒','attack',1,4],['heart','根骨','maxHp',4,16],['shell','坚壁','armor',1,3],['acuity','明锐','critChance',1,5],['ward','护元','shieldGain',1,4],['breath','调息','regen',1,2],['flame','余烬','fireDamage',1,3],['fortune','福运','goldBonus',2,8]].map(([id,name,key,min,max])=>({id,name,key,min,max}));
 const task=(id,name,stat,target,reward)=>({id,name,stat,target,reward});
@@ -14,6 +16,8 @@ export const DEFAULT_EXPANSION={
  encounters:{choices:[{id:'safe',title:'守心调息',description:'回复35气血',heal:35},{id:'blood-oath',title:'歃血取力',description:'失去18气血，攻击+5，之后敌人攻击+2，金币+20%',hpCost:18,attack:5,curseId:'blood-oath',goldBonus:20}],curseRules:{'blood-oath':{enemyAttack:2}}},
  chapterRoutes:CHAPTER_ROUTES
 };
+DEFAULT_EXPANSION.gear.progression=structuredClone(DEFAULT_GEAR_PROGRESSION);
+DEFAULT_EXPANSION.rogue.selection=structuredClone(DEFAULT_GROWTH_SELECTION);
 const obj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype;
 const int=(v,a=0,b=10000000)=>Number.isSafeInteger(v)&&v>=a&&v<=b;
 const id=v=>typeof v==='string'&&/^[a-zA-Z][a-zA-Z0-9-]{0,63}$/.test(v);
@@ -31,6 +35,8 @@ export function validateExpansion(value,content){
  catalog(x.affixes,'affixes',(r,p)=>{if(typeof r.name!=='string'||!r.name.trim()||!EFFECTS.includes(r.key)||!int(r.min,0,1000000)||!int(r.max,r.min,1000000))fail(p,'词条键或范围错误');});
  if(!obj(x.loot))fail('loot');else{for(const k of ['chance','bossChance'])if(typeof x.loot[k]!=='number'||x.loot[k]<0||x.loot[k]>1)fail(`loot.${k}`);weights(x.loot.rarityWeights,'loot.rarityWeights');if(!obj(x.loot.affixCount)||Object.entries(x.loot.affixCount).some(([k,n])=>!id(k)||!int(n,0,8)))fail('loot.affixCount');for(const r of Array.isArray(content?.rarities)?content.rarities:[])if(!obj(r)||!int(x.loot.affixCount?.[r.id],0,8))fail(`loot.affixCount.${r?.id??'unknown'}`);if(x.loot.bossExclusive!==undefined&&(!obj(x.loot.bossExclusive)||Object.entries(x.loot.bossExclusive).some(([k,v])=>!hasId(content?.chapters,k)||!hasId(content?.equipment,v))))fail('loot.bossExclusive');}
  if(!obj(x.gear))fail('gear');else{for(const k of ['advanceCost','rollCost','recastCost'])currency(x.gear[k],`gear.${k}`);if(!int(x.gear.maxQuality,1,10)||!int(x.gear.maxAffixes,1,8)||typeof x.gear.qualityBonus!=='number'||x.gear.qualityBonus>2)fail('gear.limits');if(!Array.isArray(x.gear.passiveRules)||x.gear.passiveRules.length>10)fail('gear.passiveRules');else for(const r of x.gear.passiveRules){if(!obj(r)||!int(r.quality,1,x.gear.maxQuality))fail('gear.passiveRules');effects(r?.effects,'gear.passiveRules.effects');}}
+ for(const error of validateGearProgression(x.gear?.progression).errors)fail('gear.progression',error);
+ for(const error of validateGrowthSelection(x.rogue?.selection).errors)fail('rogue.selection',error);
  if(!obj(x.refining))fail('refining');else{const r=x.refining;if(!obj(r.costs))fail('refining.costs');for(const k of ['gear','relic','rune']){currency(r.costs?.[k],`refining.costs.${k}`);if(!Array.isArray(r.pools?.[k])||!r.pools[k].length||new Set(r.pools[k]).size!==r.pools[k].length||r.pools[k].some(v=>!hasId(x.affixes,v)))fail(`refining.pools.${k}`);}for(const k of ['lockCost','advanceCost','recastCost','salvageReturn'])currency(r[k],`refining.${k}`);if(!int(r.candidates,2,5))fail('refining.candidates');if(!obj(r.qualityResonance)||!int(r.qualityResonance.pieces,2,10)||!int(r.qualityResonance.quality,1,x.gear?.maxQuality??10))fail('refining.qualityResonance');effects(r.qualityResonance?.effects,'refining.qualityResonance.effects');}
  if(!obj(x.cycles))fail('cycles');else{for(const period of ['daily','weekly'])catalog(x.cycles[period],`cycles.${period}`,(r,p)=>{if(!STATS.includes(r.stat)||!int(r.target,1)||typeof r.name!=='string')fail(p);currency(r.reward,`${p}.reward`);});currency(x.cycles.firstClear,'cycles.firstClear');catalog(x.cycles.towerMilestones,'cycles.towerMilestones',(r,p)=>{if(!int(r.floor,1,1000000)||typeof r.name!=='string')fail(p);currency(r.reward,`${p}.reward`);});}
  if(!obj(x.market))fail('market');else{for(const [k,min,max]of [['slots',1,20],['limit',1,100],['maxRefresh',1,100]])if(!int(x.market[k],min,max))fail(`market.${k}`);currency(x.market.refreshCost,'market.refreshCost');}

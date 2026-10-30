@@ -73,7 +73,7 @@ export function runExpansionAction(p,c,a,{now,pay,reward,random,addItem}){
 }
 export function addExpansionEffects(p,c,effects){
  const x=ensureExpansion(p),g=c.expansion.gear,r=c.expansion.refining,add=(v,f=1)=>{for(const [k,n]of Object.entries(v??{}))if(EFFECT_KEYS.includes(k))effects[k]+=n*f;};let qualityPieces=0;
- for(const uid of Object.values(p.equipped)){const i=p.inventory.find(v=>v.uid===uid),s=x.gear[uid];if(!i||!s)continue;const t=c.equipment.find(v=>v.id===i.templateId);add(t.effects,s.quality*g.qualityBonus);for(const a of s.affixes)add({[a.key]:a.value});for(const passive of g.passiveRules)if(s.quality>=passive.quality)add(passive.effects);if(s.quality>=r.qualityResonance.quality)qualityPieces++;}
+ for(const uid of Object.values(p.equipped)){const i=p.inventory.find(v=>v.uid===uid),s=x.gear[uid];if(!i||!s)continue;if(s.quality>=r.qualityResonance.quality)qualityPieces++;}
  for(const [kind,ids]of [['relics',p.relics.equipped],['runes',p.runes.slots.filter(Boolean)]])for(const id of ids){const s=x[kind][id];if(!s||s.salvaged)continue;const t=c[kind].find(v=>v.id===id);add(t?.effects,s.quality*g.qualityBonus);for(const a of s.affixes)add({[a.key]:a.value});if(s.quality>=r.qualityResonance.quality)qualityPieces++;}
  if(qualityPieces>=r.qualityResonance.pieces)add(r.qualityResonance.effects);
 }

@@ -93,10 +93,16 @@ function routesMarkup(run){
  return `<div class="route-strip" aria-label="已习得内部路线">${attained.map(([id,p])=>`<span title="${esc(p.description)}">${esc(p.name)} <b>${run.perks[id]} / ${p.maxRank}</b></span>`).join('')}</div>`;
 }
 function comparisonMarkup(before,after){return `<span class="upgrade-comparison"><span>原 · ${esc(before)}</span><b aria-hidden="true">↓</b><em>新 · ${esc(after)}</em></span>`;}
+export function growthSelectionMarkup(run){
+ const offer=run.rogue?.offer;if(!run.rogue?.rules?.selection||!offer)return '';
+ const rarity={common:'素品',fine:'良品',rare:'珍品',epic:'逸品'}[offer.rarity]||'可用品阶';
+ const own=run.choices?.some(c=>c.kind==='bind'&&c.build===run.build);
+ return `<div class="growth-selection" aria-label="成长候选来源"><strong>${esc(rarity)}侧重</strong><span>${own?'本门传承保底；':''}其他招式按当前传承与章节倾向出现。</span>${offer.usedFallback?'<span>候选不足，部分招式已用其他品阶补齐；以卡面品阶为准。</span>':''}</div>`;
+}
 function rewardMarkup(run,busy){
  const pending=run.pendingUpgrade,choice=run.choices?.find(c=>c.id===pending?.choiceId);
  const controls=run.rogue?`<div class="growth-toolbar"><span>铜钱 ${run.coins||0} · 刷新剩余 ${getJourneyOptions(run).refresh.remaining} · 禁选剩余 ${getJourneyOptions(run).bans.remaining}</span>${btn(`刷新成长 · ${getJourneyOptions(run).refresh.cost} 铜钱`,'growth-refresh','','class="secondary" '+(busy||!getJourneyOptions(run).refresh.available?'disabled':''))}</div>`:'';
- const cards=controls+`<div class="reward-instruction"><strong>壹 · 选择领悟</strong><span>选牌后可返回，确认才生效</span></div><div class="reward-grid">${(run.choices||[]).map((c,i)=>{
+ const cards=controls+growthSelectionMarkup(run)+`<div class="reward-instruction"><strong>壹 · 选择领悟</strong><span>选牌后可返回，确认才生效</span></div><div class="reward-grid">${(run.choices||[]).map((c,i)=>{
   const selected=c.id===pending?.choiceId,perk=c.kind==='perk',definition=PERKS[c.perkId];
   const preview=perk?previewUpgrade(run,c.id):null;
   const card=btn(`<span class="card-number">${c.rarity?esc({common:'素',fine:'良',rare:'珍',epic:'逸'}[c.rarity]||c.rarity)+' · ':''}${['壹','贰','叁'][i]||'悟'} · ${BUILDS[c.build]?.name||'武学'} · ${perk?'内部路线':'骰技绑定'}</span><strong>${esc(c.title||definition?.name)}</strong><p>${esc((c.description||definition?.description||'').replace(/^第 \d+ 颗骰子：/,''))}</p>${perk?comparisonMarkup(preview.before,preview.after):'<span class="binding-note">任选一骰 · 同门升阶，异门替换</span>'}<span class="choose-label">${selected?'✓ 已选此式':perk?'查看路线 →':'选择目标骰 →'}</span>`,'upgrade',c.id,`class="reward-card ${selected?'selected':''}" aria-pressed="${selected}" ${busy}`);
