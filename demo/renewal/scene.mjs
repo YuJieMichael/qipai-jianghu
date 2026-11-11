@@ -1,17 +1,22 @@
 const WIDTH = 390, HEIGHT = 844, TAU = Math.PI * 2;
 const clamp = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const ease = value => 1 - (1 - clamp(value)) ** 3;
-const durations = {roll: 220, sword: 300, flame: 300, guard: 280, attack: 340, hurt: 300, death: 320, unlock: 340, reward: 220, heal: 280};
+const durations = {roll: 220, charge: 240, intent: 300, phase: 340, sword: 300, flame: 300, guard: 280, attack: 340, hurt: 300, death: 320, unlock: 340, reward: 220, heal: 280};
 const columns = {hero: 0, bandit: 1, archer: 2, sentinel: 3, boss: 3};
+// The original imagegen atlas has generous but uneven gutters. Explicit cells
+// preserve every weapon instead of pretending the sheet is an equal grid.
+const actionGrid = {size: 1254, x: [0, 350, 640, 935, 1254], y: [0, 415, 690, 975, 1254]};
 
 /** Portrait battle presentation. Simulation remains entirely in model.mjs. */
 export function createAdventureScene(canvas, {
   backgroundUrl = new URL('./assets/forest-path.png', import.meta.url).href,
+  chapterTwoBackgroundUrl = new URL('./assets/rain-temple-v1.png', import.meta.url).href,
+  actionSpritesUrl = new URL('./assets/characters-actions-v1.png', import.meta.url).href,
   spritesUrl = new URL('./assets/characters-polished-v2.png', import.meta.url).href,
 } = {}) {
   const context = canvas.getContext('2d');
   let state = null, dead = false, raf = 0, timer = 0, sequence = null, active = null;
-  let background = null, sprites = null, spriteCrops = [], reducedMotion = false, inCallback = false;
+  let background = null, chapterTwoBackground = null, sprites = null, spriteCrops = [], actionSprites = false, reducedMotion = false, inCallback = false;
   const completedDeaths = new Set(), pendingImages = new Set();
   const heroHealth = canvas.parentElement?.querySelector?.('.renewal-hero-health');
   const layout = {heroY: HEIGHT * .60, enemyY: HEIGHT * .34, heroHeight: .21, enemyHeight: .17, bossHeight: .185, spriteAspect: 1};
@@ -36,25 +41,32 @@ export function createAdventureScene(canvas, {
       try { image.src = url; } catch { settle(null); }
     });
   }
-  const ready = Promise.all([load(backgroundUrl), load(spritesUrl)]).then(([forest, characters]) => {
-    if (!dead) { background = forest; sprites = characters; spriteCrops = cropSprites(characters); }
+  const ready = Promise.all([load(backgroundUrl), load(chapterTwoBackgroundUrl), load(actionSpritesUrl), load(spritesUrl)]).then(([forest, rain, actions, legacy]) => {
+    if (!dead) {
+      background = forest; chapterTwoBackground = rain; sprites = actions || legacy;
+      actionSprites = Boolean(actions); spriteCrops = cropSprites(sprites, actionSprites);
+    }
   });
 
-  function cropSprites(image) {
+  function cropSprites(image, actions = false) {
     if (!image) return [];
     const cellWidth = image.naturalWidth / 4, imageHeight = image.naturalHeight;
-    const full = Array.from({length: 4}, (_, column) => ({x: column * cellWidth, y: 0, width: cellWidth, height: imageHeight}));
+    const full = actions ? Array.from({length: 16}, (_, index) => {
+      const row = Math.floor(index / 4), column = index % 4, sx = image.naturalWidth / actionGrid.size, sy = imageHeight / actionGrid.size;
+      return {x: actionGrid.x[column] * sx, y: actionGrid.y[row] * sy,
+        width: (actionGrid.x[column + 1] - actionGrid.x[column]) * sx, height: (actionGrid.y[row + 1] - actionGrid.y[row]) * sy};
+    }) : Array.from({length: 4}, (_, column) => ({x: column * cellWidth, y: 0, width: cellWidth, height: imageHeight}));
     // Inspect alpha once, never during animation. Cross-origin or unavailable
-    // pixel access safely falls back to the declared equal-width cells.
+    // pixel access safely falls back to the declared source cells.
     try {
-      const scratch = typeof globalThis.OffscreenCanvas === 'function' ? new OffscreenCanvas(Math.ceil(cellWidth), imageHeight) : globalThis.document?.createElement?.('canvas');
+      const scratch = typeof globalThis.OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1) : globalThis.document?.createElement?.('canvas');
       if (!scratch) return full;
-      scratch.width = Math.ceil(cellWidth); scratch.height = imageHeight;
       const reader = scratch.getContext('2d', {willReadFrequently: true});
       if (!reader?.getImageData) return full;
       return full.map(cell => {
+        scratch.width = Math.ceil(cell.width); scratch.height = Math.ceil(cell.height);
         reader.clearRect?.(0, 0, scratch.width, scratch.height);
-        reader.drawImage(image, cell.x, 0, cell.width, cell.height, 0, 0, scratch.width, scratch.height);
+        reader.drawImage(image, cell.x, cell.y, cell.width, cell.height, 0, 0, scratch.width, scratch.height);
         const {data} = reader.getImageData(0, 0, scratch.width, scratch.height);
         let left = scratch.width, right = -1, top = scratch.height, bottom = -1;
         for (let y = 0; y < scratch.height; y++) for (let x = 0; x < scratch.width; x++) {
@@ -62,8 +74,8 @@ export function createAdventureScene(canvas, {
           left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
         }
         if (right < left || bottom < top) return cell;
-        const ratio = cell.width / scratch.width;
-        return {x: cell.x + left * ratio, y: top, width: (right - left + 1) * ratio, height: bottom - top + 1};
+        const ratio = cell.width / scratch.width, ratioY = cell.height / scratch.height;
+        return {x: cell.x + left * ratio, y: cell.y + top * ratioY, width: (right - left + 1) * ratio, height: (bottom - top + 1) * ratioY};
       });
     } catch { return full; }
   }
@@ -90,8 +102,8 @@ export function createAdventureScene(canvas, {
   }
   function findActor(id) { return actorList().find(actor => actor.id === id); }
   function targetOf(event) { return event?.target ?? (event?.type === 'death' ? event.source : null); }
-  // seed is mutable RNG state, so encounter identity uses its stable stage/actor IDs.
-  function battleKey(value) { return value ? JSON.stringify([value.stage, (value.enemies || []).map(enemy => enemy.id)]) : ''; }
+  // Seed is mutable RNG state; encounter identity uses run/chapter/stage/actor IDs.
+  function battleKey(value) { return value ? JSON.stringify([value.runId, value.chapterId || 1, value.stage, (value.enemies || []).map(enemy => enemy.id)]) : ''; }
   function applyState(next, settled = false) {
     if (!next) return;
     const changed = battleKey(next) !== battleKey(state);
@@ -109,11 +121,12 @@ export function createAdventureScene(canvas, {
     applyState(next, !sequence);
   }
   function backdrop() {
-    if (background) {
-      const imageWidth = background.naturalWidth, imageHeight = background.naturalHeight;
+    const image = state?.chapterId === 2 ? chapterTwoBackground || background : background;
+    if (image) {
+      const imageWidth = image.naturalWidth, imageHeight = image.naturalHeight;
       const cropWidth = Math.min(imageWidth, imageHeight * WIDTH / HEIGHT);
       const cropHeight = Math.min(imageHeight, imageWidth * HEIGHT / WIDTH);
-      context.drawImage(background, (imageWidth - cropWidth) / 2, (imageHeight - cropHeight) / 2, cropWidth, cropHeight, 0, 0, WIDTH, HEIGHT);
+      context.drawImage(image, (imageWidth - cropWidth) / 2, (imageHeight - cropHeight) / 2, cropWidth, cropHeight, 0, 0, WIDTH, HEIGHT);
       return;
     }
     // A light, quiet fallback keeps texture errors independent from game rules.
@@ -134,7 +147,7 @@ export function createAdventureScene(canvas, {
     if (!event) return pose;
     const targetId = targetOf(event), isSource = actor.id === event.source, isTarget = actor.id === targetId;
     if (event.type === 'death' && isTarget) {
-      pose.alpha *= 1 - ease(progress);
+      pose.alpha *= reducedMotion && actionSprites ? 1 : 1 - ease(progress);
       if (!reducedMotion) { pose.y += 10 * ease(progress); pose.scale *= 1 - progress * .05; }
     }
     if (reducedMotion) return pose;
@@ -151,6 +164,15 @@ export function createAdventureScene(canvas, {
       pose.x += Math.sin(impact * Math.PI * 4) * (1 - impact) * 3;
     }
     return pose;
+  }
+  function actorFrame(actor, progress) {
+    if (!actionSprites || !active) return 0;
+    const event = active.event, target = targetOf(event);
+    if (event.type === 'death' && actor.id === target) return 3;
+    const damaging = ['attack', 'sword', 'flame'].includes(event.type) || event.type === 'hurt' && event.amount > 0;
+    if (actor.id === target && damaging && progress >= .42) return 2;
+    if (actor.id === event.source && (damaging || event.type === 'hurt')) return 1;
+    return 0;
   }
   function ward(x, y, height, alpha, expansion = 0, sparks = false) {
     const rx = height * (.35 + expansion * .06) * layout.spriteAspect;
@@ -170,28 +192,32 @@ export function createAdventureScene(canvas, {
   function drawActor(actor, progress, time) {
     const pose = actorPose(actor, progress, time);
     if (pose.alpha <= .003) return;
-    let height = HEIGHT * (actor.id === 'hero' ? layout.heroHeight : actor.kind === 'boss' || actor.kind === 'sentinel' ? layout.bossHeight : layout.enemyHeight) * pose.scale;
+    let baseHeight = HEIGHT * (actor.id === 'hero' ? layout.heroHeight : actor.kind === 'boss' || actor.kind === 'sentinel' ? layout.bossHeight : layout.enemyHeight) * pose.scale;
     const column = columns[actor.kind] ?? 1;
-    const crop = spriteCrops[column];
+    const crop = spriteCrops[actorFrame(actor, progress) * 4 + column], idle = spriteCrops[column];
     const sourceWidth = crop?.width || (sprites ? sprites.naturalWidth / 4 : 400);
     const sourceHeight = crop?.height || (sprites ? sprites.naturalHeight : 600);
+    const referenceHeight = idle?.height || sourceHeight;
+    let height = baseHeight * sourceHeight / referenceHeight;
     // Positions use a normalized battlefield, but artwork keeps its own aspect
     // after the viewport's independent horizontal and vertical transforms.
     let width = height * sourceWidth / sourceHeight * layout.spriteAspect;
     if (actor.id !== 'hero' && state.enemies.length >= 3) {
       // Keep complete weapons inside their target lane on narrow, tall screens.
-      const fit = Math.min(1, WIDTH / (state.enemies.length + 1) * .92 / width);
-      width *= fit; height *= fit;
+      const widestSource = actionSprites ? Math.max(...[0, 1, 2, 3].map(row => spriteCrops[row * 4 + column]?.width || sourceWidth)) : sourceWidth;
+      const maxWidth = baseHeight * widestSource / referenceHeight * layout.spriteAspect;
+      const fit = Math.min(1, WIDTH / (state.enemies.length + 1) * .92 / maxWidth);
+      width *= fit; height *= fit; baseHeight *= fit;
     }
     context.save(); context.globalAlpha = pose.alpha;
-    ellipse(pose.x, actor.y + height * .46, Math.max(19, width * .36), 6.5, '#173c2848');
+    ellipse(pose.x, actor.y + baseHeight * .46, Math.max(19, width * .36), 6.5, '#173c2848');
     if (actor.id === 'hero' && actor.shield > 0) {
       const breath = reducedMotion ? 0 : (Math.sin(time * 1.8) + 1) * .5;
-      ward(pose.x, pose.y, height, .21 + breath * .07, breath * .08);
+      ward(pose.x, pose.y, baseHeight, .21 + breath * .07, breath * .08);
     }
     if (sprites) {
       context.drawImage(sprites, crop?.x ?? column * sourceWidth, crop?.y ?? 0, sourceWidth, sourceHeight,
-        pose.x - width / 2, pose.y - height / 2, width, height);
+        pose.x - width / 2, pose.y + baseHeight / 2 - height, width, height);
     } else {
       const tint = actor.id === 'hero' ? '#f4eee0' : actor.kind === 'archer' ? '#4e7357' : '#8f5a44';
       polygon([[pose.x - 13, pose.y + 36], [pose.x - 10, pose.y - 15], [pose.x + 10, pose.y - 15], [pose.x + 17, pose.y + 36]], tint);
@@ -201,7 +227,7 @@ export function createAdventureScene(canvas, {
     context.restore();
     if (state?.targetId === actor.id && actor.hp > 0) {
       context.save(); context.globalAlpha = .72;
-      ellipse(actor.x, actor.y + height * .49, width * .46, 8, null, '#ffe7a1', 1.5); context.restore();
+      ellipse(actor.x, actor.y + baseHeight * .49, width * .46, 8, null, '#ffe7a1', 1.5); context.restore();
     }
   }
   function impact(x, y, progress, tint) {
@@ -263,6 +289,11 @@ export function createAdventureScene(canvas, {
     context.save();
     if (event.type === 'sword' && source && target) sword(source, target, progress);
     if (event.type === 'flame' && source && target) flame(source, target, progress);
+    if (event.type === 'charge' && (target || source)) {
+      const actor = target || source;
+      context.globalAlpha *= Math.sin(progress * Math.PI) * .45;
+      ellipse(actor.x, actor.y + 35, 25 + (reducedMotion ? 0 : ease(progress) * 8), 9, null, '#b9f5df', 1.5);
+    }
     if ((event.type === 'guard' || (event.type === 'hurt' && event.blocked > 0)) && target) {
       const pulse = Math.sin(progress * Math.PI);
       ward(target.x, target.y, HEIGHT * layout.heroHeight, pulse * .88, reducedMotion ? 0 : ease(progress), true);
@@ -296,11 +327,15 @@ export function createAdventureScene(canvas, {
     context.restore();
   }
   function readout(progress) {
-    if (!active || !['sword', 'flame', 'guard', 'attack', 'hurt', 'heal'].includes(active.event.type)) return;
+    if (!active || !['sword', 'flame', 'guard', 'attack', 'hurt', 'heal', 'charge', 'intent', 'phase'].includes(active.event.type)) return;
     const event = active.event, target = findActor(targetOf(event) || (event.type === 'heal' ? 'hero' : null));
     if (!target || progress < .27) return;
     const entries = [];
-    if (event.type === 'guard' && Number.isFinite(event.amount) && event.amount >= 0) {
+    if (event.type === 'charge') {
+      entries.push({label: event.text || `剑气 +${Math.max(0, Math.round(event.amount || 0))}${Number.isFinite(event.layers) ? ` · 共${Math.round(event.layers)}层` : ''}`, tint: '#c7ffe7', small: true});
+    } else if (event.type === 'intent' || event.type === 'phase') {
+      entries.push({label: event.text || (event.type === 'intent' ? '蓄力' : '第二阶段'), tint: event.type === 'phase' ? '#ffd89a' : '#ffe9bd', small: true});
+    } else if (event.type === 'guard' && Number.isFinite(event.amount) && event.amount >= 0) {
       entries.push({label: event.amount > 0 ? `护盾 +${Math.round(event.amount)}` : '护盾已满', tint: '#a8e6ff', small: true});
     } else if (Number.isFinite(event.amount) && event.amount > 0) {
       const tint = event.type === 'heal' ? '#d3ffd3' : event.type === 'flame' ? '#ffd195' : event.type === 'hurt' ? '#ffe0bd' : '#fff6cd';
@@ -316,10 +351,11 @@ export function createAdventureScene(canvas, {
     entries.forEach(({label, tint, small}, index) => {
       const textY = y - index * 34;
       context.font = small ? '700 20px system-ui, sans-serif' : '800 27px Georgia, serif';
-      const width = Math.max(43, context.measureText(label).width + 18);
-      context.fillStyle = '#153a2ede'; context.fillRect(target.x - width / 2, textY - 18, width, 33);
-      context.strokeStyle = '#203e2b'; context.lineWidth = 3; context.strokeText(label, target.x, textY);
-      context.fillStyle = tint; context.fillText(label, target.x, textY);
+      const width = Math.min(WIDTH - 20, Math.max(43, context.measureText(label).width + 18));
+      const x = Math.max(width / 2 + 5, Math.min(WIDTH - width / 2 - 5, target.x));
+      context.fillStyle = '#153a2ede'; context.fillRect(x - width / 2, textY - 18, width, 33);
+      context.strokeStyle = '#203e2b'; context.lineWidth = 3; context.strokeText(label, x, textY, width - 12);
+      context.fillStyle = tint; context.fillText(label, x, textY, width - 12);
     });
     context.restore();
   }
@@ -345,7 +381,8 @@ export function createAdventureScene(canvas, {
       sequence = null; active = null; running.resolve(); return;
     }
     const event = running.events[running.index];
-    const duration = reducedMotion ? Math.min(durations[event.type] || 220, 240) : durations[event.type] || 220;
+    const volley=event.type==='sword'&&(running.events[running.index-1]?.type==='sword'||running.events[running.index+1]?.type==='sword');
+    const duration = volley ? 80 : reducedMotion ? Math.min(durations[event.type] || 220, 240) : durations[event.type] || 220;
     const current = {event, time: clock(), duration, sequence: running};
     active = current;
     timer = setTimeout(() => finishEvent(current), duration);
@@ -410,7 +447,7 @@ export function createAdventureScene(canvas, {
       dead = true; cancelPlayback();
       if (raf && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(raf);
       for (const cancel of [...pendingImages]) cancel();
-      state = null; background = null; sprites = null; spriteCrops = []; completedDeaths.clear();
+      state = null; background = null; chapterTwoBackground = null; sprites = null; spriteCrops = []; completedDeaths.clear();
     },
   };
 }

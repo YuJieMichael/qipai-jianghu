@@ -1,8 +1,5 @@
-/**
- * Original six-fight chapter rules. No browser or reference-game dependencies.
- * Fresh games wait for act({type:'begin'}) so the controller can animate the
- * initial roll and its sword damage. Saving a pending initial game is valid.
- */
+/** Pure local combat. Verified static reference timing: roll → charge → attack → sword release. */
+import {createEncounter} from './chapters.mjs';
 export const SAVE_KEY = 'qipai-reference-chapter-v1';
 const STARTING_HP = 120;
 const STARTING_ATTACK = 14;
@@ -17,32 +14,28 @@ const MAX_SKILL_LEVEL = 20;
 const MAX_NUMBER = 1_000_000;
 const MAX_COUNTER = 1_000_000_000;
 const MAX_HISTORY = 40;
-const SKILL_NAMES = {sword:'剑气',flame:'烈火',guard:'护体'};
+const SKILL_NAMES = {sword:'剑影',flame:'烈火',guard:'护体'};
 const isSkill = kind => typeof kind === 'string' && Object.hasOwn(SKILL_NAMES,kind);
 const HAND_NAMES = ['散招','一对','两对','三条','顺子','葫芦','四条','五同'];
 // Local balance parameters; reference-game final damage was not runtime-verified.
 const HAND_MULTIPLIERS = [1,1.5,2,2.5,3,3.5,5,10];
-const FIRST_ENEMY = {id:'s0-e0',kind:'bandit',name:'拦路刀客',hp:30,maxHp:30,attack:7};
-const ENCOUNTERS = [
-  [['bandit','拦路刀客',30,7]],
-  [['bandit','林中刀客',38,8],['archer','青石弩手',24,5]],
-  [['sentinel','石阶守将',58,10],['bandit','护路刀客',28,6]],
-  [['archer','左翼弩手',34,8],['bandit','山道刀客',42,9],['archer','右翼弩手',34,8]],
-  [['sentinel','山门守将',80,12],['archer','山门弩手',40,8]],
-  [['boss','青岚试炼官',180,18],['bandit','试炼护卫',46,9]],
-];
-const encounter = stage => ENCOUNTERS[stage].map(([kind,name,hp,attack],index) => ({id:`s${stage}-e${index}`,kind,name,hp,maxHp:hp,attack}));
+export const EMPTY_LOADOUT = Object.freeze({attack:0,maxHp:0,armor:0,sword:0,flame:0,guard:0,weapon:'sword'});
+const encounter = (stage,chapterId=1) => createEncounter(chapterId,stage);
 
-export function newAdventure(seed = 1) {
+export function newAdventure(seed = 1, options = {}) {
+  const chapterId=options.chapterId===2?2:1;
+  const loadout=validLoadout(options.loadout)?structuredClone(options.loadout):{...EMPTY_LOADOUT};
+  const enemies=encounter(0,chapterId);
+  const hp=(chapterId===2?160:STARTING_HP)+loadout.maxHp;
   return {
-    version:1, seed:Number.isFinite(seed) ? Number(seed) >>> 0 : 1,
+    version:2, chapterId,runId:validRunId(options.runId)?options.runId:0,loadout,charges:0, seed:Number.isFinite(seed) ? Number(seed) >>> 0 : 1,
     phase:'battle', stage:0, round:1,
-    hero:{hp:STARTING_HP,maxHp:STARTING_HP,attack:STARTING_ATTACK,shield:0},
+    hero:{hp,maxHp:hp,attack:(chapterId===2?20:STARTING_ATTACK)+loadout.attack,shield:0},
     dice:Array.from({length:5}, (_, index) => ({
       id:`die-${index}`, unlocked:index === 0, faces:[1,2,3,4,5,6], value:0,
       skill:index === 0 ? 'sword' : null, level:index === 0 ? 1 : 0,
     })),
-    rerolls:REROLLS_PER_ROUND, enemies:[{...FIRST_ENEMY}], targetId:FIRST_ENEMY.id,
+    rerolls:REROLLS_PER_ROUND, enemies, targetId:enemies[0].id,
     choices:[], stats:{damage:0,kills:0,rerolls:0,rounds:0}, history:[],
   };
 }
@@ -58,7 +51,7 @@ const record = (value, keys) => {
 };
 
 /** Strict bounded data validation, rather than trusting objects from localStorage. */
-export function validateAdventure(value) {
+function validateLegacy(value) {
   try {
     if (!record(value,['version','seed','phase','stage','round','hero','dice','rerolls','enemies','targetId','choices','stats','history']) ||
       value.version !== 1 || !integer(value.seed,0,4294967295) ||
@@ -108,6 +101,38 @@ export function validateAdventure(value) {
   }
 }
 
+const validRunId=value=>value===0 || typeof value==='string' && /^run-[1-9][0-9]{0,9}$/.test(value) && Number(value.slice(4))<=MAX_COUNTER;
+const validLoadout=value=>record(value,['attack','maxHp','armor','sword','flame','guard','weapon']) &&
+ ['attack','maxHp','armor','sword','flame','guard'].every(key=>integer(value[key],0,1000)) && ['sword','staff','hammer'].includes(value.weapon);
+
+export function validateAdventure(value){
+ try {
+  if(value?.version===1)return validateLegacy(value);
+  if(!record(value,['version','chapterId','runId','loadout','charges','seed','phase','stage','round','hero','dice','rerolls','enemies','targetId','choices','stats','history']) ||
+   value.version!==2 || ![1,2].includes(value.chapterId) || !validRunId(value.runId) || !integer(value.charges,0,60) || !validLoadout(value.loadout))return false;
+  if(!arrayOf(value.enemies,1,4,()=>true))return false;
+  const enemies=value.enemies.map(e=>{
+   const keys=['id','kind','name','hp','maxHp','attack'];
+   if(e?.kind==='boss' && (Object.hasOwn(e,'intent') || Object.hasOwn(e,'phase'))){
+    if(!record(e,[...keys,'intent','phase'])||!['strike','charge','heavy'].includes(e.intent)||![1,2].includes(e.phase))throw Error('boss');
+   }else if(!record(e,keys))throw Error('enemy');
+   return Object.fromEntries(keys.map(k=>[k,e[k]]));
+  });
+  const legacy={...value,version:1,enemies};for(const k of ['chapterId','runId','loadout','charges'])delete legacy[k];
+  return validateLegacy(legacy);
+ }catch{return false;}
+}
+
+/** Upgrade data only: never roll, heal, consume a reward, or replay an old effect. */
+export function migrateAdventure(value){
+ if(!validateAdventure(value))return null;
+ if(value.version===2)return structuredClone(value);
+ const next={...structuredClone(value),version:2,chapterId:1,runId:0,loadout:{...EMPTY_LOADOUT},charges:0};
+ for(const e of next.enemies)if(e.kind==='boss'){e.intent='strike';e.phase=1;}
+ for(const c of next.choices){const fresh=rewardChoices(next.stage).find(v=>v.kind===c.kind);if(fresh)c.description=fresh.description;}
+ return next;
+}
+
 export function handOf(state) {
   const values = (state?.dice ?? []).filter(die => die.unlocked).map(die => die.value);
   let rank = 0;
@@ -122,7 +147,8 @@ export function handOf(state) {
     else if (counts[0] === 2 && counts[1] === 2) rank = 2;
     else if (counts[0] === 2) rank = 1;
   }
-  return {rank,name:HAND_NAMES[rank],multiplier:HAND_MULTIPLIERS[rank],damage:Math.round((state?.hero?.attack ?? 0) * HAND_MULTIPLIERS[rank])};
+  const points=values.reduce((n,v)=>n+(Number.isInteger(v)&&v>0?v:0),0);
+  return {rank,name:HAND_NAMES[rank],multiplier:HAND_MULTIPLIERS[rank],points,damage:Math.max(1,Math.round(((state?.hero?.attack ?? 0)+points) * HAND_MULTIPLIERS[rank]))};
 }
 
 const living = state => state.enemies.filter(enemy => enemy.hp > 0);
@@ -137,9 +163,9 @@ function emit(state, events, type, data = {}) {
 
 function rewardChoices(stage) {
   const choices = [
-    {id:`s${stage}-sword`,kind:'sword',name:'御剑诀',description:'选一颗骰绑定剑气；已有剑气则升一级，每次投掷立即出剑。',rarity:'rare'},
-    {id:`s${stage}-flame`,kind:'flame',name:'离火诀',description:'选一颗骰绑定烈火；同技升级，每次投掷灼击当前选中的敌人。不同骰技会被替换。',rarity:'rare'},
-    {id:`s${stage}-guard`,kind:'guard',name:'金钟诀',description:'选一颗骰绑定护体；同技升级，每次投掷积累护盾抵挡反击，上限60。不同骰技会被替换。',rarity:'uncommon'},
+    {id:`s${stage}-sword`,kind:'sword',name:'御剑诀',description:'选一颗骰绑定剑气；已有剑气则升一级，每消耗一次重掷，各剑影骰按等级蓄气；出招后逐层随机单体释放。',rarity:'rare'},
+    {id:`s${stage}-flame`,kind:'flame',name:'离火诀',description:'选一颗骰绑定烈火；同技升级，出招后追加灼击当前选中的敌人。不同骰技会被替换。',rarity:'rare'},
+    {id:`s${stage}-guard`,kind:'guard',name:'金钟诀',description:'选一颗骰绑定护体；同技升级，出招后获得护盾抵挡反击，上限60。不同骰技会被替换。',rarity:'uncommon'},
     {id:`s${stage}-face`,kind:'face',name:'六面归元',description:'选一颗骰，将它最小的一个物理骰面改为六。',rarity:'uncommon'},
     {id:`s${stage}-vitality`,kind:'vitality',name:'养元心法',description:'气血上限增加24，回复32点气血。',rarity:'common'},
   ];
@@ -153,12 +179,12 @@ function rewardChoices(stage) {
 }
 
 /** Shared truthful ability text for dice, target selection and reward previews. */
-export function skillDescription(die) {
+export function skillDescription(die, loadout = EMPTY_LOADOUT) {
   if (!die || !isSkill(die.skill)) return '无骰技';
   const prefix = `${SKILL_NAMES[die.skill]} ${die.level} 级`;
-  if (die.skill === 'sword') return `${prefix} · 全体 ${die.level*SWORD_DAMAGE} 伤害`;
-  if (die.skill === 'flame') return `${prefix} · 单体 ${die.level*FLAME_DAMAGE} 伤害`;
-  return `${prefix} · 护盾 +${die.level*GUARD_SHIELD}（上限${SHIELD_CAP}）`;
+  if (die.skill === 'sword') return `${prefix} · 重掷蓄气 +${die.level}`;
+  if (die.skill === 'flame') return `${prefix} · 攻击后单体 ${die.level*FLAME_DAMAGE+(loadout?.flame??0)} 伤害`;
+  return `${prefix} · 攻击后护盾 +${die.level*GUARD_SHIELD+(loadout?.guard??0)}（上限${SHIELD_CAP}）`;
 }
 
 function finishFight(state, events) {
@@ -197,18 +223,7 @@ function rollOne(state, index, events) {
   const die = state.dice[index];
   die.value = die.faces[Math.floor(state.seed / 4294967296 * 6)];
   emit(state, events, 'roll', {dieIndex:index,amount:die.value,text:`第${index + 1}骰 · ${die.value}`});
-  if (die.skill === 'sword') {
-    for (const target of living(state)) {
-      hitEnemy(state, target, die.level * SWORD_DAMAGE, 'sword', events, {dieIndex:index});
-    }
-  } else if (die.skill === 'flame') {
-    const target = living(state).find(enemy => enemy.id === state.targetId) ?? living(state)[0];
-    if (target) hitEnemy(state, target, die.level * FLAME_DAMAGE, 'flame', events, {dieIndex:index});
-  } else if (die.skill === 'guard') {
-    const amount = Math.min(die.level*GUARD_SHIELD, Math.max(0, SHIELD_CAP-state.hero.shield));
-    state.hero.shield += amount;
-    emit(state, events, 'guard', {target:'hero',dieIndex:index,amount,text:amount ? `护盾 +${amount}` : '护盾已满'});
-  }
+
 }
 
 function rollRound(state, events) {
@@ -235,8 +250,8 @@ export function rewardPreview(state, choiceId, index) {
   if (isSkill(choice.kind)) {
     if (die.skill === choice.kind && die.level >= MAX_SKILL_LEVEL) return null;
     const nextLevel = die.skill === choice.kind ? die.level + 1 : 1;
-    return {before:die.skill ? skillDescription(die) : choice.kind === 'sword' ? '无剑气' : '无骰技',
-      after:skillDescription({skill:choice.kind,level:nextLevel}) + (die.skill && die.skill !== choice.kind ? '（替换原骰技）' : '')};
+    return {before:die.skill ? skillDescription(die,state.loadout) : choice.kind === 'sword' ? '无剑气' : '无骰技',
+      after:skillDescription({skill:choice.kind,level:nextLevel},state.loadout) + (die.skill && die.skill !== choice.kind ? '（替换原骰技）' : '')};
   }
   if (choice.kind === 'face') {
     const faces = [...die.faces], minimum = Math.min(...faces);
@@ -250,9 +265,10 @@ export function rewardPreview(state, choiceId, index) {
 export function act(state, action) {
   const noop = () => ({state,events:[]});
   if (action && typeof action === 'object' && action.type === 'restart') {
-    return act(newAdventure(action.seed ?? state?.seed ?? 1), {type:'begin'});
+    return act(newAdventure(action.seed ?? state?.seed ?? 1,{chapterId:action.chapterId??state?.chapterId,runId:action.runId??0,loadout:action.loadout??state?.loadout}), {type:'begin'});
   }
   if (!validateAdventure(state) || !action || typeof action !== 'object') return noop();
+  if(state.version===1)state=migrateAdventure(state);
   if (action.type === 'choose') {
     const preview = rewardPreview(state, action.choiceId, action.index);
     if (!preview) return noop();
@@ -278,7 +294,14 @@ export function act(state, action) {
     next.round = 1;
     next.phase = 'battle';
     next.choices = [];
-    next.enemies = encounter(next.stage);
+    if(validLoadout(action.loadout)){
+      const old=next.loadout;next.loadout=structuredClone(action.loadout);
+      next.hero.attack=Math.max(1,next.hero.attack-old.attack+next.loadout.attack);
+      next.hero.maxHp=Math.max(1,next.hero.maxHp-old.maxHp+next.loadout.maxHp);
+      next.hero.hp=Math.min(next.hero.hp,next.hero.maxHp);
+    }
+    next.charges=0;
+    next.enemies = encounter(next.stage,next.chapterId);
     next.targetId = next.enemies[0].id;
     rollRound(next, events);
     return {state:next,events};
@@ -301,12 +324,43 @@ export function act(state, action) {
     const next = structuredClone(state), events = [];
     const target = living(next).find(enemy => enemy.id === next.targetId) ?? living(next)[0];
     if (!target) return noop();
-    hitEnemy(next, target, handOf(next).damage, 'attack', events);
+    const hand=handOf(next),charges=next.charges;next.charges=0;
+    const interrupted=new Set(living(next).filter(e=>e.kind==='boss'&&e.intent==='charge'&&hand.rank>=2).map(e=>e.id));
+    hitEnemy(next, target, hand.damage, 'attack', events);
+    for(let layer=0;layer<charges && next.phase==='battle';layer++){
+      const targets=living(next);if(!targets.length)break;
+      next.seed=(Math.imul(next.seed,1664525)+1013904223)>>>0;
+      hitEnemy(next,targets[Math.floor(next.seed/4294967296*targets.length)],SWORD_DAMAGE+next.loadout.sword,'sword',events);
+    }
+    for(const skill of ['flame','guard'])for(let i=0;i<next.dice.length&&next.phase==='battle';i++){
+      const die=next.dice[i];if(!die.unlocked||die.skill!==skill)continue;
+      if(die.skill==='flame'){
+        const enemy=living(next).find(e=>e.id===next.targetId)??living(next)[0];
+        if(enemy)hitEnemy(next,enemy,die.level*FLAME_DAMAGE+next.loadout.flame,'flame',events,{dieIndex:i});
+      }else if(die.skill==='guard'){
+        const amount=Math.min(die.level*GUARD_SHIELD+next.loadout.guard,Math.max(0,SHIELD_CAP-next.hero.shield));
+        next.hero.shield+=amount;emit(next,events,'guard',{target:'hero',dieIndex:i,amount,text:amount?`护盾 +${amount}`:'护盾已满'});
+      }
+    }
     if (next.phase !== 'battle') return {state:next,events};
     for (const enemy of living(next)) {
-      const blocked = Math.min(next.hero.shield, enemy.attack);
+      let incoming=enemy.attack;
+      if(enemy.kind==='boss'){
+        enemy.intent??='strike';enemy.phase??=1;
+        if(enemy.hp<=enemy.maxHp/2&&enemy.phase===1){enemy.phase=2;emit(next,events,'phase',{source:enemy.id,target:enemy.id,text:'破势 · 首领进入二阶段'});}
+        if(interrupted.has(enemy.id)){
+          enemy.intent='strike';emit(next,events,'intent',{source:enemy.id,target:enemy.id,text:`${hand.name} · 打断蓄力`});continue;
+        }
+        if(enemy.intent==='charge'){
+          enemy.intent='heavy';emit(next,events,'intent',{source:enemy.id,target:enemy.id,text:'蓄力完成 · 下回合重击'});continue;
+        }
+        incoming=enemy.attack*(enemy.intent==='heavy'?2:1)+(enemy.phase===2?4:0);
+        enemy.intent=enemy.intent==='heavy'?'strike':'charge';
+      }
+      incoming=Math.max(1,incoming-next.loadout.armor);
+      const blocked = Math.min(next.hero.shield, incoming);
       next.hero.shield -= blocked;
-      const amount = Math.min(next.hero.hp, enemy.attack - blocked);
+      const amount = Math.min(next.hero.hp, incoming - blocked);
       next.hero.hp -= amount;
       emit(next, events, 'hurt', {source:enemy.id,target:'hero',amount,blocked,text:amount ? `气血 -${amount}` : `格挡 ${blocked}`});
       if (next.hero.hp === 0) {
@@ -325,6 +379,9 @@ export function act(state, action) {
     next.rerolls--;
     next.stats.rerolls = Math.min(MAX_COUNTER,next.stats.rerolls+1);
     rollOne(next, action.index, events);
+    const gain=next.dice.filter(d=>d.unlocked&&d.skill==='sword').reduce((n,d)=>n+d.level,0);
+    const amount=Math.min(gain,60-next.charges);next.charges+=amount;
+    if(gain)emit(next,events,'charge',{target:'hero',amount,text:amount?`剑气 +${amount} · 已蓄${next.charges}层`:'剑气已满60层'});
     return {state:next,events};
   }
   return noop();

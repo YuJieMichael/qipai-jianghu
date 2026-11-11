@@ -8,14 +8,17 @@ function presentation(){return {ready:Promise.resolve(),update(){},async play(ev
 
 // Routing a real flame or guard decision through raw event names would drop their supported SFX.
 test('flame and guard model events play the supported burst and shield sounds at each snapshot',async t=>{
- for(const [skill,want] of [['flame',['dice','burst']],['guard',['dice','shield']]]){
+ for(const [skill,want] of [['flame',['dice','strike','burst','hurt','dice']],['guard',['dice','strike','shield','hurt','dice']]]){
   await t.test(skill,async()=>{
   const initial=reduce(newAdventure(1),{type:'begin'}).state;initial.dice[0].skill=skill;
   const sounds=[],views=[];
   const c=createAdventureController({initial,storage:memory(),scene:presentation(),audio:{setMuted(){},play:sound=>sounds.push(sound),destroy(){}},render:view=>views.push(structuredClone(view))});
   await c.ready;await c.act({type:'reroll',index:0});
+  assert.deepEqual(sounds,['dice'],'reroll has no flame or guard effect sound');
+  assert.equal(c.state.enemies[0].hp,30);assert.equal(c.state.hero.shield,0);
+  await c.act({type:'attack'});
   assert.deepEqual(sounds,want,`${skill} maps only its completed playback event to an existing audio cue`);
-  assert.ok(views.some(view=>skill==='guard'?view.hero.shield>0:view.enemies[0].hp<26), 'the sound accompanies a real model result');
+  assert.ok(views.some(view=>skill==='guard'?view.hero.shield>0:view.enemies[0].hp<30), 'the sound accompanies a real model result');
   c.destroy();
   });
  }
@@ -28,20 +31,20 @@ test('hurt sound distinguishes a full block from a partial block and unshielded 
   const sounds=[];
   const c=createAdventureController({initial,storage:memory(),scene:presentation(),audio:{setMuted(){},play:sound=>sounds.push(sound),destroy(){}}});
   await c.ready;await c.act({type:'attack'});
-  assert.deepEqual(sounds,['strike',want,'dice','sword']);
+  assert.deepEqual(sounds,['strike',want,'dice']);
   assert.equal(c.state.hero.hp,shield===7?120:shield===4?117:113);
   c.destroy();
  }
 });
 
-test('fresh entry automatically rolls once, records immediate sword damage and restores without rolling again',async()=>{
+test('fresh entry automatically rolls once without damage or charges and restores without rolling again',async()=>{
  const storage=memory(),scene=presentation(),views=[];
  const c=createAdventureController({storage,scene,seed:()=>1,render:(state,opts)=>views.push({state:structuredClone(state),busy:opts.busy})});
  await c.ready;
- assert.equal(c.state.dice[0].value,2);assert.equal(c.state.enemies[0].hp,26);assert.equal(c.busy,false);
+ assert.equal(c.state.dice[0].value,2);assert.equal(c.state.enemies[0].hp,30);assert.equal(c.state.stats.damage,0);assert.equal(c.state.charges,0);assert.equal(c.busy,false);
  const saved=storage.getItem(SAVE_KEY);assert.deepEqual(JSON.parse(saved),c.state);c.destroy();
  const restored=createAdventureController({storage,scene:presentation()});await restored.ready;
- assert.equal(storage.getItem(SAVE_KEY),saved);assert.equal(restored.state.enemies[0].hp,26);assert.equal(restored.state.seed,1015568748);
+ assert.equal(storage.getItem(SAVE_KEY),saved);assert.equal(restored.state.enemies[0].hp,30);assert.equal(restored.state.seed,1015568748);
  assert.ok(views.some(view=>view.busy));restored.destroy();
 });
 
@@ -66,10 +69,10 @@ test('pause prevents model actions and retains the exact pending dice on resume'
 test('corrupt save and unavailable browser storage still produce a playable first decision',async()=>{
  const storage=memory();storage.setItem(SAVE_KEY,'{"version":1,"hero":null}');let notice='';
  const c=createAdventureController({storage,scene:presentation(),seed:()=>1,render:(_state,opts)=>notice=opts.message});await c.ready;
- assert.equal(c.state.hero.hp,120);assert.equal(c.state.enemies[0].hp,26);assert.ok(notice.includes('存档'));c.destroy();
+ assert.equal(c.state.hero.hp,132);assert.equal(c.state.hero.maxHp,132);assert.equal(c.state.enemies[0].hp,30);assert.ok(notice.includes('存档'));c.destroy();
  const unavailable={getItem(){throw Error('disabled');},setItem(){throw Error('full');}};
  const other=createAdventureController({storage:unavailable,scene:presentation(),seed:()=>1});await other.ready;
- await other.act({type:'reroll',index:0});assert.equal(other.state.enemies[0].hp,22);other.destroy();
+ await other.act({type:'reroll',index:0});assert.equal(other.state.enemies[0].hp,30);assert.equal(other.state.charges,1);other.destroy();
 });
 
 test('destroy during playback ignores late snapshots and releases its scene',async()=>{
@@ -85,15 +88,15 @@ test('presentation failure exposes the already saved correct result and permits 
  const storage=memory(),scene=presentation();let message='';
  const c=createAdventureController({storage,scene,seed:()=>1,render:(_state,opts)=>message=opts.message});await c.ready;
  scene.play=async()=>{throw Error('canvas unavailable');};await c.act({type:'reroll',index:0});
- assert.equal(c.state.enemies[0].hp,22);assert.equal(c.busy,false);assert.deepEqual(JSON.parse(storage.getItem(SAVE_KEY)),c.state);assert.ok(message);
- scene.play=presentation().play;await c.act({type:'reroll',index:0});assert.equal(c.state.enemies[0].hp,18);c.destroy();
+ assert.equal(c.state.enemies[0].hp,30);assert.equal(c.state.charges,1);assert.equal(c.busy,false);assert.deepEqual(JSON.parse(storage.getItem(SAVE_KEY)),c.state);assert.ok(message);
+ scene.play=presentation().play;await c.act({type:'reroll',index:0});assert.equal(c.state.enemies[0].hp,30);assert.equal(c.state.charges,2);c.destroy();
 });
 
 test('a stalled texture request cannot keep the playable fallback and settings locked indefinitely',async()=>{
  const scene=presentation();scene.ready=new Promise(()=>{});
  const c=createAdventureController({storage:memory(),scene,seed:()=>1});
  await Promise.race([c.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('texture readiness never released input')),5500))]);
- assert.equal(c.busy,false);assert.equal(c.state.enemies[0].hp,26);
+ assert.equal(c.busy,false);assert.equal(c.state.enemies[0].hp,30);
  await c.act({type:'pause'});assert.equal(c.paused,true);await c.act({type:'resume'});
- await c.act({type:'reroll',index:0});assert.equal(c.state.enemies[0].hp,22);c.destroy();
+ await c.act({type:'reroll',index:0});assert.equal(c.state.enemies[0].hp,30);assert.equal(c.state.charges,1);c.destroy();
 });

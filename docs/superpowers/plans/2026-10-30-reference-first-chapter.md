@@ -1,3 +1,5 @@
+> 历史方案：其中“重掷立即伤敌”和“剑气全体”已经静态调用链核查证伪，由 [双章纠正方案](../specs/2026-10-30-campaign-expansion.md) 取代；保留此文供追溯，不能用作当前规则依据。
+
 # 青岚试炼 Implementation Plan
 
 > **For agentic workers:** Use subagent-driven-development. Tasks use explicit file ownership; root integrates, reviews, commits and publishes.

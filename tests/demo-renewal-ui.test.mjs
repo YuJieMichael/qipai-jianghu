@@ -80,9 +80,11 @@ function withUI(run) {
   try { run({ui,root,doc,actions,find,click}); } finally {ui.destroy();}
 }
 
-test('five stable die buttons immediately reroll one unlocked die and preserve focused DOM/canvas during snapshots', () => withUI(({ui,root,doc,actions,find,click}) => {
+test('five stable die buttons reroll one unlocked die and preserve focused DOM/canvas during snapshots', () => withUI(({ui,root,doc,actions,find,click}) => {
   const state=fixture();ui.render(state);
   assert.equal(root.querySelectorAll('[data-die-index]').length,5);
+  assert.doesNotMatch(root.querySelector('.renewal-dice-hint').textContent,/立即触发/);
+  assert.match(root.querySelector('.renewal-dice-hint').textContent,/重掷.*蓄气/);
   assert.equal(find('reroll',0).disabled,false);assert.equal(find('reroll',1).disabled,true);
   const canvas=ui.canvas,die=find('reroll',0);die.focus();click('reroll',0);click('reroll',1);
   assert.deepEqual(actions,[{type:'reroll',index:0}]);
@@ -148,7 +150,7 @@ test('opening a decision dialog moves focus inside and its keyboard boundary kee
   ui.render(fixture());const die=find('reroll',0);die.focus();ui.render(fixture('reward'));
   assert.ok(doc.activeElement===find('pick-choice','s0-sword'),'dialog initially focuses its first reward');
   const first=find('pick-choice','s0-sword');root.dispatchEvent({type:'keydown',key:'Tab',shiftKey:true});
-  assert.ok(doc.activeElement===find('pick-choice','s0-vitality'),'Shift+Tab wraps to the final enabled choice');
+  assert.ok(doc.activeElement===find('reward-inventory'),'Shift+Tab wraps to the enabled loot inventory control');
   root.dispatchEvent({type:'keydown',key:'Tab'});assert.ok(doc.activeElement===first,'Tab wraps to the first enabled choice');
   ui.render(fixture());assert.ok(doc.activeElement===die,'closing the decision restores an available world control');
 }));
@@ -159,9 +161,9 @@ test('battle dice expose each equipped skill and its effect without hiding the c
   Object.assign(state.dice[2],{unlocked:true,value:5,skill:'guard',level:3});
   ui.render(state);
   const expected=[
-    {skill:'sword',name:'剑气',description:'剑气 1 级 · 全体 4 伤害',effect:/全体\s*4\s*伤害/},
-    {skill:'flame',name:'烈火',description:'烈火 2 级 · 单体 14 伤害',effect:/单体\s*14\s*伤害/},
-    {skill:'guard',name:'护体',description:'护体 3 级 · 护盾 +18（上限60）',effect:/护盾\s*\+18/},
+    {skill:'sword',name:'剑影',description:'剑影 1 级 · 重掷蓄气 +1',effect:/重掷蓄气\s*\+1/},
+    {skill:'flame',name:'烈火',description:'烈火 2 级 · 攻击后单体 14 伤害',effect:/单体\s*14\s*伤害/},
+    {skill:'guard',name:'护体',description:'护体 3 级 · 攻击后护盾 +18（上限60）',effect:/护盾\s*\+18/},
   ];
   expected.forEach(({skill,name,description,effect},index)=>{
     const die=find('reroll',index);
@@ -184,9 +186,9 @@ test('flame and guard reward cards require a target and describe replacing its r
   Object.assign(state.dice[1],{value:4,skill:'flame',level:2});
   Object.assign(state.dice[2],{unlocked:true,value:5,skill:'guard',level:3});
   state.choices=[
-    {id:'s1-sword',kind:'sword',name:'御剑诀',description:'修炼剑气，投掷时伤害全体敌人。',rarity:'rare'},
-    {id:'s1-flame',kind:'flame',name:'烈火诀',description:'修炼烈火，投掷时伤害当前目标。',rarity:'rare'},
-    {id:'s1-guard',kind:'guard',name:'护体诀',description:'修炼护体，投掷时获得护盾，上限60。',rarity:'rare'},
+    {id:'s1-sword',kind:'sword',name:'御剑诀',description:'修炼剑影，重掷蓄气，攻击后逐层单体出剑。',rarity:'rare'},
+    {id:'s1-flame',kind:'flame',name:'烈火诀',description:'修炼烈火，攻击后伤害当前目标。',rarity:'rare'},
+    {id:'s1-guard',kind:'guard',name:'护体诀',description:'修炼护体，攻击后获得护盾，上限60。',rarity:'rare'},
   ];
   const before=structuredClone(state);ui.render(state);
   const glyphs=state.choices.map(choice=>find('pick-choice',choice.id).querySelector('.renewal-reward-glyph').textContent);
@@ -194,7 +196,7 @@ test('flame and guard reward cards require a target and describe replacing its r
   for(const choice of state.choices)assert.match(find('pick-choice',choice.id).querySelector('.renewal-reward-kind').textContent,/骰技/);
   click('pick-choice','s1-flame');assert.equal(find('confirm-choice').disabled,true);
   for(const [index,description] of [
-    [0,'剑气 1 级 · 全体 4 伤害'],[1,'烈火 2 级 · 单体 14 伤害'],[2,'护体 3 级 · 护盾 +18（上限60）'],
+    [0,'剑影 1 级 · 重掷蓄气 +1'],[1,'烈火 2 级 · 攻击后单体 14 伤害'],[2,'护体 3 级 · 攻击后护盾 +18（上限60）'],
   ]){
     const target=find('pick-die',index);
     assert.ok(target.getAttribute('aria-label').includes(description));assert.equal(target.title,description);
@@ -202,7 +204,7 @@ test('flame and guard reward cards require a target and describe replacing its r
   }
   click('pick-die',3);assert.equal(find('confirm-choice').disabled,true,'a locked die cannot receive a skill');
   click('pick-die',0);assert.equal(find('confirm-choice').disabled,false);
-  assert.match(find('reward-preview').textContent,/剑气.*→.*烈火.*替换原骰技/);
+  assert.match(find('reward-preview').textContent,/剑影.*→.*烈火.*替换原骰技/);
   click('pick-choice','s1-guard');assert.equal(find('confirm-choice').disabled,true,'switching skill cards clears the target');
   click('pick-die',1);assert.match(find('reward-preview').textContent,/烈火.*→.*护体.*替换原骰技/);
   assert.deepEqual(state,before);click('confirm-choice');

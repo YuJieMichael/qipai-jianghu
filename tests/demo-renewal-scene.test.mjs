@@ -54,7 +54,7 @@ function harness(t) {
       assert.equal(typeof sceneModule.createAdventureScene, 'function', 'portrait adventure scene factory exists');
       const scene = sceneModule.createAdventureScene({width: 0, height: 0, getContext: () => context,
         getBoundingClientRect: () => ({width, height, top: 0}),
-        parentElement: heroHealthTop === undefined ? null : {querySelector: selector => selector === '.renewal-hero-health' ? {getBoundingClientRect: () => ({top: heroHealthTop})} : null}}, {backgroundUrl: 'forest.png', spritesUrl: 'characters.png'});
+        parentElement: heroHealthTop === undefined ? null : {querySelector: selector => selector === '.renewal-hero-health' ? {getBoundingClientRect: () => ({top: heroHealthTop})} : null}}, {backgroundUrl: 'forest.png', spritesUrl: 'characters.png', actionSpritesUrl: null, chapterTwoBackgroundUrl: null});
       scenes.push(scene); return scene;
     },
     load(failed = false) {
@@ -380,4 +380,13 @@ test('enemy centers reserve health-card space in both normal and compact portrai
   const compact = h.create({height: 615, heroHealthTop: 363}); h.load(); await compact.ready; compact.update(state(), {reducedMotion: true}); h.frame();
   const shortEnemy = spriteCalls(h).find(call => call.args[1] === 400);
   assert.ok(Math.abs((shortEnemy.args[6] + shortEnemy.args[8] / 2) / 844 - .29) < .001);
+});
+
+// A large sword stack should read as a quick volley, not lock input for 12 seconds.
+test('layered sword release is a bounded volley while delivering every saved snapshot',async t=>{
+ const h=harness(t),scene=h.create();h.load();await scene.ready;scene.update(state());
+ const seen=[],events=Array.from({length:40},()=>({type:'sword',source:'hero',target:'a',amount:4,snapshot:state()}));
+ const playing=scene.play(events,{onFrame:s=>seen.push(s)});let elapsed=0;
+ for(let i=0;i<40;i++){elapsed+=[...h.timers.values()][0].delay;await h.complete();}
+ await playing;assert.equal(seen.length,40);assert.ok(elapsed<5000,'all layers release within five seconds');
 });

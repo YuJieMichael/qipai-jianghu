@@ -1,7 +1,7 @@
 import {handOf, rewardPreview, skillDescription} from './model.mjs';
+import {chapterOf,enemyIntent} from './chapters.mjs';
 
 const NUMERALS = ['壹', '贰', '叁', '肆', '伍'];
-const CHAPTERS = ['青岚山径', '竹影初深', '林间伏击', '石阶问剑', '山门试锋', '青岚守关'];
 const PIPS = {0:[], 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
 const SKILL_KINDS = ['sword', 'flame', 'guard'];
 const CHOICE_GLYPHS = {sword:'剑', flame:'炎', guard:'盾', face:'六', vitality:'元'};
@@ -53,16 +53,16 @@ export function createAdventureUI(root, onAction) {
     caption.append(skillName,skillEffect);return {caption,skillName,skillEffect};
   }
   function renderDieSkill(item, die, unlocked, lockedText) {
-    const description=unlocked?skillDescription(die):'未解锁';
+    const description=unlocked?skillDescription(die,state?.loadout):'未解锁';
     const [name,effect='']=description.split(' · ');
     for(const skill of SKILL_KINDS)item.die.classList.toggle(`has-${skill}`,unlocked&&die.skill===skill);
     text(item.skillName,unlocked?name:lockedText);
-    text(item.skillEffect,effect.replaceAll(' ','').replace('（上限60）','·限60'));
+    text(item.skillEffect,effect.replaceAll(' ','').replace('攻击后','').replace('（上限60）','·限60'));
     item.skillEffect.hidden=!unlocked||!effect;item.die.title=description;
     return description;
   }
   function resetSelection() { selection = {choiceId:null,index:null}; submitted = false; }
-  function canPlay() { return !!state && state.phase === 'battle' && !options.busy && !options.paused; }
+  function canPlay() { return !!state && state.phase === 'battle' && !options.busy && !options.paused && !options.campaignOpen; }
   function chosen() { return state?.choices.find(choice=>choice.id===selection.choiceId) ?? null; }
   function isValidDie(index) { return Number.isInteger(index) && !!state?.dice[index]?.unlocked; }
   function chosenPreview() {
@@ -83,19 +83,20 @@ export function createAdventureUI(root, onAction) {
   const title = node('h1','','青岚试炼'), stageName = node('span','renewal-stage-name'); chapterText.append(title,stageName); chapter.append(chapterSeal,chapterText);
   const headerEnd = node('div','renewal-header-end'), round = node('span','renewal-round');
   const settings = button('renewal-icon-button','settings','Ⅱ'); settings.setAttribute('aria-label','暂停与设置'); settings.title='暂停与设置';
-  headerEnd.append(round,settings);header.append(chapter,headerEnd);
+  const inventory=button('renewal-icon-button renewal-bag-button','inventory','囊');inventory.setAttribute('aria-label','装备与章节');
+  headerEnd.append(round,inventory,settings);header.append(chapter,headerEnd);
   const progress = node('div','renewal-progress');progress.setAttribute('aria-label','试炼进度');
   const progressDots = Array.from({length:6},(_,i)=>{const dot=node('span','renewal-progress-step',String(i+1));progress.appendChild(dot);return dot;});
   const targets = node('div','renewal-targets');targets.setAttribute('aria-label','选择攻击目标');
   const hero = health('renewal-hero-health');
   const heroLabel = node('div','renewal-hero-label'), heroTitle = node('strong','','青衣侠客'), heroNumbers = node('span','renewal-hp-numbers');
   heroLabel.append(heroTitle,heroNumbers);hero.box.appendChild(heroLabel);
-  const shield = node('span','renewal-shield');hero.box.appendChild(shield);
+  const shield = node('span','renewal-shield'),charge=node('span','renewal-charge');hero.box.append(shield,charge);
   const message = node('p','renewal-message');message.setAttribute('role','status');message.setAttribute('aria-live','polite');
 
   const controls = node('section','renewal-controls');controls.setAttribute('aria-label','骰子与出招');
   const diceHeading = node('div','renewal-dice-heading');
-  const diceHint = node('span','renewal-dice-hint','点击单骰重掷 · 立即触发骰技'), rerolls = node('strong','renewal-rerolls');
+  const diceHint = node('span','renewal-dice-hint','点击单骰重掷蓄气 · 出招后释放'), rerolls = node('strong','renewal-rerolls');
   diceHeading.append(diceHint,rerolls);
   const diceTray = node('div','renewal-dice-tray');
   const diceNodes = Array.from({length:5},(_,index)=>{
@@ -107,7 +108,7 @@ export function createAdventureUI(root, onAction) {
   });
   const actionRow = node('div','renewal-action-row'), hand = node('div','renewal-hand');
   const handTop = node('div','renewal-hand-top'), handName=node('strong','renewal-hand-name'), multiplier=node('span','renewal-multiplier');handTop.append(handName,multiplier);
-  const damageLine=node('div','renewal-damage-line'),damageLabel=node('span','','出招伤害'),damage=node('strong','renewal-damage');damageLine.append(damageLabel,damage);hand.append(handTop,damageLine);
+  const damageLine=node('div','renewal-damage-line'),damageLabel=node('span','','普攻伤害'),damage=node('strong','renewal-damage');damageLine.append(damageLabel,damage);const formula=node('small','renewal-formula');hand.append(handTop,damageLine,formula);
   const attack = button('renewal-attack','attack');const attackIcon=node('span','renewal-attack-icon','剑'),attackText=node('span','renewal-attack-copy');
   const attackTitle=node('strong','','出 招'),attackCaption=node('small','','攻击选中目标');attackText.append(attackTitle,attackCaption);attack.append(attackIcon,attackText);actionRow.append(hand,attack);
   controls.append(diceHeading,diceTray,actionRow);
@@ -116,7 +117,7 @@ export function createAdventureUI(root, onAction) {
   const rewardPanel=node('section','renewal-reward-panel');rewardPanel.setAttribute('role','dialog');rewardPanel.setAttribute('aria-modal','true');rewardPanel.setAttribute('aria-labelledby','renewal-reward-title');
   const rewardHeader=node('header','renewal-reward-header');const rewardEyebrow=node('span','renewal-eyebrow','战胜 · 得悟');
   const rewardTitle=node('h2','','择一修炼');rewardTitle.id='renewal-reward-title';const rewardSubtitle=node('p','renewal-reward-subtitle','选一项成长，带着新招继续上山');
-  rewardHeader.append(rewardEyebrow,rewardTitle,rewardSubtitle);
+  const rewardLoot=node('p','renewal-reward-loot');rewardLoot.setAttribute('role','status');const rewardBag=button('renewal-text-button','reward-inventory','行囊 · 查看战利品');rewardHeader.append(rewardEyebrow,rewardTitle,rewardSubtitle,rewardLoot);
   const rewardCards=node('div','renewal-reward-cards');
   const rewardTarget=node('section','renewal-reward-target');rewardTarget.setAttribute('aria-label','选择成长目标骰');
   const targetTitle=node('strong','renewal-target-title','选择一颗骰子'),rewardDice=node('div','renewal-reward-dice');
@@ -127,17 +128,18 @@ export function createAdventureUI(root, onAction) {
   });rewardTarget.append(targetTitle,rewardDice);
   const rewardPreviewNode=node('p','renewal-reward-preview');rewardPreviewNode.setAttribute('data-action','reward-preview');rewardPreviewNode.setAttribute('aria-live','polite');
   const rewardActions=node('div','renewal-dialog-actions'),cancel=button('renewal-secondary-button','cancel-choice','返回重选'),confirm=button('renewal-primary-button','confirm-choice','确认 · 继续上山');rewardActions.append(cancel,confirm);
-  rewardPanel.append(rewardHeader,rewardCards,rewardTarget,rewardPreviewNode,rewardActions);rewardOverlay.appendChild(rewardPanel);
+  rewardPanel.append(rewardHeader,rewardCards,rewardTarget,rewardPreviewNode,rewardBag,rewardActions);rewardOverlay.appendChild(rewardPanel);
 
   const settingsOverlay=node('div','renewal-overlay renewal-settings-overlay'),settingsPanel=node('section','renewal-settings-panel');
   settingsPanel.setAttribute('role','dialog');settingsPanel.setAttribute('aria-modal','true');settingsPanel.setAttribute('aria-labelledby','renewal-settings-title');
   const settingsEyebrow=node('span','renewal-eyebrow','山风稍歇'),settingsTitle=node('h2','','稍作歇息');settingsTitle.id='renewal-settings-title';
   const mute=button('renewal-setting-button','mute'),motion=button('renewal-setting-button','motion'),resume=button('renewal-primary-button','resume','继续试炼'),restart=button('renewal-secondary-button','restart','重新出发'),workshop=button('renewal-text-button','workshop','前往江湖工坊 ↗');
-  settingsPanel.append(settingsEyebrow,settingsTitle,mute,motion,resume,restart,workshop);settingsOverlay.appendChild(settingsPanel);
+  const rules=node('p','renewal-rules','自动初掷 → 点击单骰重掷蓄气 → 出招普攻 → 剑气逐层随机单体释放 → 烈火/护体 → 敌人反击。普攻=(基础攻击+骰点)×牌型。烈火与护体为本作规则。');
+  const chapterButton=button('renewal-secondary-button','chapters','行囊与章节');settingsPanel.append(settingsEyebrow,settingsTitle,rules,mute,motion,resume,chapterButton,restart,workshop);settingsOverlay.appendChild(settingsPanel);
 
   const resultOverlay=node('div','renewal-overlay renewal-result-overlay'),resultPanel=node('section','renewal-result-panel');resultPanel.setAttribute('role','dialog');resultPanel.setAttribute('aria-modal','true');resultPanel.setAttribute('aria-labelledby','renewal-result-title');
   const resultSeal=node('div','renewal-result-seal'),resultTitle=node('h2','');resultTitle.id='renewal-result-title';const resultText=node('p','renewal-result-text'),resultStats=node('div','renewal-result-stats'),resultRestart=button('renewal-primary-button','restart','再闯青岚'),resultWorkshop=button('renewal-text-button','workshop','前往江湖工坊 ↗');
-  resultPanel.append(resultSeal,resultTitle,resultText,resultStats,resultRestart,resultWorkshop);resultOverlay.appendChild(resultPanel);
+  const resultChapters=button('renewal-secondary-button','chapters','查看掉落 · 选择章节');resultPanel.append(resultSeal,resultTitle,resultText,resultStats,resultChapters,resultRestart,resultWorkshop);resultOverlay.appendChild(resultPanel);
   shell.append(canvas,worldShade,header,progress,targets,hero.box,message,controls,rewardOverlay,resultOverlay,settingsOverlay);
   root.classList.add('renewal-root');root.replaceChildren(shell);
 
@@ -148,11 +150,12 @@ export function createAdventureUI(root, onAction) {
       let item=enemyNodes.get(enemy.id);
       if(!item){
         const target=button('renewal-enemy-target','target',undefined,enemy.id);target.setAttribute('data-enemy-id',enemy.id);
-        const pointer=node('span','renewal-target-pointer','▼'),name=node('strong','renewal-enemy-name'),hp=health('renewal-enemy-health'),numbers=node('span','renewal-enemy-numbers');
-        target.append(pointer,name,hp.box,numbers);targets.appendChild(target);item={button:target,pointer,name,fill:hp.fill,numbers};enemyNodes.set(enemy.id,item);
+        const pointer=node('span','renewal-target-pointer','▼'),name=node('strong','renewal-enemy-name'),hp=health('renewal-enemy-health'),numbers=node('span','renewal-enemy-numbers'),intent=node('small','renewal-enemy-intent');
+        target.append(pointer,name,hp.box,numbers,intent);targets.appendChild(target);item={button:target,pointer,name,fill:hp.fill,numbers,intent};enemyNodes.set(enemy.id,item);
       }
       const x=state.enemies.length===1?.5:state.enemies.length===2?[.28,.72][index]:(index+1)/(state.enemies.length+1);
       item.button.style.left=`${x*100}%`;
+      text(item.intent,enemyIntent(enemy));item.button.classList.toggle('is-charging',enemy.kind==='boss'&&enemy.intent!=='strike');
       text(item.name,enemy.name);text(item.numbers,`${Math.max(0,enemy.hp)} / ${enemy.maxHp}`);updateHealth(item.fill,enemy.hp,enemy.maxHp);
       const selected=enemy.id===state.targetId&&enemy.hp>0;setPressed(item.button,selected);item.pointer.hidden=!selected;
       item.button.disabled=!canPlay()||enemy.hp<=0;item.button.hidden=enemy.hp<=0;
@@ -160,10 +163,11 @@ export function createAdventureUI(root, onAction) {
     });
   }
   function renderRewards() {
-    rewardOverlay.hidden=state.phase!=='reward';
+    rewardOverlay.hidden=state.phase!=='reward'||!!options.campaignOpen;
     if(state.phase!=='reward')return;
     const ids=new Set(state.choices.map(choice=>choice.id));
     for(const[id,item]of choiceNodes)if(!ids.has(id)){item.button.remove();choiceNodes.delete(id);}
+    text(rewardLoot,options.message);rewardLoot.hidden=!options.message;rewardBag.disabled=!!options.busy;
     const selected=chosen();
     state.choices.forEach(choice=>{
       let item=choiceNodes.get(choice.id);
@@ -199,7 +203,7 @@ export function createAdventureUI(root, onAction) {
     });
   }
   function syncDialogFocus() {
-    const next=options.paused?settingsOverlay:state.phase==='reward'?rewardOverlay:['won','lost'].includes(state.phase)?resultOverlay:null;
+    const next=options.campaignOpen?null:options.paused?settingsOverlay:state.phase==='reward'?rewardOverlay:['won','lost'].includes(state.phase)?resultOverlay:null;
     if(next!==activeModal){
       if(!activeModal&&next)restoreFocus=root.contains(document.activeElement)?document.activeElement:null;
       activeModal=next;dialogFocusPending=!!next;
@@ -216,10 +220,12 @@ export function createAdventureUI(root, onAction) {
     if(key!==rewardKey){rewardKey=key;resetSelection();}
     shell.classList.toggle('is-busy',!!options.busy);shell.classList.toggle('is-reduced-motion',!!options.reducedMotion);
     shell.classList.toggle('is-paused',!!options.paused);shell.setAttribute('data-phase',state.phase);
-    text(stageName,`${CHAPTERS[state.stage]??'青岚山径'} · ${String(state.stage+1).padStart(2,'0')}/06`);text(round,`第 ${state.round} 回合`);
+    const currentChapter=chapterOf(state.chapterId);text(title,currentChapter.name);text(chapterSeal,currentChapter.seal);shell.setAttribute('data-chapter',currentChapter.id);
+    text(stageName,`${currentChapter.stages[state.stage]??'青岚山径'} · ${String(state.stage+1).padStart(2,'0')}/06`);text(round,`第 ${state.round} 回合`);
     progressDots.forEach((dot,index)=>{dot.classList.toggle('is-complete',index<state.stage);dot.classList.toggle('is-current',index===state.stage);dot.setAttribute('aria-current',index===state.stage?'step':'false');});
-    text(heroNumbers,`${Math.max(0,state.hero.hp)} / ${state.hero.maxHp}`);updateHealth(hero.fill,state.hero.hp,state.hero.maxHp);text(shield,`护盾 ${state.hero.shield}`);shield.hidden=!state.hero.shield;
-    text(message,options.message||(options.busy?'剑意流转…':state.phase==='battle'&&state.round===1&&state.stage===0?'点击骰子，试试御剑之术':''));message.hidden=!message.textContent;
+    text(heroNumbers,`${Math.max(0,state.hero.hp)} / ${state.hero.maxHp}`);updateHealth(hero.fill,state.hero.hp,state.hero.maxHp);text(shield,`护盾 ${state.hero.shield}`);shield.hidden=!state.hero.shield;text(charge,`剑气 ${state.charges??0}层`);charge.title='每层攻击后随机单体4伤害（装备可加成），上限60层';
+    shell.inert=!!options.campaignOpen;inventory.disabled=!!options.busy;
+    text(message,options.message||(options.busy?'剑意流转…':state.phase==='battle'&&state.round===1&&state.stage===0?'重掷蓄剑气，出招后释放':''));message.hidden=!message.textContent;
     text(rerolls,`重掷 ${state.rerolls}`);rerolls.classList.toggle('is-empty',state.rerolls===0);
     diceNodes.forEach((item,index)=>{
       const die=state.dice[index],unlocked=!!die?.unlocked;item.die.disabled=!canPlay()||!unlocked||state.rerolls<=0;
@@ -227,13 +233,14 @@ export function createAdventureUI(root, onAction) {
       showFace(item.pips,unlocked?die.value:0);const description=renderDieSkill(item,die,unlocked,`第${index}战后解锁`);
       item.die.setAttribute('aria-label',unlocked?`第${index+1}骰，${die.value}点，${description}，点击立即重掷`:`第${index+1}骰，未解锁`);
     });
-    const result=handOf(state);text(handName,result.name);text(multiplier,`×${result.multiplier}`);text(damage,result.damage);
-    attack.disabled=!canPlay();text(attackCaption,options.busy?'招式演出中':'攻击选中目标');
+    const result=handOf(state);text(handName,result.name);text(multiplier,`×${result.multiplier}`);text(damage,result.damage);text(formula,`(${state.hero.attack}+骰点${result.points}) × ${result.multiplier}`);
+    attack.disabled=!canPlay();text(attackCaption,options.busy?'招式演出中':`普攻 + ${state.charges??0}层剑气`);
     renderEnemies();renderRewards();
-    settingsOverlay.hidden=!options.paused;text(mute,`音效${options.muted?'已关闭':'已开启'}　${options.muted?'○':'♪'}`);mute.setAttribute('aria-pressed',String(options.muted));text(motion,`减少动态${options.reducedMotion?'已开启':'已关闭'}　${options.reducedMotion?'●':'○'}`);motion.setAttribute('aria-pressed',String(options.reducedMotion));
-    const finished=state.phase==='won'||state.phase==='lost';resultOverlay.hidden=!finished;
-    if(finished){const won=state.phase==='won';text(resultSeal,won?'胜':'侠');text(resultTitle,won?'青岚试炼 · 通关':'胜败乃江湖常事');text(resultText,won?'六战登顶，剑意已成。':'收剑养息，再试一程。');text(resultStats,`${Math.min(6,state.stage+(won?1:0))} / 6 场　·　总伤害 ${state.stats.damage}　·　重掷 ${state.stats.rerolls} 次`);}
-    controls.setAttribute('aria-hidden',String(state.phase!=='battle'||options.paused));
+    settingsOverlay.hidden=!options.paused||!!options.campaignOpen;text(mute,`音效${options.muted?'已关闭':'已开启'}　${options.muted?'○':'♪'}`);mute.setAttribute('aria-pressed',String(options.muted));text(motion,`减少动态${options.reducedMotion?'已开启':'已关闭'}　${options.reducedMotion?'●':'○'}`);motion.setAttribute('aria-pressed',String(options.reducedMotion));
+    const finished=state.phase==='won'||state.phase==='lost';resultOverlay.hidden=!finished||!!options.campaignOpen;
+    if(finished){const won=state.phase==='won';text(resultSeal,won?'胜':'侠');text(resultTitle,won?`${currentChapter.name} · 通关`:'胜败乃江湖常事');text(resultText,won?(state.chapterId===2?'双章皆破，雨歇见江湖。':'青岚已破，暮雨山门已解锁。'):'收剑养息，再试一程。');text(resultStats,`${Math.min(6,state.stage+(won?1:0))} / 6 场　·　总伤害 ${state.stats.damage}　·　重掷 ${state.stats.rerolls} 次`);}
+    text(resultRestart,`再闯${currentChapter.name}`);
+    controls.setAttribute('aria-hidden',String(state.phase!=='battle'||options.paused||options.campaignOpen));
     syncDialogFocus();
   }
   function click(event) {
@@ -255,13 +262,14 @@ export function createAdventureUI(root, onAction) {
       const choice=chosen(),action={type:'choose',choiceId:choice.id};if(choice.kind!=='vitality')action.index=selection.index;
       submitted=true;renderRewards();onAction(action);return;
     }
+    if(action==='reward-inventory'){onAction({type:'inventory'});return;}
     if(action==='reroll'){if(canPlay()&&isValidDie(Number(value))&&state.rerolls>0)onAction({type:'reroll',index:Number(value)});return;}
     if(action==='target'){if(canPlay()&&state.enemies.some(enemy=>enemy.id===value&&enemy.hp>0))onAction({type:'target',id:value});return;}
     if(action==='attack'){if(canPlay())onAction({type:'attack'});return;}
-    if(['settings','pause','resume','mute','motion','restart','workshop'].includes(action))onAction({type:action});
+    if(['settings','pause','resume','mute','motion','restart','workshop','inventory','chapters'].includes(action))onAction({type:action});
   }
   function keydown(event) {
-    if(destroyed||!state)return;
+    if(destroyed||!state||options.campaignOpen)return;
     if(event.key==='Tab'&&activeModal){
       const controls=dialogControls(activeModal),first=controls[0],last=controls.at(-1),focused=document.activeElement;
       if(!first){event.preventDefault();return;}
